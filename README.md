@@ -31,6 +31,7 @@ TNPCA identify subnet and copy results to xls sheet for LDA (fisher_training)
 5. register bundles and do stats on bundles using:
 
 
-Bundle based registration-for loop- Gen3&4-2way-WithFA.ipynb	
+Bundle based registration-for loop- Gen3&4-2way-WithFA.ipynb
+
 Bundle based registration-for loop- Old&Young-2way-WithFA.ipynb	
 
