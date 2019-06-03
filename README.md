@@ -3,6 +3,7 @@ dipy based connectomes
 and statistical analyses
 to be expanded to include traits
 Wenlin Wu & Alex Badea
+#requires https://github.com/zhengwu/TensorNetwork_PCA.git.
 
 1.	Streamline reconstruction is done using either of the two scripts:
 	– CSA: CSA_revised_eg_sk_ww_binary_ALLanimal.py
