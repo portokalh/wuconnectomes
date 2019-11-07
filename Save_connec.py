@@ -36,7 +36,7 @@ for i in range(len(nonz[0])):
     if labels_[nonz[0][i], nonz[1][i], nonz[2][i]] >= 1000:
         labels_[nonz[0][i], nonz[1][i], nonz[2][i]] -= 1000
         labels_[nonz[0][i], nonz[1][i], nonz[2][i]] += 166
-print runno + ' label transformation finished'
+print(runno + ' label transformation finished')
 
 
 # In[4]:
@@ -50,20 +50,20 @@ streamlines, header = load_trk(mypath+runno+'_bmCSA_detr_small.trk')
 streamlines_cut = lambda: (sl for sl in streamlines if len(sl)>1)
 streamlines = Streamlines(streamlines_cut())
 
-print runno + ' streamlines paparation finished'
+print(runno + ' streamlines paparation finished')
 
 
 # In[5]:
 
 
 #build the connectivity matrix
-M= utils.connectivity_matrix(streamlines, labels_, affine=affine_labels,
+M= utils.connectivity_matrix(streamlines, affine_labels, labels_,
                                         return_mapping=False,
                                         mapping_as_streamlines=False)
 #fill dialgonal with 0
 np.fill_diagonal(M,0)
 
-print runno+ ' connectivity matrix building finished'
+print(runno+ ' connectivity matrix building finished')
 
 
 # In[20]:

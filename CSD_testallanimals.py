@@ -21,59 +21,24 @@ from dipy.tracking.streamline import Streamlines
 from dipy.reconst import peaks
 from dipy.io.streamline import save_trk
 import nibabel as nib
-from nibabel.streamlines import Field
-from nibabel.orientations import aff2axcodes
 from skimage.transform import rescale
 from scipy.ndimage import zoom
 from dipy.reconst.csdeconv import (ConstrainedSphericalDeconvModel,
                                    auto_response)
 from dipy.tracking import utils
 from dipy.segment.mask import applymask
+from tracking_func import save_trk_heavy_duty
+from dipy.io.utils import create_tractogram_header, get_reference_info
 
 
 import multiprocessing
-
-from dipy.tracking.streamline import Streamlines
 from dipy.tracking.local import LocalTracking, BinaryTissueClassifier
-from dipy.reconst import peaks
-from dipy.io.streamline import save_trk
-import nibabel as nib
-from nibabel.streamlines import Field
-from nibabel.orientations import aff2axcodes
+
 
 radius=10 #20
 
 l=['N54900', 'N54717','N54718','N54719','N54720','N54722','N54759','N54760','N54761','N54762','N54763','N54764','N54765','N54766','N54770','N54771','N54772','N54798','N54801','N54802','N54803','N54804','N54805','N54806','N54807','N54818','N54824','N54825','N54826','N54837','N54838','N54843','N54844','N54856','N54857','N54858','N54859','N54860','N54861','N54873','N54874','N54875','N54876','N54877','N54879','N54880','N54891','N54892','N54893','N54897','N54898','N54899','N54900','N54915','N54916','N54917']
-def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, header=None):
-    """ Saves tractogram files (*.trk)
 
-    Parameters
-    ----------
-    fname : str
-        output trk filename
-    streamlines : list of 2D arrays, generator or ArraySequence
-        Each 2D array represents a sequence of 3D points (points, 3).
-    affine : array_like (4, 4)
-        The mapping from voxel coordinates to streamline points.
-    vox_size : array_like (3,), optional
-        The sizes of the voxels in the reference image (default: None)
-    shape : array, shape (dim,), optional
-        The shape of the reference image (default: None)
-    header : dict, optional
-        Metadata associated to the tractogram file(*.trk). (default: None)
-    """
-    if vox_size is not None and shape is not None:
-        if not isinstance(header, dict):
-            header = {}
-        header[Field.VOXEL_TO_RASMM] = affine.copy()
-        header[Field.VOXEL_SIZES] = vox_size
-        header[Field.DIMENSIONS] = shape
-        header[Field.VOXEL_ORDER] = "".join(aff2axcodes(affine))
-
-    tractogram = nib.streamlines.LazyTractogram(streamlines)
-    tractogram.affine_to_rasmm = affine
-    trk_file = nib.streamlines.TrkFile(tractogram, header=header)
-    nib.streamlines.save(trk_file, fname)
 
 
 
@@ -226,12 +191,10 @@ for j in range(1):
     t3 = time()
 
     # from dipy.tracking.local import ThresholdTissueClassifier
-    from dipy.tracking.local import BinaryTissueClassifier # Wenlin Make this change
 
     # classifier = ThresholdTissueClassifier(csa_peaks.gfa, .25)
     classifier = BinaryTissueClassifier(bm) # Wenlin Make this change
 
-    from dipy.tracking import utils
 
     # generates about 2 seeds per voxel
     # seeds = utils.random_seeds_from_mask(fa > .2, seeds_count=2,
@@ -244,9 +207,11 @@ for j in range(1):
     seeds = utils.seeds_from_mask(bm, density=1,
                                   affine=np.eye(4))  # Wenlin make this change
 
-
+    step_size=0.5
+    stringstep=str(step_size); stringstep="_"+stringstep.replace(".","_")
+    #stringstep=""
     streamlines_generator = LocalTracking(csd_peaks, classifier,
-                                          seeds, affine=np.eye(4), step_size=.5)
+                                          seeds, affine=np.eye(4), step_size=step_size)
 
     # the function above will bring all streamlines in memory
     # streamlines = Streamlines(streamlines_generator)
@@ -259,8 +224,11 @@ for j in range(1):
 #    save_trk_heavy_duty(outpath+"bmCSA_detr_small.trk", streamlines=sg_small,
 #                        affine=affine,
 #                        shape=mask.shape, vox_size=vox_size)
-    save_trk_heavy_duty(outpath+runno+"_bmCSD_detr_small.trk", streamlines=sg_small,
-                        affine=affine,
+    outpathfile=outpath+runno+"_bmCSA_detr_small_header"+stringstep+".trk"
+    myheader=create_tractogram_header(outpathfile,*get_reference_info(fdwi))
+    
+    save_trk_heavy_duty(outpathfile, streamlines=sg_small,
+                        affine=affine, header=myheader,
                         shape=mask.shape, vox_size=vox_size)
 
 

@@ -19,9 +19,9 @@ from dipy.tracking.streamline import Streamlines
 from dipy.tracking.local import LocalTracking, BinaryTissueClassifier
 from dipy.reconst import peaks
 from dipy.io.streamline import save_trk
-import nibabel as nib
-from nibabel.streamlines import Field
-from nibabel.orientations import aff2axcodes
+
+from tracking_func import save_trk_heavy_duty
+from dipy.io.utils import create_tractogram_header, get_reference_info
 
 
 # In[2]:
@@ -36,40 +36,6 @@ l=['N54717','N54718','N54719','N54720','N54722','N54759','N54760',
    'N54874','N54875','N54876','N54877','N54879','N54880','N54891','N54892',
    'N54893','N54897','N54898','N54899','N54900','N54915','N54916','N54917']
 
-
-# In[3]:
-
-
-def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, header=None):
-    """ Saves tractogram files (*.trk)
-
-    Parameters
-    ----------
-    fname : str
-        output trk filename
-    streamlines : list of 2D arrays, generator or ArraySequence
-        Each 2D array represents a sequence of 3D points (points, 3).
-    affine : array_like (4, 4)
-        The mapping from voxel coordinates to streamline points.
-    vox_size : array_like (3,), optional
-        The sizes of the voxels in the reference image (default: None)
-    shape : array, shape (dim,), optional
-        The shape of the reference image (default: None)
-    header : dict, optional
-        Metadata associated to the tractogram file(*.trk). (default: None)
-    """
-    if vox_size is not None and shape is not None:
-        if not isinstance(header, dict):
-            header = {}
-        header[Field.VOXEL_TO_RASMM] = affine.copy()
-        header[Field.VOXEL_SIZES] = vox_size
-        header[Field.DIMENSIONS] = shape
-        header[Field.VOXEL_ORDER] = "".join(aff2axcodes(affine))
-
-    tractogram = nib.streamlines.LazyTractogram(streamlines)
-    tractogram.affine_to_rasmm = affine
-    trk_file = nib.streamlines.TrkFile(tractogram, header=header)
-    nib.streamlines.save(trk_file, fname)
 
 
 # In[4]:
@@ -125,14 +91,22 @@ for j in range(55):
     seeds = utils.seeds_from_mask(mask, density=1,affine=np.eye(4))  
     classifier = BinaryTissueClassifier(bm)
     #local tracking
+    step_size=0.5
+    stringstep=str(step_size); stringstep="_"+stringstep.replace(".","_")
+    #stringstep=""
     streamlines_generator = LocalTracking(csd_peaks, classifier,
-                                          seeds, affine=np.eye(4), step_size=.5)
+                                          seeds, affine=np.eye(4), step_size=step_size)
     # save a smaller part by only keeping one in 10 streamlines
     t3 = time()
     sg_small = lambda: (s for i, s in enumerate(streamlines_generator) if i % 10 == 0)
-    save_trk_heavy_duty(outpath+runno+"_bmCSD_detr_small60odf.trk", streamlines=sg_small,
-                        affine=affine,
+
+    outpathfile=outpath+runno+"_bmCSD_detr_small60odf"+stringstep+".trk"
+    myheader=create_tractogram_header(outpathfile,*get_reference_info(fdwi))
+    
+    save_trk_heavy_duty(outpathfile, streamlines=sg_small,
+                        affine=affine, header=myheader,
                         shape=mask.shape, vox_size=vox_size)
+    
     duration3 = time() - t3
     print(runno+' Tracking duration %.3f' % (duration3,))
 
