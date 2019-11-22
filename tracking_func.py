@@ -46,6 +46,7 @@ class NoDaemonProcess(multiprocessing.Process):
     # make 'daemon' attribute always return False
     def _get_daemon(self):
         return False
+
     def _set_daemon(self, value):
         pass
     daemon = property(_get_daemon, _set_daemon)
@@ -195,10 +196,11 @@ def create_tracts(mypath,outpath,subject,step_size,peak_processes,saved_tracts="
         pass
     if save_fa == "yes" or save_fa == "y" or save_fa == 1 or save_fa is True or save_fa == "all":
         outpathbmfa = outpath + 'bmfa' + subject + '.nii.gz'
-
-    if verbose:
-        print('Saving subject'+ subject+ ' at ' + outpathbmfa)
-    save_nifti(outpathbmfa, tensor_fit.fa, affine)
+        save_nifti(outpathbmfa, tensor_fit.fa, affine)
+        if verbose:
+            print('Saving subject'+ subject+ ' at ' + outpathbmfa)
+    else:
+        outpathbmfa = None
     fa = tensor_fit.fa
     duration1 = time() - t1
     # wenlin make this change-adress name to each animal
@@ -274,10 +276,12 @@ def create_tracts(mypath,outpath,subject,step_size,peak_processes,saved_tracts="
         save_trk_heavy_duty(outpathtrk, streamlines=sg_small,
                 affine=affine, header=myheader,
                 shape=mask.shape, vox_size=vox_size)
+    else:
+        outpathtrk = None
     if saved_tracts == "large" or saved_tracts == "both" or saved_tracts == "all":
         sg = lambda: (s for s in streamlines_generator)
-        outpathtrk=outpath+subject+"bmCSA_detr"+stringstep+".trk"
-        myheader=create_tractogram_header(outpathtrk,*get_reference_info(fdwi))
+        outpathtrk = outpath+subject+"bmCSA_detr"+stringstep+".trk"
+        myheader = create_tractogram_header(outpathtrk,*get_reference_info(fdwi))
         save_trk_heavy_duty(outpathtrk, streamlines=sg,
                 affine=affine, header=myheader,
                 shape=mask.shape, vox_size=vox_size)
@@ -304,7 +308,7 @@ def create_tracts(mypath,outpath,subject,step_size,peak_processes,saved_tracts="
     if verbose:
         print(subject + ' Tracking duration %.3f' % (duration3,))
 
-    return(subject,outpathtrk,outpathbmfa)
+    return subject, outpathtrk, outpathbmfa
     
 def almicedf_fix(df,verbose=None):
     #masterFile='/Users/alex/AlexBadea_MyPapers/FIGURES/mwm/mwm_master_organized.csv'

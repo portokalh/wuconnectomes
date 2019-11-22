@@ -20,6 +20,10 @@ l = ['N54717','N54718','N54719','N54720','N54722','N54759','N54760','N54761','N5
  'N54824','N54825','N54826','N54837','N54838','N54843','N54844','N54856','N54857','N54858','N54859','N54860','N54861',
  'N54873','N54874','N54875','N54876','N54877','N54879','N54880','N54891','N54892','N54893','N54897','N54898','N54899',
  'N54900','N54915','N54916','N54917']
+
+l = ['N54859', 'N54860', 'N54861', 'N54873', 'N54874', 'N54875', 'N54876', 'N54877', 'N54879', 'N54880',
+     'N54760', 'N54824', 'N54826', 'N54837', 'N54838', 'N54856', 'N54857', 'N54891', 'N54892', 'N54899']
+
 # l = ['N54717','N54718']
 print("Running on ", mp.cpu_count(), " processors")
 pool = mp.Pool(mp.cpu_count())
@@ -46,11 +50,17 @@ else:
 if subject_processes<np.size(l):
     subject_processes = np.size(l)
 
+savefa="no"
+verbose=True
 # ---------------------------------------------------------
 tall = time()
 
 results = pool.starmap_async(create_tracts,[(mypath, outpath, subject, step_size, peak_processes,
-                                           saved_streamlines, "yes", True) for subject in l]).get()
+                                           saved_streamlines, savefa, verbose) for subject in l]).get()
+
+# subject=l[0]
+# results=create_tracts(mypath, outpath, subject, step_size, peak_processes,
+#                                          saved_streamlines, savefa, verbose)
 
 pool.close()
 picklepath = '/Users/alex/jacques/allsubjects_test.p'
