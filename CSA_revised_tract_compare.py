@@ -15,10 +15,14 @@ import pickle
 
 from tracking_func import dwi_create_tracts, evaluate_tracts, extractbvec_fromheader, dwi_preprocessing, MyPool
 
-l = ['N57433', 'N57434', 'N57435', 'N57436','N57437']
+l = ['N57433']#, 'N57434', 'N57435', 'N57436','N57437']
 
-#l = ['N54859', 'N54860']
-print("Running on ", mp.cpu_count(), " processors")
+max_processors = 20
+
+if mp.cpu_count() < max_processors:
+    max_processors = mp.cpu_count()
+
+print("Running on ", max_processors, " processors")
 #pool = mp.Pool(mp.cpu_count())
 
 # please set the parameter here
@@ -27,15 +31,17 @@ print("Running on ", mp.cpu_count(), " processors")
 dwipath = '/Users/alex/brain_data/19abb14/4DNifti'
 
 outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
-figspath = '/Users/alex/bass/braindata_results/figures/'
+figspath = '/Users/alex/bass/testdata/braindata_results/figures/'
 
 stepsize = 2
-function_processes = 4
+function_processes = 20
+if max_processors < function_processes:
+    function_processes = max_processors
 saved_streamlines = "small"
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
 # "none" or None variable for neither and "both" for both of them
 
-subject_processes = np.int(mp.cpu_count()/function_processes)
+subject_processes = np.int(max_processors/function_processes)
 
 """
 extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57433/co_reg_N57433_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57433',"all")
@@ -45,6 +51,9 @@ extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57436/co_reg_N57436_m00.
 extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57437/co_reg_N57437_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57437',"all")
 """
 
+print("Process running on % d subjects with % d subjects in parallel each using % d processes"
+      % (np.size(l), subject_processes, function_processes))
+
 savefa="no"
 verbose=True
 denoise='mpca'
@@ -52,6 +61,7 @@ savedenoise=True
 display=False
 savefig=False
 doprune=True
+strproperty = "_flipy"
 # ---------------------------------------------------------
 tall = time()
 tract_results=[]
@@ -62,17 +72,19 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    #tract_results = pool.starmap_async(dwi_create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes,
-    #                                                        saved_streamlines, denoise, savefa, verbose) for subject in
-    #                                                       l]).get()
-    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
-                                                         figspath, function_processes, doprune, display, verbose)
-                                                        for subject in l]).get()
+    tract_results = pool.starmap_async(dwi_create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+                                                            saved_streamlines, denoise, savefa, verbose) for subject in
+                                                           l]).get()
+    #tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
+    #                                                     figspath, function_processes, doprune, display, verbose)
+    #                                                    for subject in l]).get()
     pool.close()
 else:
     for subject in l:
-        tract_results.append(dwi_create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes,
+        tract_results.append(dwi_create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
                                           saved_streamlines, denoise, savefa, verbose))
+        #tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
+        #                                                      figspath, function_processes, doprune, display, verbose))
 
 
 #dwip_results = pool.starmap_async(dwi_preprocessing[(dwipath,outpath,subject,denoise,savefa,function_processes, verbose) for subject in l]).get()

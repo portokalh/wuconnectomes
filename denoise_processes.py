@@ -634,8 +634,8 @@ def localpca(arr, sigma, mask=None, patch_radius=2, pca_method='eig',
                   return_sigma=False, out_dtype=out_dtype)
 
 
-def mppca(arr, mask=None, patch_radius=2, pca_method='eig', processes=1,
-          return_sigma=False, out_dtype=None, verbose = False):
+def mppca(arr, mask=None, patch_radius=2, pca_method='eig',
+          return_sigma=False, out_dtype=None, processes=1, verbose = False):
     r"""Performs PCA-based denoising using the Marcenko-Pastur
     distribution [1]_.
 

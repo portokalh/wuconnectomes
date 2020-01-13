@@ -229,8 +229,8 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2):
 def getdwidata(mypath, subject):
 
     #fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
-    fdwi = mypath + '/nii4D_' + subject + '.nii'
-    fdwi_data, affine, vox_size = load_nifti(fdwi, return_voxsize=True)
+    fdwipath = mypath + '/nii4D_' + subject + '.nii'
+    fdwi_data, affine, vox_size = load_nifti(fdwipath, return_voxsize=True)
 
     #ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
     ffalabels = mypath + '/mask.nii.gz'
@@ -243,7 +243,9 @@ def getdwidata(mypath, subject):
     fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
     bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
 
-    bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]]
+    #bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]]
+    #bvecs = np.c_[bvecs[:, 1], bvecs[:, 0], -bvecs[:, 2]]
+    bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]
 
     gtab = gradient_table(bvals, bvecs)
 
@@ -251,7 +253,7 @@ def getdwidata(mypath, subject):
     bm = np.where(labels == 0, False, True)
     mask = bm
     
-    return(fdwi_data,affine,gtab,labels)
+    return(fdwi_data,affine,gtab,labels,vox_size, fdwipath)
 
 def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):    
 
@@ -830,10 +832,13 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, header=None, roimask=None, aff
     #inv_affine = np.linalg.inv(hardi_img.affine)
 
     #fiber_fit will fit the streamlines to the original diffusion data and
+    if verbose:
+        print("Begin the evaluation over "+str(np.size(trk_streamlines))+" streamlines")
     fiber_fit = fiber_model.fit(dwidata, trk_streamlines, affine=np.eye(4), processes=processes, verbose=verbose)
     optimized_sl = list(np.array(trk_streamlines)[np.where(fiber_fit.beta > 0)[0]])
     plt.ioff()
-
+    if verbose:
+        print("End of the evaluation over +"+str(np.size(trk_streamlines)))
     fig, ax = plt.subplots(1)
     ax.hist(fiber_fit.beta, bins=100, histtype='step')
     ax.set_xlabel('Fiber weights')
@@ -1195,7 +1200,7 @@ def dwi_preprocessing(mypath,outpath,subject,denoise="none",savedenoise=True,sav
         print('FA was not calculated')
         outpathbmfa=None
 
-def dwi_create_tracts(mypath,outpath,subject,step_size,peak_processes,saved_tracts="small",save_fa="yes",
+def dwi_create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",saved_tracts="small",save_fa="yes",
                       denoise="none",verbose=None):
 
     if verbose:
@@ -1226,7 +1231,9 @@ def dwi_create_tracts(mypath,outpath,subject,step_size,peak_processes,saved_trac
     mask = bm
     """
 
-    fdwi, affine, gtab, labels = getdwidata(dwipath, subject)
+    fdwi_data, affine, gtab, labels, vox_size, fdwipath = getdwidata(dwipath, subject)
+    mask = np.where(labels == 0, False, True)
+
     #preprocessing section (still have to test denoising functions)
     #data = denoise_pick(data, mask, 'macenko', display=None) #data = denoise_pick(data, mask, 'gibbs', display=None)
     #fdwi_data = denoise_pick(fdwi_data, mask, 'all', display=None)
@@ -1241,9 +1248,9 @@ def dwi_create_tracts(mypath,outpath,subject,step_size,peak_processes,saved_trac
     allowed_strings=["small","large","all","both","none"]
     string_inclusion(saved_tracts, allowed_strings, "saved_tracts")
 
-    outpathsubject = outpath + subject
+    outpathsubject = outpath + subject + strproperty
 
-    trkheader = create_tractogram_header("place.trk", *get_reference_info(fdwi))
+    trkheader = create_tractogram_header("place.trk", *get_reference_info(fdwipath))
 
     #if multishell_split: #possible idea to creatr tracts from either one bval or another before doing it on all
     outpathtrk = QCSA_tractmake(fdwi_data,affine,vox_size,gtab,mask,trkheader,step_size,peak_processes,outpathsubject,saved_tracts=saved_tracts,verbose=verbose,subject=subject)
@@ -1273,8 +1280,8 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, outpathfig=None
 
     """
     dwidata, affine, gtab, labels = getdwidata(dwipath, subject)
-    roimask = (labels == 163) + (labels == 1163)  # + (labels == 120) + (labels == 1120)
-    roimask = labels > 1
+    roimask = (labels == 163) + (labels == 1163) + (labels == 120) + (labels == 1120)
+    #roimask = labels > 1
     outpathfig = outpathfig+'/'+subject
     print("Beginning Tract Evaluation of " + subject)
     stepsize = strfile(stepsize)
@@ -1290,13 +1297,11 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, outpathfig=None
 
     duration=time()
 
-    """
     ministream = []
     for idx, stream in enumerate(trkstreamlines):
-        if (idx % 1000) == 0:
+        if (idx % 10) == 0:
             ministream.append(stream)
     trkstreamlines = ministream
-    """
 
     if doprune:
         cutoff = 2
