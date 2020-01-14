@@ -243,9 +243,9 @@ def getdwidata(mypath, subject):
     fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
     bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
 
-    #bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]]
+    bvecs = np.c_[-bvecs[:, 0], bvecs[:, 1], bvecs[:, 2]]
     #bvecs = np.c_[bvecs[:, 1], bvecs[:, 0], -bvecs[:, 2]]
-    bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]
+    #bvecs = np.c_[-bvecs[:, 1], bvecs[:, 0], bvecs[:, 2]]
 
     gtab = gradient_table(bvals, bvecs)
 
@@ -319,14 +319,20 @@ def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):
 
         dpe_file=basepath+"dpe.txt"
         File_object = open(dpe_file,"w")
-        File_object.write(bvals)
+        File_object.write(dpe)
         File_object.close()
         
         dro_file=basepath+"dro.txt"
         File_object = open(dro_file,"w")
-        File_object.write(bvals)
+        File_object.write(dro)
         File_object.close()      
                          
+        bvecs=basepath+"bvec.txt"
+        File_object = open(dro_file,"w")
+        for i in range(dsl):
+            File_object.write(str(dro[i]) + str(dpe[i]) + str(dsl[i]) + "\n")
+        File_object.close() 
+        
     return bvals,dsl,dpe,dro 
 
 def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
@@ -1111,6 +1117,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
         save_trk_heavy_duty(outpathtrk, streamlines=sg_small,
                             affine=affine, header=trkheader,
                             shape=mask.shape, vox_size=vox_size)
+        print("Tract files were saved at " + outpathtrk)
     else:
         outpathtrk = None
     if saved_tracts == "large" or saved_tracts == "both" or saved_tracts == "all":
@@ -1119,6 +1126,8 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
         save_trk_heavy_duty(outpathtrk, streamlines=sg,
                             affine=affine, header=trkheader,
                             shape=mask.shape, vox_size=vox_size)
+        if verbose:
+            print("Tract files were saved at "+outpathtrk)
     if saved_tracts == "none" or saved_tracts is None:
         print("Tract files were not saved")
 
