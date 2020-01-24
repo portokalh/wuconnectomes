@@ -19,9 +19,17 @@ from dipy.io.streamline import load_trk
 from os.path import splitext
 import pickle
 
-import os, re, struct
+from types import ModuleType, FunctionType
+from gc import get_referents
+
+import smtplib 
+
+import os, re, sys, io, struct, socket, datetime
+from email.mime.text import MIMEText
 import glob
+
 from dipy.tracking.utils import unique_rows
+
 
 from time import time
 from dipy.io.image import load_nifti, save_nifti
@@ -48,6 +56,8 @@ import multiprocessing
 # multiprocessing module.
 import multiprocessing.pool
 
+
+
 from scipy.ndimage.morphology import binary_dilation
 from dipy.tracking import utils
 from dipy.tracking.stopping_criterion import BinaryStoppingCriterion
@@ -63,10 +73,14 @@ from random import randint
 from mpl_toolkits.axes_grid1 import AxesGrid
 import matplotlib
 import matplotlib.pyplot as plt
-import dipy.tracking.life as life
+#import dipy.tracking.life as life
+import JSdipy.tracking.life as life
 from dipy.viz import window, actor, colormap as cmap
 import dipy.core.optimize as opt
 
+serverURL="email.biac.duke.edu" 
+useremail="jacques.stout@duke.edu"
+mylogin="jas297"
 
 class NoDaemonProcess(multiprocessing.Process):
     # make 'daemon' attribute always return False
@@ -85,7 +99,6 @@ class MyPool(multiprocessing.pool.Pool):
     Process = NoDaemonProcess
     
 def string_inclusion(string_option,allowed_strings,option_name):
-
     try:
         string_option=string_option.lower()
     except AttributeError:
@@ -110,6 +123,46 @@ def strfile(string):
             return(string)
         except AttributeError:
             raise AttributeError("strfile error: not a usable number or string ")
+
+# Custom objects know their class.
+# Function objects seem to know way too much, including modules.
+# Exclude modules as well.
+BLACKLIST = type, ModuleType, FunctionType
+
+
+def getsize(obj):
+    """sum size of object & members."""
+    if isinstance(obj, BLACKLIST):
+        raise TypeError('getsize() does not take argument of type: '+ str(type(obj)))
+    seen_ids = set()
+    size = 0
+    objects = [obj]
+    while objects:
+        need_referents = []
+        for obj in objects:
+            if not isinstance(obj, BLACKLIST) and id(obj) not in seen_ids:
+                seen_ids.add(id(obj))
+                size += sys.getsizeof(obj)
+                need_referents.append(obj)
+        objects = get_referents(*need_referents)
+    return size
+
+def send_mail(msg_txt,subject="Cluster message"):
+
+    msg_content = io.StringIO()
+    msg_content.write("Datetime : %s \n\n" % datetime.datetime.now())
+    msg_content.write("JobID : %d \n\n" % os.getpid() )
+    msg_content.write("Message : %s \n\n" % msg_txt)
+    msg = MIMEText(msg_content.getvalue())
+    msg_content.close()
+    to_addr = "%s@duke.edu" % mylogin
+    from_addr = "%s@duke.edu" % mylogin
+    msg['Subject']=subject
+    msg['from']=from_addr
+    msg['to']=to_addr
+    s = smtplib.SMTP('smtpgw.duhs.duke.edu')
+    s.sendmail(from_addr, [to_addr], msg.as_string())
+    s.quit()
 
 def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2):
     """
@@ -229,23 +282,42 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2):
 def getdwidata(mypath, subject):
 
     #fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
-    fdwipath = mypath + '/nii4D_' + subject + '.nii'
-    fdwi_data, affine, vox_size = load_nifti(fdwipath, return_voxsize=True)
+    #fdwipath = mypath + '/nii4D_' + subject + '.nii'
+    if os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
+        fdwipath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
+    elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
+        fdwipath = mypath + '/nii4D_' + subject + '.nii'
+    #fdwi_data, affine, vox_size = load_nifti(fdwipath, return_voxsize=True)
+
+    img = nib.load(fdwipath)
+    fdwi_data = img.get_data()
+    vox_size = img.header.get_zooms()[:3]
+    affine = img.affine
+    hdr = img.header
+    del(img)
 
     #ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
-    ffalabels = mypath + '/mask.nii.gz'
-    labels, affine_labels = load_nifti(ffalabels)
+    if os.path.exists(mypath + '/mask.nii.gz'):
+        labels, affine_labels = load_nifti(mypath + '/mask.nii.gz')
+    elif os.path.exists(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz'):
+        labels, affine_labels = load_nifti(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz')
+    else:
+        print('mask not found, taking all non null values in nii file instead (not recommended for complex operations)')
+        labels = np.ones(fdwi_data.shape)
+        affine_labels=affine
+        
 
     #fbvals = mypath + '4Dnii/' + subject + '_RAS_ecc_bvals.txt'
     #fbvecs = mypath + '4Dnii/' + subject + '_RAS_ecc_bvecs.txt'
-    fbvals = mypath + '/' + subject + '_bvals.txt'
-    fbvecs = mypath + '/' + subject + '_bvec.txt'
+    fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
+    fbvecs = glob.glob(mypath + '/' + subject + '*_bvec*.txt')[0]
+    #fbvecs = mypath + '/' + subject + '_bvec.txt'
     fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
     bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
 
-    #bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]]
+    bvecs = np.c_[-bvecs[:, 0], bvecs[:, 1], bvecs[:, 2]]
     #bvecs = np.c_[bvecs[:, 1], bvecs[:, 0], -bvecs[:, 2]]
-    bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]
+    #bvecs = np.c_[-bvecs[:, 1], bvecs[:, 0], bvecs[:, 2]]
 
     gtab = gradient_table(bvals, bvecs)
 
@@ -253,7 +325,7 @@ def getdwidata(mypath, subject):
     bm = np.where(labels == 0, False, True)
     mask = bm
     
-    return(fdwi_data,affine,gtab,labels,vox_size, fdwipath)
+    return(fdwi_data,affine,gtab,labels,vox_size, fdwipath, hdr)
 
 def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):    
 
@@ -319,14 +391,20 @@ def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):
 
         dpe_file=basepath+"dpe.txt"
         File_object = open(dpe_file,"w")
-        File_object.write(bvals)
+        File_object.write(dpe)
         File_object.close()
         
         dro_file=basepath+"dro.txt"
         File_object = open(dro_file,"w")
-        File_object.write(bvals)
+        File_object.write(dro)
         File_object.close()      
                          
+        bvecs=basepath+"bvec.txt"
+        File_object = open(dro_file,"w")
+        for i in range(dsl):
+            File_object.write(str(dro[i]) + str(dpe[i]) + str(dsl[i]) + "\n")
+        File_object.close() 
+        
     return bvals,dsl,dpe,dro 
 
 def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
@@ -826,6 +904,7 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, header=None, roimask=None, aff
     if roimask is None:
         roimask = dwidata>0
 
+    print("verbose: "+str(verbose) +" outpathfig: "+ str(outpathfig))
     fiber_model = life.FiberModel(gtab)
     # inv_affine must be used if the streamlines are in the world space, and thus we must useapply the inverse affine of dwi
     #when comparing the diffusion directions gtab and the voxels of trk
@@ -833,21 +912,50 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, header=None, roimask=None, aff
 
     #fiber_fit will fit the streamlines to the original diffusion data and
     if verbose:
-        print("Begin the evaluation over "+str(np.size(trk_streamlines))+" streamlines")
+        txt="Begin the evaluation over "+str(np.size(trk_streamlines))+" streamlines"
+        print(txt)
+        send_mail(txt,subject="LifE start msg ")
+
     fiber_fit = fiber_model.fit(dwidata, trk_streamlines, affine=np.eye(4), processes=processes, verbose=verbose)
     optimized_sl = list(np.array(trk_streamlines)[np.where(fiber_fit.beta > 0)[0]])
     plt.ioff()
     if verbose:
-        print("End of the evaluation over +"+str(np.size(trk_streamlines)))
-    fig, ax = plt.subplots(1)
-    ax.hist(fiber_fit.beta, bins=100, histtype='step')
-    ax.set_xlabel('Fiber weights')
-    ax.set_ylabel('# fibers')
-    ROI_actor = actor.contour_from_roi(roimask, color=(1., 1., 0.),
-                                          opacity=0.5)
+        txt="End of the evaluation over "+str(np.size(trk_streamlines))
+        print(txt)
+        send_mail(txt,subject="LifE status msg ")
 
-    if outpathfig is not None:
-        fig.savefig(outpathfig+'_beta_histogram.png')
+    sizebeta=getsize(fiber_fit.beta)
+    if sizebeta<20525023825:
+        picklepath = outpathfig+'_beta.p'
+        txt=("fiber_fit.beta saved at "+picklepath)
+        pickle.dump(fiber_fit.beta, open(picklepath, "wb"))
+        if verbose:
+            print(txt)
+            send_mail(txt,subject="LifE save msg ")
+    else:
+        txt=("Object fiber_fit.beta exceeded the imposed the 20GB limit with a size of: "+str(sizebeta/(10^9))+ "GB")
+        print(txt)
+        send_mail(txt,subject="LifE error msg")
+
+    print("display was set at "+str(display))
+    display=False
+    if display:
+        plt.show()         
+
+    if outpathfig is not None and display:
+        fig, ax = plt.subplots(1)
+        ax.hist(fiber_fit.beta, bins=100, histtype='step')
+        ax.set_xlabel('Fiber weights')
+        ax.set_ylabel('# fibers')
+        ROI_actor = actor.contour_from_roi(roimask, color=(1., 1., 0.),
+                                          opacity=0.5)
+        sizebeta=getsize(fiber_fit.beta)
+        histofig_path=(outpathfig+'_beta_histogram.png')
+        fig.savefig(histofig_path)
+        if verbose:
+            txt="file saved at "+histofig_path
+            print(txt)
+            send_mail(txt,subject="LifE save msg ")
     """
     vol_actor = actor.slicer(t1_data)
     
@@ -855,20 +963,18 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, header=None, roimask=None, aff
     vol_actor2 = vol_actor.copy()
     vol_actor2.display(z=35)        
     
-    """
-
-
+    """      
     if display:
-        plt.show()
-
-    ren = window.Renderer()
-    ren.add(actor.streamtube(optimized_sl, cmap.line_colors(optimized_sl)))
-    ren.add(ROI_actor)
+        ren = window.Renderer()
+        ren.add(actor.streamtube(optimized_sl, cmap.line_colors(optimized_sl)))
+        ren.add(ROI_actor)
     #ren.add(vol_actor)
 
-    if outpathfig is not None:
-        window.record(ren, n_frames=1, out_path=outpathfig +'_life_optimized.png',
-                      size=(800, 800))
+    #if outpathfig is not None:
+    #    print("reached windowrecord")
+    #    window.record(ren, n_frames=1, out_path=outpathfig +'_life_optimized.png',
+    #                  size=(800, 800))
+    #    print("did window record")
     if outpathtrk is not None:
         outpathfile = str(outpathtrk) + "_lifeopt.trk"
         try:
@@ -876,9 +982,17 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, header=None, roimask=None, aff
             optimized_sl_gen = lambda: (s for s in optimized_sl)
             save_trk_heavy_duty(outpathfile, streamlines=optimized_sl_gen,
                                 affine=affine, header=myheader)
+            txt=("Saved final trk at "+ outpathfile)
+            print(txt)
+            send_mail(txt,subject="LifE save msg ")
         except TypeError:
-            print('Could not save new tractogram file, header of original trk file not properly implemented into '
+            txt=('Could not save new tractogram file, header of original trk file not properly implemented into '
                   'LifEvaluation')
+            print(txt)
+            send_mail(txt,subject="LifE error msg ")
+
+    print("Interactive was set at: "+str(interactive))
+    interactive=False
     if interactive:
         window.show(ren)
 
@@ -900,49 +1014,80 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, header=None, roimask=None, aff
         (pred_weighted + fiber_fit.mean_signal[:, None]) * S0[:, None]
     mean_error = mean_pred - fiber_fit.data
     mean_rmse = np.sqrt(np.mean(mean_error ** 2, -1))
-    fig, ax = plt.subplots(1)
-    ax.hist(mean_rmse - model_rmse, bins=100, histtype='step')
-    ax.text(0.2, 0.9, 'Median RMSE, mean model: %.2f' % np.median(mean_rmse),
-            horizontalalignment='left',
-            verticalalignment='center',
-            transform=ax.transAxes)
-    ax.text(0.2, 0.8, 'Median RMSE, LiFE: %.2f' % np.median(model_rmse),
-            horizontalalignment='left',
-            verticalalignment='center',
-            transform=ax.transAxes)
-    ax.set_xlabel('RMS Error')
-    ax.set_ylabel('# voxels')
-    if outpathfig is not None:
-        fig.savefig(outpathfig + '_error_histograms.png')
+
+    size_meanrmse=getsize(mean_rmse)
+    if size_meanrmse<20525023825:
+        picklepath = outpathfig+'_mean_rmse.p'
+        txt=("mean_rmse saved at "+picklepath)
+        pickle.dump(mean_rmse, open(picklepath, "wb"))
+        if verbose:
+            print(txt)
+            send_mail(txt,subject="LifE save msg ")
+    else:
+        txt=("Object mean_rmse exceeded the imposed the 20GB limit with a size of: "+str(size_meanrmse/(10^9)) +" GB")
+        print(txt)
+        send_mail(txt,subject="LifE error msg")   
+
+    size_modelrmse=getsize(model_rmse)
+    if size_modelrmse<20525023825:
+        picklepath = outpathfig+'_model_rmse.p'
+        txt=("model_rmse saved at "+picklepath)
+        pickle.dump(model_rmse, open(picklepath, "wb"))
+        if verbose:
+            print(txt)
+            send_mail(txt,subject="LifE save msg ")
+    else:
+        txt=("Object model_rmse exceeded the imposed the 20GB limit with a size of: "+str(size_modelrmse/(10^9)) +" GB")
+        print(txt)
+        send_mail(txt,subject="LifE error msg")   
 
     if display:
+        fig, ax = plt.subplots(1)
+        ax.hist(mean_rmse - model_rmse, bins=100, histtype='step')
+        ax.text(0.2, 0.9, 'Median RMSE, mean model: %.2f' % np.median(mean_rmse),
+                horizontalalignment='left',
+                verticalalignment='center',
+                transform=ax.transAxes)
+        ax.text(0.2, 0.8, 'Median RMSE, LiFE: %.2f' % np.median(model_rmse),
+                horizontalalignment='left',
+                verticalalignment='center',
+                transform=ax.transAxes)
+        ax.set_xlabel('RMS Error')
+        ax.set_ylabel('# voxels')
+        if outpathfig is not None:
+            errorhistofig_path=(outpathfig + '_error_histograms.png')
+            fig.savefig(errorhistofig_path)
+            if verbose:
+                txt="file saved at "+errorhistofig_path
+                print(txt)
+                send_mail(txt,subject="LifE save msg ")
         plt.show()
 
-    vol_model = np.ones(dwidata.shape[:3]) * np.nan
-    vol_model[fiber_fit.vox_coords[:, 0],
-              fiber_fit.vox_coords[:, 1],
-              fiber_fit.vox_coords[:, 2]] = model_rmse
-    vol_mean = np.ones(dwidata.shape[:3]) * np.nan
-    vol_mean[fiber_fit.vox_coords[:, 0],
-             fiber_fit.vox_coords[:, 1],
-             fiber_fit.vox_coords[:, 2]] = mean_rmse
-    vol_improve = np.ones(dwidata.shape[:3]) * np.nan
-    vol_improve[fiber_fit.vox_coords[:, 0],
-                fiber_fit.vox_coords[:, 1],
-                fiber_fit.vox_coords[:, 2]] = mean_rmse - model_rmse
-    sl_idx = 49
-    fig = plt.figure()
-    fig.subplots_adjust(left=0.05, right=0.95)
-    ax = AxesGrid(fig, 111,
-                  nrows_ncols=(1, 3),
-                  label_mode="1",
-                  share_all=True,
-                  cbar_location="top",
-                  cbar_mode="each",
-                  cbar_size="10%",
-                  cbar_pad="5%")
+    
+        vol_model = np.ones(dwidata.shape[:3]) * np.nan
+        vol_model[fiber_fit.vox_coords[:, 0],
+                  fiber_fit.vox_coords[:, 1],
+                  fiber_fit.vox_coords[:, 2]] = model_rmse
+        vol_mean = np.ones(dwidata.shape[:3]) * np.nan
+        vol_mean[fiber_fit.vox_coords[:, 0],
+                 fiber_fit.vox_coords[:, 1],
+                 fiber_fit.vox_coords[:, 2]] = mean_rmse
+        vol_improve = np.ones(dwidata.shape[:3]) * np.nan
+        vol_improve[fiber_fit.vox_coords[:, 0],
+                    fiber_fit.vox_coords[:, 1],
+                    fiber_fit.vox_coords[:, 2]] = mean_rmse - model_rmse
+        sl_idx = 49
+        fig = plt.figure()
+        fig.subplots_adjust(left=0.05, right=0.95)
+        ax = AxesGrid(fig, 111,
+                      nrows_ncols=(1, 3),
+                      label_mode="1",
+                      share_all=True,
+                      cbar_location="top",
+                      cbar_mode="each",
+                      cbar_size="10%",
+                      cbar_pad="5%")
 
-    if display:
         plt.show()
         """
         
@@ -975,7 +1120,7 @@ def denoise_pick(data,affine,hdr,outpath,mask,type_denoise='macenko', processes 
         #data, snr = marcenko_denoise(data, False, verbose=verbose)
         t = time()
         denoised_arr, sigma = mppca(data, patch_radius=2, return_sigma=True, processes=processes, verbose=verbose)
-        outpath_mpca = outpath + '_mpca_paralleltest_2.nii.gz'
+        outpath_mpca = outpath + '_mpca.nii.gz'
         save_nifti(outpath_mpca, denoised_arr, affine, hdr=hdr)
         print("Saved image at " + outpath_mpca)
 
@@ -1050,8 +1195,14 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
     else:
         parallel = True
     if verbose:
-        print("Starting calculation of Constant solid angle model for subject " + subject)
-
+        send_mail("Starting calculation of Constant solid angle model for subject " + subject,subject="CSA model start")
+        #print("Starting calculation of Constant solid angle model for subject " + subject)
+        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start the CSA model for subject %s!\r\n\r\n" % (useremail,useremail,subject)
+        #text="""The CSA model is about to be calculated""" % (warning_time,max_run_hours,os.getpid())  
+        #message=headers+text 
+        #mailServer=smtplib.SMTP(serverURL) 
+        #mailServer.sendmail(useremail,useremail,message) 
+        #mailServer.quit() 
     csa_peaks = peaks_from_model(model=csa_model,
                                  data=data,
                                  sphere=peaks.default_sphere,  # issue with complete sphere
@@ -1073,7 +1224,14 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
     from dipy.tracking.stopping_criterion import BinaryStoppingCriterion
 
     if verbose:
+        send_mail('Computing classifier for local tracking for subject ' + subject,subject="Seed computation" )
         print('Computing classifier for local tracking for subject ' + subject)
+        #headers="From: %s\r\nTo: %s\r\nSubject:Seed computation\r\n\r\n" % (useremail,useremail)
+        #text="""About to start binary stopping criterion, duration of CSA was %.2f""" % (duration2)  
+        #message=headers+text 
+        #mailServer=smtplib.SMTP(serverURL) 
+        #mailServer.sendmail(useremail,useremail,message) 
+        #mailServer.quit() 
     classifier = BinaryStoppingCriterion(mask)
     from dipy.tracking import utils
 
@@ -1093,6 +1251,13 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
     ##streamlines_generator = local_tracking.local_tracker(csa_peaks,classifier,seeds,affine=np.eye(4),step_size=.5)
     if verbose:
         print('Computing the local tracking')
+        send_mail('Start of the local tracking ', subject="Seed computation")
+        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start the local tracking!\r\n\r\n" % (useremail,useremail)
+        #text="""Seeds have been computed, about to start the local tracking"""
+        #message=headers+text 
+        #mailServer=smtplib.SMTP(serverURL) 
+        #mailServer.sendmail(useremail,useremail,message) 
+        #mailServer.quit() 
 
     stringstep = str(step_size)
     stringstep = "_" + stringstep.replace(".", "_")
@@ -1104,6 +1269,15 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
     # streamlines = Streamlines(streamlines_generator)
 
     # save a smaller part by only keeping one in 10 streamlines
+    if verbose:
+        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start saving the file!\r\n\r\n" % (useremail,useremail)
+        try:
+            txt="About to save" + str(np.size(streamlines_generator)) + "streamlines at" + outpathsubject
+            send_mail(txt,subject="Seed computation")
+            #text="""About to save %d streamlines at %s""" % (np.size(streamlines_generator),outpathsubject) 
+        except:
+            send_mail('About to save streamlines at ' + outpathsubject,subject="Seed computation" )
+            #text="""About to save streamlines at %s""" % (outpathsubject) 
 
     if saved_tracts == "small" or saved_tracts == "both":
         sg_small = lambda: (s for i, s in enumerate(streamlines_generator) if i % 10 == 0)
@@ -1111,6 +1285,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
         save_trk_heavy_duty(outpathtrk, streamlines=sg_small,
                             affine=affine, header=trkheader,
                             shape=mask.shape, vox_size=vox_size)
+        print("Tract files were saved at " + outpathtrk)
     else:
         outpathtrk = None
     if saved_tracts == "large" or saved_tracts == "both" or saved_tracts == "all":
@@ -1119,9 +1294,19 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
         save_trk_heavy_duty(outpathtrk, streamlines=sg,
                             affine=affine, header=trkheader,
                             shape=mask.shape, vox_size=vox_size)
+        if verbose:
+            print("Tract files were saved at "+outpathtrk)
     if saved_tracts == "none" or saved_tracts is None:
         print("Tract files were not saved")
 
+    if verbose:
+        send_mail('Finished file save',subject="file save update" )
+        #headers="From: %s\r\nTo: %s\r\nSubject:Finished file save!\r\n\r\n" % (useremail,useremail)
+        #text="""Save the streamlines at """ % (outpathtrk) 
+        #message=headers+text 
+        #mailServer=smtplib.SMTP(serverURL) 
+        #mailServer.sendmail(useremail,useremail,message) 
+        #mailServer.quit() 
     # save everything - will generate a 20+ GBytes of data - hard to manipulate
 
     # possibly add parameter in csv file or other to decide whether to save large tractogram file
@@ -1142,47 +1327,25 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
 
     return outpathtrk
 
-def dwi_preprocessing(mypath,outpath,subject,denoise="none",savedenoise=True,savefa="yes",processes=1, verbose = False):
+def dwi_preprocessing(dwipath,outpath,subject,denoise="none",savedenoise=True,savefa="yes",processes=1, verbose = False):
 
-    if os.path.isdir(mypath):
-        fdwi = glob.glob(mypath + '/' + subject + '*.nii*')[0]
-    elif os.path.isfile(mypath):
-        fdwi = mypath
-    else:
-        raise(AttributeError)
-
-    fdwi_img = nib.load(fdwi)
-    fdwi_data = fdwi_img.get_data()
-    affine = fdwi_img.affine
-    hdr = fdwi_img.header
+    fdwi_data, affine, gtab, labels, vox_size, fdwipath, hdr = getdwidata(dwipath, subject)
     #fdwi_data, affine, vox_size = load_nifti(fdwi, return_voxsize=True)
 
-    labels = glob.glob(mypath + '/' + subject + '*labels*nii.gz') #ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
+    #labels = glob.glob(mypath + '/' + subject + '*labels*nii.gz') #ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
 
-    mask = glob.glob(mypath + '/' + subject + '*mask*nii.gz')
-    labelmask = labels + mask #Whether the image is a labels or a mask, we output a mask for mpca
-    try:
-        labelmask, affine_labmask = load_nifti(labelmask[0])
-        # Build Brain Mask
-        bm = np.where(labelmask == 0, False, True)
-        mask = bm
-        if verbose:
-            print("Mask detected, proceeding as normal")
-    except IndexError:
-        print("Warning: no mask detected (not recommended)")
-        mask = np.ones(fdwi_data.shape)
-
-    if os.path.isdir(mypath):
-        fbvals = glob.glob(mypath + '/' + subject + '*bval*')[0]
-        fbvecs = glob.glob(mypath + '/' + subject + '*bvec*')[0]
-    else:
-        print("Error, havent implemented multiple bvals bvec options")
-
-    bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
-
-    bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]]
-
-    gtab = gradient_table(bvals, bvecs)
+    #mask = glob.glob(mypath + '/' + subject + '*mask*nii.gz')
+    #labelmask = labels + mask #Whether the image is a labels or a mask, we output a mask for mpca
+        
+    # Build Brain Mask
+    
+    mask = np.where(labels == 0, False, True)
+    
+    #if verbose:
+    #        print("Mask detected, proceeding as normal")
+    #except IndexError:
+    #    print("Warning: no mask detected (not recommended)")
+    #    mask = np.ones(fdwi_data.shape)
 
     if verbose:
         print('Running the ' + subject + ' file')
@@ -1231,7 +1394,7 @@ def dwi_create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproper
     mask = bm
     """
 
-    fdwi_data, affine, gtab, labels, vox_size, fdwipath = getdwidata(dwipath, subject)
+    fdwi_data, affine, gtab, labels, vox_size, fdwipath, _ = getdwidata(dwipath, subject)
     mask = np.where(labels == 0, False, True)
 
     #preprocessing section (still have to test denoising functions)
@@ -1242,17 +1405,26 @@ def dwi_create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproper
     if save_fa == "yes" or save_fa == "y" or save_fa == 1 or save_fa is True or save_fa == "all":
         outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,verbose=verbose)
     else:
-        print('FA was not calculated')
+        print('FA was not bcalculated')
         outpathbmfa=None
 
     allowed_strings=["small","large","all","both","none"]
     string_inclusion(saved_tracts, allowed_strings, "saved_tracts")
-
     outpathsubject = outpath + subject + strproperty
 
     trkheader = create_tractogram_header("place.trk", *get_reference_info(fdwipath))
-
     #if multishell_split: #possible idea to creatr tracts from either one bval or another before doing it on all
+    print(verbose)
+    if verbose:
+        print("The QCSA Tractmake is ready to launch for subject " + subject)
+        send_mail("The QCSA Tractmake is ready to launch for subject " + subject,subject="QCSA main function start")
+        print("email sent")
+        #headers="From: %s\r\nTo: %s\r\nSubject:QCSA start\r\n\r\n" % (useremail,useremail)
+        #text="""The QCSA Tractmake is ready to launch for subject %s""" % (subject)  
+        #message=headers+text 
+        #mailServer=smtplib.SMTP(serverURL) 
+        #mailServer.sendmail(useremail,useremail,message) 
+        #mailServer.quit() 
     outpathtrk = QCSA_tractmake(fdwi_data,affine,vox_size,gtab,mask,trkheader,step_size,peak_processes,outpathsubject,saved_tracts=saved_tracts,verbose=verbose,subject=subject)
     
     return subject, outpathbmfa, outpathtrk
@@ -1279,8 +1451,10 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, outpathfig=None
     gtab = gradient_table(bvals, bvecs)
 
     """
-    dwidata, affine, gtab, labels = getdwidata(dwipath, subject)
+    fdwi_data, affine, gtab, labels, vox_size, fdwipath, _ = getdwidata(dwipath, subject)
     roimask = (labels == 163) + (labels == 1163) + (labels == 120) + (labels == 1120)
+    picklepath="/mnt/BIAC/munin3.dhe.duke.edu/Badea/Lab/mouse/C57_JS/Figures//N57433_roi.p"
+    pickle.dump(roimask, open(picklepath, "wb"))
     #roimask = labels > 1
     outpathfig = outpathfig+'/'+subject
     print("Beginning Tract Evaluation of " + subject)
@@ -1292,21 +1466,26 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, outpathfig=None
         print("Warning, multiple files detected, only applying pipeline on " + trkfile)
     trkdata = load_trk(trkfile, 'same')
     trkdata.to_vox()
-    header = trkdata.space_attribute
+    header = trkdata.space_attributes
     trkstreamlines = trkdata.streamlines
 
-    duration=time()
+    ratio = 1
+
+    if verbose:
+        txt="Beginning the evaluation of subject "+ subject + "\n We will evaluate for one in "+str(ratio)+" streamlines"
+        print(txt)
+        send_mail(txt,subject="LifE start msg ")
 
     ministream = []
     for idx, stream in enumerate(trkstreamlines):
-        if (idx % 10) == 0:
+        if (idx % ratio) == 0:
             ministream.append(stream)
     trkstreamlines = ministream
 
     if doprune:
         cutoff = 2
-        if np.min(dwidata[:, :, :, 0]) == 0:
-            mask = (dwidata[:, :, :, 0] > 0)
+        if np.min(fdwi_data[:, :, :, 0]) == 0:
+            mask = (fdwi_data[:, :, :, 0] > 0)
         else:
             mask = None
         trkstreamlines=prune_streamlines(list(trkstreamlines), mask, cutoff=cutoff, verbose=verbose)
@@ -1321,16 +1500,20 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, outpathfig=None
     #len_sl=len(trk_streamlines)
     #% memit fiber_fit = fiber_model.fit(data, trk_streamlines[2 ** 12], affine=np.eye(4))
     interactive = False
-    model_error, mean_error = LiFEvaluation(dwidata, trkstreamlines, gtab, header=header, roimask=roimask,
+    duration=time()
+    model_error, mean_error = LiFEvaluation(fdwi_data, trkstreamlines, gtab, header=header, roimask=roimask,
                                                      affine=affine,display=display, outpathfig=outpathfig,
                                                      outpathtrk=outpathtrk, processes=processes,
                                                      interactive=interactive, verbose=verbose)
-    picklepath = '/Users/alex/jacques/test_pickle_subj'+subject+'.p'
-    results=[outpathtrk,model_error,mean_error]
-    if subject == "N54859":
-        pickle.dump(results, open(picklepath, "wb"))
+    #picklepath = '/Users/alex/jacques/test_pickle_subj'+subject+'.p'
+    #results=[outpathtrk,model_error,mean_error]
+    #if subject == "N54859":
+    #    pickle.dump(results, open(picklepath, "wb"))
 
-    print("Finished life evaluation of subject " + (subject)+ ", whole process took " + str(time()-duration) + " s")
+    if verbose:
+        txt=("Finished life evaluation of subject " + (subject)+ ", whole process took " + str(time()-duration) + " s")
+        print(txt)
+        send_mail(txt,subject="LifE save msg ")
     #picklepath = trkpath+subject+'lifevals.p'
     #pickle.dump(tracteval_results, open(picklepath,"wb"))
     return [outpathfig, model_error, mean_error]

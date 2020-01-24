@@ -1,14 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Dec 13 13:57:59 2019
-
-@author: alex
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
 @author: Eleftherios and Serge
 
 Wenlin make some changes to track on the whole brain
@@ -17,72 +9,112 @@ Wenlin add for loop to run all the animals 2018-20-25
 
 from time import time
 import numpy as np
+import os
 
 import multiprocessing as mp
 import pickle
 
-from tracking_func import dwi_create_tracts, dwi_preprocessing, MyPool
+from tracking_func import dwi_create_tracts, evaluate_tracts, extractbvec_fromheader, dwi_preprocessing, MyPool
 
-l = ['N54717','N54718','N54719','N54720','N54722','N54759','N54760','N54761','N54762','N54763','N54764','N54765',
- 'N54766','N54770','N54771','N54772','N54798','N54801','N54802','N54803','N54804','N54805','N54806','N54807','N54818',
- 'N54824','N54825','N54826','N54837','N54838','N54843','N54844','N54856','N54857','N54858','N54859','N54860','N54861',
- 'N54873','N54874','N54875','N54876','N54877','N54879','N54880','N54891','N54892','N54893','N54897','N54898','N54899',
- 'N54900','N54915','N54916','N54917']
+l = ['00490']
 
-l = ['N54859', 'N54860', 'N54861', 'N54873', 'N54874', 'N54875', 'N54876', 'N54877', 'N54879', 'N54880',
-     'N54760', 'N54824', 'N54826', 'N54837', 'N54838', 'N54856', 'N54857', 'N54891', 'N54892', 'N54899']
+max_processors = 100
 
-l = ['20190215_00393_005_01']
-print("Running on ", mp.cpu_count(), " processors")
-pool = mp.Pool(mp.cpu_count())
+if mp.cpu_count() < max_processors:
+    max_processors = mp.cpu_count()
+
+print("Running on ", max_processors, " processors")
+
+#pool = mp.Pool(mp.cpu_count())
 
 # please set the parameter here
 
-# mypath = '/Users/alex/brain_data/E3E4/wenlin/'  wenlin make this change
-mypath = '/Users/alex/data/epilepsy/Data/Nifti/20190215_00393_005_01/'
+# mypath = '/Users/alex/brain_data/E3E4/wenlin/'
+#dwipath = '/Users/alex/brain_data/19abb14/4DNifti'
+#BIGGUS_DISKUS = os.environ.get('BIGGUS_DISKUS')
+BIGGUS_DISKUS = "/mnt/BIAC/munin3.dhe.duke.edu/Badea/Lab/mouse"
+dwipath = BIGGUS_DISKUS + "/epilepsy_coreg/"
 
-outpath = '/Users/alex/bass/testdata/' + 'results/'  # wenlin make this change
+#outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
+outtrkpath = BIGGUS_DISKUS + "/epilepsy_coreg/TRK/"
 
-step_size = 2
-function_processes = 1
+figspath = BIGGUS_DISKUS + "/C57_JS/Figures"
+
+stepsize = 2
+function_processes = 8
+if max_processors < function_processes:
+    function_processes = max_processors
 saved_streamlines = "small"
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
 # "none" or None variable for neither and "both" for both of them
 
-subject_processes = np.int(mp.cpu_count()/function_processes)
-if function_processes>1:
-    pool = MyPool(subject_processes)
-else:
-    pool = mp.Pool(subject_processes)
+subject_processes = np.int(max_processors/function_processes)
 
-if subject_processes<np.size(l):
-    subject_processes = np.size(l)
+"""
+extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57433/co_reg_N57433_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57433',"all")
+extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57434/co_reg_N57434_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57434',"all")
+extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57435/co_reg_N57435_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57435',"all")
+extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57436/co_reg_N57436_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57436',"all")
+extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57437/co_reg_N57437_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57437',"all")
+"""
+
+print("Process running on % d subjects with % d subjects in parallel each using % d processes"
+      % (np.size(l), subject_processes, function_processes))
 
 savefa="no"
 verbose=True
 denoise='mpca'
 savedenoise=True
+display=False
+savefig=False
+doprune=True
+strproperty = ""
 # ---------------------------------------------------------
 tall = time()
-dwipresults=[]
+tract_results=[]
+
 if subject_processes>1:
-    dwip_results = pool.starmap_async(dwi_preprocessing,[(mypath,outpath,subject,denoise,savedenoise,savefa,function_processes, verbose) for subject in l]).get()
-elif subject_processes==1:
+    print("here")
+    if function_processes>1:
+        pool = MyPool(subject_processes)
+    else:
+        pool = mp.Pool(subject_processes)
+    dwip_resultst = pool.starmap_async(dwi_preprocessing, [(dwipath, dwipath, subject, denoise, savedenoise, savefa, function_processes, verbose) for subject in l]).get()
+    #tract_results = pool.starmap_async(dwi_create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+    #                                                        saved_streamlines, denoise, savefa, verbose) for subject in
+    #                                                       l]).get()
+#    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
+#                                                         figspath, function_processes, doprune, display, verbose)
+#                                                        for subject in l]).get()
+    pool.close()
+else:
     for subject in l:
-        dwip_resultst = dwi_preprocessing(mypath, outpath, subject, denoise, savedenoise, savefa, function_processes, verbose)
+        print("there")
+        subject=str(subject)
+        dwip_resultst = dwi_preprocessing(dwipath, dwipath, subject, denoise, savedenoise, savefa, function_processes, verbose)
         dwip_results.append(dwip_resultst)
-#tract_results = pool.starmap_async(create_tracts,[(mypath, outpath, subject, step_size, function_processes,
+#        tract_results.append(dwi_create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+#                                          saved_streamlines, denoise, savefa, verbose))
+#        tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
+#                                                              figspath, function_processes, doprune, display, verbose))
+
+
+#dwip_results = pool.starmap_async(dwi_preprocessing[(dwipath,outpath,subject,denoise,savefa,function_processes, verbose) for subject in l]).get()
+
+#tract_results = pool.starmap_async(create_tracts,[(dwipath, outpath, subject, stepsize, function_processes,
 #                                            saved_streamlines, denoise, savefa, verbose) for subject in l]).get()
 
 subject=l[0]
-#dwip_results = dwi_preprocessing(mypath,outpath,subject,denoise,savedenoise=savedenoise, savefa=savefa, processes=function_processes, verbose=verbose)
-#tract_results = dwi_create_tracts(mypath, outpath, subject, step_size, function_processes,
+#dwip_results = dwi_preprocessing(dwipath,dwipath,subject,denoise,savedenoise=savedenoise, savefa=savefa, processes=function_processes, verbose=verbose)
+#tract_results = dwi_create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes,
 #                                          saved_streamlines, denoise, savefa, verbose)
-#tracteval_results = dwi_evaluate(mypath,outpath,subject,denoise,savedenoise=savedenoise, savefa=savefa, processes=function_processes, verbose=verbose)
 
-pool.close()
-picklepath = '/Users/alex/jacques/allsubjects_test_denoise.p'
-pickle.dump(tract_results, open(picklepath,"wb"))
+
+#tracteval_results = evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines, outpathfig=figspath,
+#                                    processes=function_processes, doprune=True, display=display, verbose=verbose)
+
+#picklepath = '/Users/alex/jacques/allsubjects_test_eval.p'
+#pickle.dump(tracteval_results, open(picklepath,"wb"))
 
 # for j in range(np.size(l)):
 #    print(j+1)

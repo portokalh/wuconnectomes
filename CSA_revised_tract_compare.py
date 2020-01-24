@@ -9,39 +9,46 @@ Wenlin add for loop to run all the animals 2018-20-25
 
 from time import time
 import numpy as np
+import os
 
 import multiprocessing as mp
 import pickle
 
-from tracking_func import dwi_create_tracts, evaluate_tracts, extractbvec_fromheader, dwi_preprocessing, MyPool
+from tracking_func import dwi_create_tracts, evaluate_tracts, extractbvec_fromheader, dwi_preprocessing, MyPool, send_mail
 
-l = ['N57433']#, 'N57434', 'N57435', 'N57436','N57437']
+l = [ 'N57434', 'N57435', 'N57436','N57437']
 
-max_processors = 20
+max_processors = 100
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 
 print("Running on ", max_processors, " processors")
+
 #pool = mp.Pool(mp.cpu_count())
 
 # please set the parameter here
 
 # mypath = '/Users/alex/brain_data/E3E4/wenlin/'
-dwipath = '/Users/alex/brain_data/19abb14/4DNifti'
+#dwipath = '/Users/alex/brain_data/19abb14/4DNifti'
+#BIGGUS_DISKUS = os.environ.get('BIGGUS_DISKUS')
+BIGGUS_DISKUS = "/mnt/BIAC/munin3.dhe.duke.edu/Badea/Lab/mouse"
+dwipath = BIGGUS_DISKUS + "/C57_JS/DWI/"
 
-outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
-figspath = '/Users/alex/bass/testdata/braindata_results/figures/'
+#outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
+outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK/"
+
+figspath = BIGGUS_DISKUS + "/C57_JS/Figures/"
 
 stepsize = 2
-function_processes = 20
-if max_processors < function_processes:
-    function_processes = max_processors
+subject_processes = np.size(l)
+if max_processors < subject_processes:
+    subject_processes = max_processors
 saved_streamlines = "small"
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
 # "none" or None variable for neither and "both" for both of them
 
-subject_processes = np.int(max_processors/function_processes)
+function_processes = np.int(max_processors/subject_processes)
 
 """
 extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57433/co_reg_N57433_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57433',"all")
@@ -51,9 +58,6 @@ extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57436/co_reg_N57436_m00.
 extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57437/co_reg_N57437_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57437',"all")
 """
 
-print("Process running on % d subjects with % d subjects in parallel each using % d processes"
-      % (np.size(l), subject_processes, function_processes))
-
 savefa="no"
 verbose=True
 denoise='mpca'
@@ -61,10 +65,17 @@ savedenoise=True
 display=False
 savefig=False
 doprune=True
-strproperty = "_flipy"
+strproperty = ""
 # ---------------------------------------------------------
 tall = time()
 tract_results=[]
+
+
+if verbose:
+    txt=("Process running with % d max processes available on % d subjects with % d subjects in parallel each using % d processes"
+      % (mp.cpu_count(), np.size(l), subject_processes, function_processes))
+    print(txt)
+    send_mail(txt,subject="LifE start msg ")
 
 if subject_processes>1:
     if function_processes>1:
@@ -72,19 +83,19 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    tract_results = pool.starmap_async(dwi_create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-                                                            saved_streamlines, denoise, savefa, verbose) for subject in
-                                                           l]).get()
-    #tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
-    #                                                     figspath, function_processes, doprune, display, verbose)
-    #                                                    for subject in l]).get()
+#    tract_results = pool.starmap_async(dwi_create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+#                                                            saved_streamlines, savefa, denoise, verbose) for subject in
+#                                                           l]).get()
+    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
+                                                         figspath, function_processes, doprune, display, verbose)
+                                                        for subject in l]).get()
     pool.close()
 else:
     for subject in l:
-        tract_results.append(dwi_create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-                                          saved_streamlines, denoise, savefa, verbose))
-        #tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
-        #                                                      figspath, function_processes, doprune, display, verbose))
+#        tract_results.append(dwi_create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+#                                          saved_streamlines, denoise, savefa, verbose))
+        tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
+                                                              figspath, function_processes, doprune, display, verbose))
 
 
 #dwip_results = pool.starmap_async(dwi_preprocessing[(dwipath,outpath,subject,denoise,savefa,function_processes, verbose) for subject in l]).get()
