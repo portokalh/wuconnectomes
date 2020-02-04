@@ -16,7 +16,7 @@ import pickle
 
 from tracking_func import dwi_create_tracts, evaluate_tracts, extractbvec_fromheader, dwi_preprocessing, MyPool, send_mail
 
-l = [ 'N57434', 'N57435', 'N57436','N57437']
+l = ['N57437']
 
 max_processors = 100
 
