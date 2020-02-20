@@ -76,7 +76,6 @@ from dipy.viz import window, actor, colormap as cmap
 import dipy.core.optimize as opt
 from functools import wraps
 
-#from tractfile_handler import target, prune_streamlines, save_trk_heavy_duty
 from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
 from figures_handler import denoise_fig, show_bundles, window_show_test, LifEcreate_fig
 from tract_eval import bundle_coherence, LiFEvaluation
