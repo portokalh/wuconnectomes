@@ -81,11 +81,7 @@ from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
 from figures_handler import denoise_fig, show_bundles, window_show_test, LifEcreate_fig
 from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
-from daemon_tools import MyPool
-
-
-
-mylogin = "jas297"
+from BIAC_tools import MyPool, send_mail
 
 def string_inclusion(string_option,allowed_strings,option_name):
     "checks if option string is part of the allowed list of strings for that option"
@@ -140,24 +136,6 @@ def getsize(obj):
     return size
 
 
-def send_mail(msg_txt,subject="Cluster message"):
-    #Send mail with specified txt (and subject) to default address specified in global variable
-    msg_content = io.StringIO()
-    msg_content.write("Datetime : %s \n\n" % datetime.datetime.now())
-    msg_content.write("JobID : %d \n\n" % os.getpid() )
-    msg_content.write("Message : %s \n\n" % msg_txt)
-    msg = MIMEText(msg_content.getvalue())
-    msg_content.close()
-    to_addr = "%s@duke.edu" % mylogin
-    from_addr = "%s@duke.edu" % mylogin
-    msg['Subject'] = subject
-    msg['from'] = from_addr
-    msg['to'] = to_addr
-    s = smtplib.SMTP('smtpgw.duhs.duke.edu')
-    s.sendmail(from_addr, [to_addr], msg.as_string())
-    s.quit()
-
-
 def getdwidata(mypath, subject, verbose=None):
 
     #fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
@@ -206,14 +184,16 @@ def getdwidata(mypath, subject, verbose=None):
     #fbvecs = mypath + '4Dnii/' + subject + '_RAS_ecc_bvecs.txt'
     fbvals = glob.glob(mypath + '*/*' + subject + '*_bval*.txt')[0]
     fbvecs = glob.glob(mypath + '*/*' + subject + '*_bvec*.txt')[0]
+    #fbvals = glob.glob(mypath + '*' + subject + '*_bval*.txt')[0]
+    #fbvecs = glob.glob(mypath + '*' + subject + '*_bvec*.txt')[0]
     #fbvecs = mypath + '/' + subject + '_bvec.txt'
     fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
     bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
 
     #bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]  # FOR RAS according to Alex
-    bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]] #FOR RAS
+    #bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]] #FOR RAS
 
-    #bvecs = np.c_[-bvecs[:, 0], bvecs[:, 1], bvecs[:, 2]] #FOR ARI (original form of C57)
+    bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]] #FOR ARI (original form of C57)
 
     #bvecs = np.c_[bvecs[:, 1], bvecs[:, 0], -bvecs[:, 2]]
     #bvecs = np.c_[-bvecs[:, 1], bvecs[:, 0], bvecs[:, 2]]

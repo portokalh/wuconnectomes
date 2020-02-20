@@ -6,79 +6,21 @@ Created on Wed Feb 19 15:39:41 2020
 @author: Jacques Stout
 """
 
-
-import nibabel as nib
 import numpy as np
-from nibabel.streamlines import Field
-from nibabel.orientations import aff2axcodes
-from dipy.io.streamline import load_trk
-from os.path import splitext
-from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
-import pickle
-
-from types import ModuleType, FunctionType
-from gc import get_referents
-
-import smtplib
-
-import os, re, sys, io, struct, socket, datetime
-from email.mime.text import MIMEText
-import glob
-
-from dipy.tracking.utils import unique_rows
-
 
 from time import time
-from dipy.io.image import load_nifti, save_nifti
-from dipy.io.gradients import read_bvals_bvecs
-from dipy.core.gradients import gradient_table
+from dipy.io.image import save_nifti
 from dipy.reconst.shm import CsaOdfModel
-from dipy.data import get_sphere
 from dipy.direction import peaks_from_model
 from dipy.tracking.local_tracking import LocalTracking
 from dipy.direction import peaks
-from nibabel.streamlines import detect_format
-from dipy.io.utils import (create_tractogram_header,
-                           get_reference_info)
-from dipy.viz import window, actor
-
-from dipy.segment.mask import segment_from_cfa
-from dipy.segment.mask import bounding_box
-
-import multiprocessing
 # We must import this explicitly, it is not imported by the top-level
 # multiprocessing module.
-import multiprocessing.pool
-
-
-
-from scipy.ndimage.morphology import binary_dilation
 from dipy.tracking import utils
-from dipy.tracking.stopping_criterion import BinaryStoppingCriterion
-from dipy.tracking.streamline import Streamlines
-import matplotlib.pyplot as plt
+from BIAC_tools import send_mail
 
 #from dipy.denoise.localpca import mppca
-from denoise_processes import mppca
-from dipy.denoise.gibbs import gibbs_removal
-
-from random import randint
-
-from mpl_toolkits.axes_grid1 import AxesGrid
-import matplotlib
-import matplotlib.pyplot as plt
 #import dipy.tracking.life as life
-import JSdipy.tracking.life as life
-from dipy.viz import window, actor, colormap as cmap
-import dipy.core.optimize as opt
-from functools import wraps
-
-from tractfile_handler import target, prune_streamlines
-from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
-from figures_handler import denoise_fig, show_bundles, window_show_test, LifEcreate_fig
-from tract_eval import bundle_coherence, LiFEvaluation
-from dif_to_trk import make_tensorfit, QCSA_tractmake
-from daemon_tools import MyPool
 
 def make_tensorfit(data,mask,gtab,affine,subject,outpath,strproperty,verbose=None):
 

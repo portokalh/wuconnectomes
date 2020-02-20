@@ -17,6 +17,7 @@ from nibabel.streamlines import Field
 from nibabel.orientations import aff2axcodes
 from dipy.io.streamline import load_trk
 from os.path import splitext
+from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
 import pickle
 
 from types import ModuleType, FunctionType
@@ -40,9 +41,6 @@ from dipy.data import get_sphere
 from dipy.direction import peaks_from_model
 from dipy.tracking.local_tracking import LocalTracking
 from dipy.direction import peaks
-import nibabel as nib
-from nibabel.streamlines import Field
-from nibabel.orientations import aff2axcodes
 from nibabel.streamlines import detect_format
 from dipy.io.utils import (create_tractogram_header,
                            get_reference_info)
@@ -77,27 +75,17 @@ import matplotlib.pyplot as plt
 import JSdipy.tracking.life as life
 from dipy.viz import window, actor, colormap as cmap
 import dipy.core.optimize as opt
+from functools import wraps
 
-serverURL="email.biac.duke.edu" 
-useremail="jacques.stout@duke.edu"
-mylogin="jas297"
+from tractfile_handler import target, prune_streamlines
+from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
+from figures_handler import denoise_fig, show_bundles, window_show_test, LifEcreate_fig
+from tract_eval import bundle_coherence, LiFEvaluation
+from dif_to_trk import make_tensorfit, QCSA_tractmake
+from daemon_tools import MyPool
 
-class NoDaemonProcess(multiprocessing.Process):
-    # make 'daemon' attribute always return False
-    def _get_daemon(self):
-        return False
+mylogin = "jas297"
 
-    def _set_daemon(self, value):
-        pass
-    daemon = property(_get_daemon, _set_daemon)
-
-
-# We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
-# because the latter is only a wrapper function, not a proper class.
-class MyPool(multiprocessing.pool.Pool):
-    #This whole class allows us to run sub processes within subprocesses (subprocesses cannot exceed max count though)
-    Process = NoDaemonProcess
-    
 def string_inclusion(string_option,allowed_strings,option_name):
     "checks if option string is part of the allowed list of strings for that option"
     try:
@@ -149,6 +137,7 @@ def getsize(obj):
         objects = get_referents(*need_referents)
     return size
 
+
 def send_mail(msg_txt,subject="Cluster message"):
     #Send mail with specified txt (and subject) to default address specified in global variable
     msg_content = io.StringIO()
@@ -159,127 +148,12 @@ def send_mail(msg_txt,subject="Cluster message"):
     msg_content.close()
     to_addr = "%s@duke.edu" % mylogin
     from_addr = "%s@duke.edu" % mylogin
-    msg['Subject']=subject
-    msg['from']=from_addr
-    msg['to']=to_addr
+    msg['Subject'] = subject
+    msg['from'] = from_addr
+    msg['to'] = to_addr
     s = smtplib.SMTP('smtpgw.duhs.duke.edu')
     s.sendmail(from_addr, [to_addr], msg.as_string())
     s.quit()
-
-def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2):
-    """
-    Read b-values and b-vectors from disk
-
-    Parameters
-    ----------
-    fbvals : str
-       Full path to file with b-values. None to not read bvals.
-    fbvecs : str
-       Full path of file with b-vectors. None to not read bvecs.
-
-    Returns
-    -------
-    bvals : array, (N,) or None
-    bvecs : array, (N, 3) or None
-
-    Notes
-    -----
-    Files can be either '.bvals'/'.bvecs' or '.txt' or '.npy' (containing
-    arrays stored with the appropriate values).
-    """
-
-    # Loop over the provided inputs, reading each one in turn and adding them
-    # to this list:
-    vals = []
-
-    from nibabel.tmpdirs import InTemporaryDirectory
-
-    for this_fname in [fbvals, fbvecs]:
-        # If the input was None or empty string, we don't read anything and
-        # move on:
-        if this_fname is None or not this_fname:
-            vals.append(None)
-        else:
-            if isinstance(this_fname, str):
-                base, ext = splitext(this_fname)
-                if ext in ['.bvals', '.bval', '.bvecs', '.bvec', '.txt', '.eddy_rotated_bvecs', '']:
-                    with open(this_fname, 'r') as f:
-                        content = f.read()
-                    # We replace coma and tab delimiter by space
-                    with InTemporaryDirectory():
-                        tmp_fname = "tmp_bvals_bvecs.txt"
-                        with open(tmp_fname, 'w') as f:
-                            f.write(re.sub(r'(\t|,)', ' ', content))
-                        vals.append(np.squeeze(np.loadtxt(tmp_fname)))
-                elif ext == '.npy':
-                    vals.append(np.squeeze(np.load(this_fname)))
-                else:
-                    e_s = "File type %s is not recognized" % ext
-                    raise ValueError(e_s)
-            else:
-                raise ValueError('String with full path to file is required')
-
-    # Once out of the loop, unpack them:
-    bvals, bvecs = vals[0], vals[1]
-
-    # If bvecs is None, you can just return now w/o making more checks:
-    if bvecs is None:
-        return bvals, bvecs
-
-    if bvecs.ndim != 2:
-        raise IOError('bvec file should be saved as a two dimensional array')
-    if bvecs.shape[1] > bvecs.shape[0]:
-        bvecs = bvecs.T
-
-    if bvecs.shape[1] == 4:
-        if np.max(bvecs[:,0]) > b0_threshold:
-            if bvals is None:
-                bvals = bvec[0,:]
-            bvecs = np.delete(bvecs,0,1)
-
-    # If bvals is None, you don't need to check that they have the same shape:
-    if bvals is None:
-        return bvals, bvecs
-
-    if len(bvals.shape) > 1:
-        raise IOError('bval file should have one row')
-
-    if max(bvals.shape) != max(bvecs.shape):
-            raise IOError('b-values and b-vectors shapes do not correspond')
-
-    from dipy.core.geometry import vector_norm
-
-    bvecs_close_to_1 = abs(vector_norm(bvecs) - 1) <= atol
-
-    if bvecs.shape[1] != 3:
-        raise ValueError("bvecs should be (N, 3)")
-    dwi_mask = bvals > b0_threshold
-    if not np.all(bvecs_close_to_1[dwi_mask]):
-        correctvals = [i for i,val in enumerate(bvecs_close_to_1) if val and dwi_mask[i]]
-        incorrectvals = [i for i,val in enumerate(bvecs_close_to_1) if not val and dwi_mask[i]]
-        baseline_bval = bvals[correctvals[0]]
-        for i in incorrectvals:
-            if dwi_mask[i]:
-                bvecs[i,:] = bvecs[i,:] / np.sqrt(bvals[i]/baseline_bval)
-        bvecs_close_to_1 = abs(vector_norm(bvecs) - 1) <= atol
-        if not np.all(bvecs_close_to_1[dwi_mask]):
-            incorrectvals = [i for i, val in enumerate(bvecs_close_to_1) if not val and dwi_mask[i]]
-            raise ValueError("The vectors in bvecs should be unit (The tolerance "
-                             "can be modified as an input parameter)")
-
-    base, ext = splitext(fbvals)
-    fbvals = base + '_fix' + ext
-    np.savetxt(fbvals, bvals)
-#    with open(fbvals, 'w') as f:
-#        f.write(str(bvals))
-#    os.remove(fbvec)
-    base, ext = splitext(fbvecs)
-    fbvecs = base + '_fix' + ext
-    np.savetxt(fbvecs, bvecs)
-#    with open(fbvecs, 'w') as f:
-#        f.write(str(bvec))
-
-    return fbvals, fbvecs
 
 def getdwidata(mypath, subject, verbose=None):
 
@@ -295,6 +169,10 @@ def getdwidata(mypath, subject, verbose=None):
         fdwipath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
     elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
         fdwipath = mypath + '/nii4D_' + subject + '.nii'
+    elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
+        fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
+    elif os.path.exists(mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'):
+        fdwipath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
     #fdwi_data, affine, vox_size = load_nifti(fdwipath, return_voxsize=True)
 
     if verbose:
@@ -310,25 +188,36 @@ def getdwidata(mypath, subject, verbose=None):
     del(img)
 
     #ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
-    if os.path.exists(mypath + '/mask.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/mask.nii.gz')
-    elif os.path.exists(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz'):
+
+    if os.path.exists(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz'):
         labels, affine_labels = load_nifti(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz')
+    elif os.path.exists(mypath+'/'+subject+'_chass_symmetric2_labels_RAS.nii.gz'):
+        labels, affine_labels = load_nifti(mypath+'/'+subject+'_chass_symmetric2_labels_RAS.nii.gz')
+    elif os.path.exists(mypath + '/mask.nii.gz'):
+        labels, affine_labels = load_nifti(mypath + '/mask.nii.gz')
+    elif os.path.exists(mypath + '/fa_labels_warp_' + subject +'_RAS.nii.gz'):
+        labels, affine_labels = load_nifti(mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz')
+    elif os.path.exists(mypath + '/labels/fa_labels_warp_' + subject +'_RAS.nii.gz'):
+        labels, affine_labels = load_nifti(mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz')
     else:
         print('mask not found, taking all non null values in nii file instead (not recommended for complex operations)')
-        labels = np.ones(fdwi_data.shape)
+        labels = np.ones(fdwi_data.shape[0:3])
         affine_labels=affine
         
 
     #fbvals = mypath + '4Dnii/' + subject + '_RAS_ecc_bvals.txt'
     #fbvecs = mypath + '4Dnii/' + subject + '_RAS_ecc_bvecs.txt'
-    fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
-    fbvecs = glob.glob(mypath + '/' + subject + '*_bvec*.txt')[0]
+    fbvals = glob.glob(mypath + '*/*' + subject + '*_bval*.txt')[0]
+    fbvecs = glob.glob(mypath + '*/*' + subject + '*_bvec*.txt')[0]
     #fbvecs = mypath + '/' + subject + '_bvec.txt'
     fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
     bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
 
-    bvecs = np.c_[-bvecs[:, 0], bvecs[:, 1], bvecs[:, 2]]
+    #bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]  # FOR RAS according to Alex
+    bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]] #FOR RAS
+
+    #bvecs = np.c_[-bvecs[:, 0], bvecs[:, 1], bvecs[:, 2]] #FOR ARI (original form of C57)
+
     #bvecs = np.c_[bvecs[:, 1], bvecs[:, 0], -bvecs[:, 2]]
     #bvecs = np.c_[-bvecs[:, 1], bvecs[:, 0], bvecs[:, 2]]
 
@@ -339,146 +228,6 @@ def getdwidata(mypath, subject, verbose=None):
     mask = bm
     
     return(fdwi_data,affine,gtab,labels,vox_size, fdwipath, hdr)
-
-def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):    
-
-    bvals = dsl = dpe = dro = None
-    if save is not None:
-        if basepath==None:
-        #if undefined, basepath will be in the form of 'path/N50000~ (then add .bvals, bvec, etc)
-            basepath=os.path.split(source_file)[0]+"/"
-        if os.path.isdir(basepath):
-            basepath=basepath+"/"
-        else:
-            if os.path.isdir(os.path.split(basepath)[0]):
-                basepath=basepath
-            else:
-                basepath=os.path.join(sourcepath,basepath)
-                basepath=basepath
-    filename=os.path.split(source_file)[1]
-    fileoutpath=basepath+filename.split('.')[0]+"_"
-    with open(source_file, 'rb') as source:
-        if verbose: print('INFO    : Extracting acquisition parameters')
-        header_size=source.read(4)
-        header_size=struct.unpack('I', header_size)
-        if verbose: print('INFO    : Header size = ',int(header_size[0]))
-        i=0
-        stopsign=200
-        for line in source: 
-        
-            # pattern1 = '<ParamLong."BaseResolution">  {*'
-            # rx1 = re.compile(pattern1, re.IGNORECASE|re.MULTILINE|re.DOTALL)
-            
-            #pattern1 = 'z_Agilent_bvalue_m00='
-            pattern1 = 'z_Agilent_bvalue'
-            rx1 = re.compile(pattern1, re.IGNORECASE|re.MULTILINE|re.DOTALL)
-            pattern2 = 'z_Agilent_dsl'
-            rx2 = re.compile(pattern2, re.IGNORECASE|re.MULTILINE|re.DOTALL)
-            pattern3 = 'z_Agilent_dpe'
-            rx3 = re.compile(pattern3, re.IGNORECASE|re.MULTILINE|re.DOTALL)
-            pattern4 = 'z_Agilent_dro'
-            rx4 = re.compile(pattern4, re.IGNORECASE|re.MULTILINE|re.DOTALL)
-            i+=1
-            if i==stopsign:
-                print("hi")
-            for a in rx1.findall(str(line)):
-                bvals_all=str(line).split(',')[1]
-                bvals=bvals_all.split('\\')[0]
-            for a in rx2.findall(str(line)):
-                dsl_all=str(line).split(',')[1]
-                dsl=dsl_all.split('\\')[0]
-                #dsl=([float(s) for s in dsl_all.split() if s.isnumeric()])
-            for a in rx3.findall(str(line)):
-                dpe_all=str(line).split(',')[1]
-                dpe=dpe_all.split('\\')[0]
-            for a in rx4.findall(str(line)):
-                dro_all=str(line).split(',')[1]
-                dro=dro_all.split('\\')[0]
-    if save=="all":
-        bval_file=fileoutpath+"bvals.txt"
-        print(bval_file)
-        File_object = open(bval_file,"w")
-        File_object.write(bvals)
-        File_object.close()
-
-        dsl_file=fileoutpath+"dsl.txt"
-        File_object = open(dsl_file,"w")
-        File_object.write(dsl)
-        File_object.close()
-
-        dpe_file=fileoutpath+"dpe.txt"
-        File_object = open(dpe_file,"w")
-        File_object.write(dpe)
-        File_object.close()
-        
-        dro_file=fileoutpath+"dro.txt"
-        File_object = open(dro_file,"w")
-        File_object.write(dro)
-        File_object.close()      
-                         
-        bvecs_file=fileoutpath+"bvec.txt"
-        File_object = open(bvecs_file,"w")
-        dpe=dpe.split(" ")
-        dsl=dsl.split(" ")
-        dro=dro.split(" ")
-        print(dpe)
-        print(np.shape(dsl))
-        for i in range(np.size(dsl)):
-            File_object.write(str(dro[i]) + " " + str(dpe[i]) + " " + str(dsl[i]) + "\n")
-        File_object.close() 
-        
-    return bvals,dsl,dpe,dro 
-
-def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
-    """
-    gets rid of extraneous and spurious streamlines by getting rid of voxels outside of mask
-    streamline: the list of streamlines
-    mask: the mask usually coressponding to a brain extracted diffusion (b0) image
-    cutoff: the minimum number of voxels necessary for any one streamline to be included. Must be at least 2 for
-    any evaluation of the streamlines via Life
-    harshcut: if set at True, harshcut will delete any voxels of a streamline outside of a mask as well as any following
-    voxel, if set to None or False, harshcut will only delete voxels outside of mask and treat subsequent voxels as normal
-
-    returns the pruned streamline
-    """
-    delstream=[]
-    if verbose:
-        print("Starting the pruning")
-    duration = time()
-    if mask is not None:
-        for idx,s in enumerate(streamline): #iterate through all streams
-            s_vox=unique_rows(np.round(s).astype(np.intp))
-            cutlist=[]
-            for vox in range(np.shape(s_vox)[0]):
-                if not mask[tuple(s_vox[vox])]:
-                    cutlist.append(vox)         #if local mask is 0, add voxel to list of voxels to cut
-            if harshcut:                        #if harshcut, destroy all voxels folloxing the out of mask voxel in streamline
-                startcut = np.min(cutlist)
-                cutlist = range(startcut, len(np.shape(s_vox)[0]))
-                s = np.delete(s, cutlist)
-            else:
-                s = np.delete(s, cutlist, axis=0)   #else, cut all voxels of streamlines not in mask
-            streamline[idx] = s                       #replace old streamline with new spurious streamline
-            streamshape = np.shape(np.asarray(s))
-            if streamshape[0] < cutoff: #minimum number of voxels required in streamline, default and minimum at 2
-                delstream.append(idx)       #if number of voxels in streamline too low, cut it
-                if verbose == "oververbose":
-                    print("Skipped stream " + str(idx) + " out of " + str(len(streamline)) + " streamlines for being too small")
-    else:
-        for idx, s in enumerate(streamline):
-            streamshape = np.shape(np.asarray(s))
-            if streamshape[0] < cutoff:     #minimum number of voxels required in streamline, default and minimum at 2
-                delstream.append(idx)
-                if verbose:
-                    print("Skipped stream " + str(idx) + " out of " + str(len(streamline)) + " streamlines for being too small")
-    if verbose:
-        print("Obtaining fiber signal process done in " + str(time() - duration) + "s")
-        if len(delstream) > 0:
-            print("Skipped " + str(len(delstream)) + " out of " + str(
-                len(streamline)) + " due to size constraints (tiny streamlines)")
-    for idx in reversed(delstream):
-        streamline.pop(idx)
-    return streamline
 
 def almicedf_fix(df, verbose=None):
     # masterFile='/Users/alex/AlexBadea_MyPapers/FIGURES/mwm/mwm_master_organized.csv'
@@ -504,173 +253,6 @@ def almicedf_fix(df, verbose=None):
     # na_columns=df.columns[df.isna().any()]
     # df_withna=df[df.isnull().any(axis=1)][:].head()
     # df = mice_day2.groupby('runno')['Acq Number'].nunique()
-
-
-def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, header=None):
-    """ Saves tractogram files (*.trk)
-
-    Parameters
-    ----------
-    fname : str
-        output trk filename
-    streamlines : list of 2D arrays, generator or ArraySequence
-        Each 2D array represents a sequence of 3D points (points, 3).
-    affine : array_like (4, 4)
-        The mapping from voxel coordinates to streamline points.
-    vox_size : array_like (3,), optional
-        The sizes of the voxels in the reference image (default: None)
-    shape : array, shape (dim,), optional
-        The shape of the reference image (default: None)
-    header : dict, optional
-        Metadata associated to the tractogram file(*.trk). (default: None)
-    """
-    if vox_size is not None and shape is not None:
-        if not isinstance(header, dict):
-            header = {}
-        header[Field.VOXEL_TO_RASMM] = affine.copy()
-        header[Field.VOXEL_SIZES] = vox_size
-        header[Field.DIMENSIONS] = shape
-        header[Field.VOXEL_ORDER] = "".join(aff2axcodes(affine))
-
-    tractogram = nib.streamlines.LazyTractogram(streamlines)
-    tractogram.affine_to_rasmm = affine
-    trk_file = nib.streamlines.TrkFile(tractogram, header=header)
-    nib.streamlines.save(trk_file, fname)
-
-
-def denoise_fig(data,denoised_arr,type='macenko',savefigpath='none'):
-    """ Sets up figure that shows differences between two data arrays
-    with assumption that one is standard and other is after denoising
-
-    Parameters
-    data: arr
-    Initial data
-    denoised_arr: arr
-    denoised data array
-    type: str
-    Type of denoising
-    savefigpath: str
-    path of saved output of figure, if none no figure is saved
-    """
-    sli = data.shape[2] // 2
-    gra = data.shape[3] - 1
-    orig = data[:, :, sli, gra]
-    den = denoised_arr[:, :, sli, gra]
-    rms_diff = np.sqrt((orig - den) ** 2)
-
-    if show_orig_denoised:
-        fig1, ax = plt.subplots(1, 3, figsize=(12, 6),
-                                subplot_kw={'xticks': [], 'yticks': []})
-
-        fig1.subplots_adjust(hspace=0.3, wspace=0.05)
-
-        ax.flat[0].imshow(orig.T, cmap='gray', interpolation='none',
-                          origin='lower')
-        ax.flat[0].set_title('Original')
-        ax.flat[1].imshow(den.T, cmap='gray', interpolation='none',
-                          origin='lower')
-        ax.flat[1].set_title('Denoised Output')
-        if type == 'macenko':
-            ax.flat[2].imshow(rms_diff.T, cmap='gray', interpolation='none',
-                          origin='lower')
-            ax.flat[2].set_title('Residuals')
-        if type == 'gibbs':
-            ax.flat[2].imshow(data_corrected[:, :, 0, 0].T - data_slices[:, :, 0, 0].T,
-                              cmap='gray', origin='lower', vmin=-500, vmax=500)
-            ax.flat[2].set_title('Gibbs residuals')
-        if savefigpath.lower=='none':
-            pass
-        else:
-            fig1.savefig(savefigpath)
-
-
-
-def unload_trk(tractogram_path,reference='same'):
-    """ Similar functionality as the older version of load_trk, as it directly
-    extracts the streams and header instead of returning a Tractogram object
-    
-    Parameters
-    ----------
-    tractogram_path: the file path of the tractogram data ( path/tract.trk )
-    reference: the file used for the header information. if 'same', use the hdr from tractogram file
-    """
-    
-    if reference.lower()=="same":
-        print("Reference taken directly from file")
-    tract_obj=load_trk(tractogram_path,reference)
-    streams_control=tract_obj.streamlines
-    hdr_control=tract_obj.space_attribute
-    return streams_control,hdr_control,tract_obj
-    
-
-def show_bundles(bundles, colors=None, show=True, fname=None,fa = False, str_tube = False, size=(900,900)):
-    """ Displays bundles
-    
-    Parameters
-    ---------
-    bundles: bundles object
-    """
-    ren = window.Renderer()
-    ren.SetBackground(1., 1, 1)
-    if str_tube:
-        bundle_actor = actor.streamtube(bundles, colors, linewidth=0.5)
-        ren.add(bundle_actor)
-    else:
-        for (i, bundle) in enumerate(bundles):
-            color = colors[i]
-    #         lines_actor = actor.streamtube(bundle, color, linewidth=0.05
-
-            lines_actor = actor.line(bundle, color,linewidth=2.5)
-            #lines_actor.RotateX(-90)
-            #lines_actor.RotateZ(90)
-            ren.add(lines_actor)
-        
-    if fa:
-        fa, affine_fa= load_nifti('/Users/alex/code/Wenlin/data/wenlin_results/bmfaN54900.nii.gz')
-        fa_actor = actor.slicer(fa, affine_fa)
-        ren.add(fa_actor)
-    
-    if show:
-        window.show(ren)
-    if fname is not None:
-        sleep(1)
-        window.record(ren, n_frames=1, out_path=fname, size=size)
-
-def window_show_test(bundles, mask_roi, anat, interactive= True, outpath=None):
-    """
-
-    :param bundles:
-    :param mask_roi:
-    :param anat:
-    :param interactive:
-    :param outpath:
-    :return:
-    """
-
-    candidate_streamlines_actor = actor.streamtube(bundles,
-                                                   cmap.line_colors(candidate_sl))
-    ROI_actor = actor.contour_from_roi(mask_roi, color=(1., 1., 0.),
-                                          opacity=0.5)
-
-    ren = window.Renderer()
-    if anat:
-        vol_actor = actor.slicer(anat)
-        vol_actor.display(x=40)
-        vol_actor2 = vol_actor.copy()
-        vol_actor2.display(z=35)
-
-    # Add display objects to canvas
-    ren.add(candidate_streamlines_actor)
-    ren.add(ROI_actor)
-    ren.add(vol_actor)
-    ren.add(vol_actor2)
-    if outpath is not None:
-        window.record(ren, n_frames=1,
-                  out_path=outpath,
-                  size=(800, 800))
-    if interactive:
-        window.show(ren)
-
 
 def testsnr():
 
@@ -730,438 +312,6 @@ def testsnr():
             print("SNR for direction", direction, " ",
                   gtab.bvecs[direction], "is :", SNR)
 
-def bundle_coherence(data,t1_data,hardi_img, gtab, labels_img,affine):
-
-    # Enables/disables interactive visualization
-    interactive = False
-    # Fix seed
-    np.random.seed(1)
-
-    # Read data
-    #hardi_img, gtab, labels_img = read_stanford_labels()
-    #affine = hardi_img.affine
-    #t1 = read_stanford_t1()
-    #t1_data = t1.get_data()
-
-    # Select a relevant part of the data (left hemisphere)
-    # Coordinates given in x bounds, y bounds, z bounds
-    dshape = data.shape[:-1]
-    xa, xb, ya, yb, za, zb = [15, 42, 10, 65, 18, 65]
-    data_small = data[xa:xb, ya:yb, za:zb]
-    selectionmask = np.zeros(dshape, 'bool')
-    selectionmask[xa:xb, ya:yb, za:zb] = True
-
-    # Perform CSA
-    from dipy.reconst.shm import CsaOdfModel
-    from dipy.data import default_sphere
-    from dipy.direction import peaks_from_model
-
-    csa_model = CsaOdfModel(gtab, sh_order=6)
-    csa_peaks = peaks_from_model(csa_model, data, default_sphere,
-                                 relative_peak_threshold=.6,
-                                 min_separation_angle=45,
-                                 mask=selectionmask)
-
-    # Stopping Criterion
-    from dipy.tracking.stopping_criterion import ThresholdStoppingCriterion
-
-    stopping_criterion = ThresholdStoppingCriterion(csa_peaks.gfa, 0.25)
-
-    # Perform CSD on the original data
-    from dipy.reconst.csdeconv import auto_response
-    from dipy.reconst.csdeconv import ConstrainedSphericalDeconvModel
-
-    response, ratio = auto_response(gtab, data, roi_radius=10, fa_thr=0.7)
-    csd_model = ConstrainedSphericalDeconvModel(gtab, response)
-    csd_fit = csd_model.fit(data_small)
-    csd_fit_shm = np.lib.pad(csd_fit.shm_coeff, ((xa, dshape[0]-xb),
-                                                 (ya, dshape[1]-yb),
-                                                 (za, dshape[2]-zb),
-                                                 (0, 0)), 'constant')
-
-    # Probabilistic direction getting for fiber tracking
-    from dipy.direction import ProbabilisticDirectionGetter
-
-    prob_dg = ProbabilisticDirectionGetter.from_shcoeff(csd_fit_shm,
-                                                        max_angle=30.,
-                                                        sphere=default_sphere)
-
-
-    # Set a seed region region for tractography.
-    from dipy.tracking import utils
-
-    mask = np.zeros(data.shape[:-1], 'bool')
-    rad = 3
-    mask[26-rad:26+rad, 29-rad:29+rad, 31-rad:31+rad] = True
-    seeds = utils.seeds_from_mask(mask, affine, density=[4, 4, 4])
-
-    # Perform tracking using Local Tracking
-    from dipy.tracking.local_tracking import LocalTracking
-
-    streamlines_generator = LocalTracking(prob_dg, stopping_criterion, seeds,
-                                          affine, step_size=.5)
-
-    # Compute streamlines.
-    from dipy.tracking.streamline import Streamlines
-    streamlines = Streamlines(streamlines_generator)
-
-    # Set a mask for the lateral geniculate nucleus (LGN)
-    mask_lgn = np.zeros(data.shape[:-1], 'bool')
-    rad = 5
-    mask_lgn[35-rad:35+rad, 42-rad:42+rad, 28-rad:28+rad] = True
-
-    # Select all the fibers that enter the LGN and discard all others
-    filtered_fibers2 = utils.near_roi(streamlines, affine, mask_lgn, tol=1.8)
-
-    sfil = []
-    for i in range(len(streamlines)):
-        if filtered_fibers2[i]:
-            sfil.append(streamlines[i])
-    streamlines = Streamlines(sfil)
-
-    # Compute lookup table
-    from dipy.denoise.enhancement_kernel import EnhancementKernel
-
-    D33 = 1.0
-    D44 = 0.02
-    t = 1
-    k = EnhancementKernel(D33, D44, t)
-
-    # Apply FBC measures
-    from dipy.tracking.fbcmeasures import FBCMeasures
-
-    fbc = FBCMeasures(streamlines, k)
-
-    # Calculate LFBC for original fibers
-    fbc_sl_orig, clrs_orig, rfbc_orig = \
-      fbc.get_points_rfbc_thresholded(0, emphasis=0.01)
-
-    # Apply a threshold on the RFBC to remove spurious fibers
-    fbc_sl_thres, clrs_thres, rfbc_thres = \
-      fbc.get_points_rfbc_thresholded(0.125, emphasis=0.01)
-
-    # Visualize the results
-    from dipy.viz import window, actor
-
-    # Create renderer
-    ren = window.Renderer()
-
-    # Original lines colored by LFBC
-    lineactor = actor.line(fbc_sl_orig, clrs_orig, linewidth=0.2)
-    ren.add(lineactor)
-
-    # Horizontal (axial) slice of T1 data
-    vol_actor1 = actor.slicer(t1_data, affine=affine)
-    vol_actor1.display(z=20)
-    ren.add(vol_actor1)
-
-    # Vertical (sagittal) slice of T1 data
-    vol_actor2 = actor.slicer(t1_data, affine=affine)
-    vol_actor2.display(x=35)
-    ren.add(vol_actor2)
-
-    # Show original fibers
-    ren.set_camera(position=(-264, 285, 155),
-                   focal_point=(0, -14, 9),
-                   view_up=(0, 0, 1))
-    window.record(ren, n_frames=1, out_path='OR_before.png', size=(900, 900))
-    if interactive:
-        window.show(ren)
-
-    # Show thresholded fibers
-    ren.rm(lineactor)
-    ren.add(actor.line(fbc_sl_thres, clrs_thres, linewidth=0.2))
-    window.record(ren, n_frames=1, out_path='OR_after.png', size=(900, 900))
-    if interactive:
-        window.show(ren)
-
-def LiFEvaluation(dwidata, trk_streamlines, gtab, header=None, roimask=None, affine=None, display = True,
-                  outpathfig = None, outpathtrk = None, processes = 1,  savefig=False, verbose = None):
-
-    """     Implementation of Linear Fascicle Evaluation, outputs histograms, evals
-
-    Parameters
-    ----------
-    dwidata : array
-        output trk filename
-    trkdata : array
-    gtab : array og bval & bvec table
-    outpath: string
-    folder location for resulting values and figures
-    display : boolean, optional
-    Condition to display the results (default = False)
-    savefig: boolean, optional
-    Condition to save the results in outpath (default = True)
-
-    Defined by Pestilli, F., Yeatman, J, Rokem, A. Kay, K. and Wandell B.A. (2014).
-    Validation and statistical inference in living connectomes and recreated by Dipy
-
-    :param dwidata: array of diffusion data
-    :param trkdata: array of tractography data obtained from dwi
-    :param gtab: bval & bvec table
-    :param outpath: location to save analysis outputs
-    :param display:
-    :param savefig:
-    :return:
-    """
-
-    """""""""
-    if not op.exists('lr-superiorfrontal.trk'):
-        
-    else:
-        # We'll need to know where the corpus callosum is from these variables:
-        from dipy.data import (read_stanford_labels,
-                               fetch_stanford_t1,
-                               read_stanford_t1)
-        hardi_img, gtab, labels_img = read_stanford_labels()
-        labels = labels_img.get_data()
-        cc_slice = labels == 2
-        fetch_stanford_t1()
-        t1 = read_stanford_t1()
-        t1_data = t1.get_data()
-        data = hardi_img.get_data()
-    """""""""
-    # Read the candidates from file in voxel space:
-
-    if roimask is None:
-        roimask = dwidata>0
-
-    print("verbose: "+str(verbose) +" outpathfig: "+ str(outpathfig))
-    fiber_model = life.FiberModel(gtab)
-    # inv_affine must be used if the streamlines are in the world space, and thus we must useapply the inverse affine of dwi
-    #when comparing the diffusion directions gtab and the voxels of trk
-    #inv_affine = np.linalg.inv(hardi_img.affine)
-
-    #fiber_fit will fit the streamlines to the original diffusion data and
-    if verbose:
-        txt="Begin the evaluation over "+str(np.size(trk_streamlines))+" streamlines"
-        print(txt)
-        send_mail(txt,subject="LifE start msg ")
-
-    fiber_fit = fiber_model.fit(dwidata, trk_streamlines, affine=np.eye(4), processes=processes, verbose=verbose)
-    optimized_sl = list(np.array(trk_streamlines)[np.where(fiber_fit.beta > 0)[0]])
-    plt.ioff()
-    if verbose:
-        txt="End of the evaluation over "+str(np.size(trk_streamlines))
-        print(txt)
-        send_mail(txt,subject="LifE status msg ")
-
-    if outpathtrk is not None:
-        outpathfile = str(outpathtrk) + "_lifeopt_test.trk"
-        try:
-            myheader = create_tractogram_header(outpathfile, *header)
-            optimized_sl_gen = lambda: (s for s in optimized_sl)
-            save_trk_heavy_duty(outpathfile, streamlines=optimized_sl_gen,
-                                affine=affine, header=myheader)
-            txt=("Saved final trk at "+ outpathfile)
-            print(txt)
-            send_mail(txt,subject="LifE save msg ")
-        except TypeError:
-            txt=('Could not save new tractogram file, header of original trk file not properly implemented into '
-                  'LifEvaluation')
-            print(txt)
-            send_mail(txt,subject="LifE error msg ")
-    """
-    if interactive:
-        ren = window.Renderer()
-        ren.add(actor.streamtube(optimized_sl, cmap.line_colors(optimized_sl)))
-        ren.add(ROI_actor)
-        #ren.add(vol_actor)
-        if interactive:
-            window.show(ren)      
-        if outpathfig is not None:
-            print("reached windowrecord")
-            window.record(ren, n_frames=1, out_path=outpathfig +'_life_optimized.png',
-                size=(800, 800))
-            print("did window record")
-    """
-    maxsize_var=20525023825
-
-    sizebeta=getsize(fiber_fit.beta)
-    if sizebeta<maxsize_var:
-        picklepath = outpathfig+'_beta.p'
-        txt=("fiber_fit.beta saved at "+picklepath)
-        pickle.dump(fiber_fit.beta, open(picklepath, "wb"))
-        if verbose:
-            print(txt)
-            send_mail(txt,subject="LifE save msg ")
-    else:
-        txt=("Object fiber_fit.beta exceeded the imposed the 20GB limit with a size of: "+str(sizebeta/(10^9))+ "GB")
-        print(txt)
-        send_mail(txt,subject="LifE error msg")
-
-    sizecoords=getsize(fiber_fit.vox_coords)
-    if sizecoords<maxsize_var:
-        picklepath = outpathfig+'_voxcoords.p'
-        txt=("fiber_fit.voxcoords saved at "+picklepath)
-        pickle.dump(fiber_fit.vox_coords, open(picklepath, "wb"))
-        if verbose:
-            print(txt)
-            send_mail(txt,subject="LifE save msg ")
-    else:
-        txt=("Object fiber_fit.beta exceeded the imposed the 20GB limit with a size of: "+str(sizebeta/(10^9))+ "GB")
-        print(txt)
-        send_mail(txt,subject="LifE error msg")
-
-    #predict diffusion data based on new model
-    model_predict = fiber_fit.predict() #possible to predict based on different gtab or base signal (change gtab, S0)
-    model_error = model_predict - fiber_fit.data    #compare original dwi data and the model fit, calculate error
-    model_rmse = np.sqrt(np.mean(model_error[:, 10:] ** 2, -1))     #this is good, but must check ways to avoid overfitting
-                                                            #how does the model get built? add lasso? JS
-
-    beta_baseline = np.zeros(fiber_fit.beta.shape[0]) #baseline assumption where the streamlines weight is 0
-    pred_weighted = np.reshape(opt.spdot(fiber_fit.life_matrix, beta_baseline),
-                               (fiber_fit.vox_coords.shape[0],
-                                np.sum(~gtab.b0s_mask)))
-    mean_pred = np.empty((fiber_fit.vox_coords.shape[0], gtab.bvals.shape[0]))
-    S0 = fiber_fit.b0_signal
-
-    mean_pred[..., gtab.b0s_mask] = S0[:, None]
-    mean_pred[..., ~gtab.b0s_mask] = \
-        (pred_weighted + fiber_fit.mean_signal[:, None]) * S0[:, None]
-    mean_error = mean_pred - fiber_fit.data
-    mean_rmse = np.sqrt(np.mean(mean_error ** 2, -1))
-
-    size_meanrmse=getsize(mean_rmse)
-    if size_meanrmse<maxsize_var:
-        picklepath = outpathfig+'_mean_rmse.p'
-        txt=("mean_rmse saved at "+picklepath)
-        pickle.dump(mean_rmse, open(picklepath, "wb"))
-        if verbose:
-            print(txt)
-            send_mail(txt,subject="LifE save msg ")
-    else:
-        txt=("Object mean_rmse exceeded the imposed the 20GB limit with a size of: "+str(size_meanrmse/(10^9)) +" GB")
-        print(txt)
-        send_mail(txt,subject="LifE error msg")   
-
-    size_modelrmse=getsize(model_rmse)
-    if size_modelrmse<maxsize_var:
-        picklepath = outpathfig+'_model_rmse.p'
-        txt=("model_rmse saved at "+picklepath)
-        pickle.dump(model_rmse, open(picklepath, "wb"))
-        if verbose:
-            print(txt)
-            send_mail(txt,subject="LifE save msg ")
-    else:
-        txt=("Object model_rmse exceeded the imposed the 20GB limit with a size of: "+str(size_modelrmse/(10^9)) +" GB")
-        print(txt)
-        send_mail(txt,subject="LifE error msg")   
-
-    if savefig:
-        LifEcreate_fig(fiber_fit.beta, mean_rmse, model_rmse, outpathfig, interactive=True, verbose=verbose)
-
-    return model_error, mean_error
-
-def LifEcreate_fig(fiber_fit_beta,mean_rmse,model_rmse, dwidata, t1_data, outpathfig=None, subject=None, interactive=False, verbose=False):         
-
-    #fiber_fit_beta_path = glob.glob(pickles_folder + '/*beta.p')[0]
-    #mean_rmse_path = glob.glob(pickles_folder + '/*mean_rmse.p')[0]
-    #model_rmse_path = glob.glob(pickles_folder + '/*model_rmse.p')[0]
-    #fiber_fit_beta = pickle.load(open(fiber_fit_beta_path, "rb"))
-    #mean_rmse = pickle.load(open(mean_rmse_path, "rb"))
-    #model_rmse = pickle.load(open(model_rmse_path, "rb"))
-
-    fig, ax = plt.subplots(1)
-    ax.hist(fiber_fit_beta, bins=100, histtype='step')
-    ax.set_xlabel('Fiber weights')
-    ax.set_ylabel('# fibers')
-    #ROI_actor = actor.contour_from_roi(roimask, color=(1., 1., 0.),
-    #                                      opacity=0.5)
-    #sizebeta=getsize(fiber_fit_beta)
-    if interactive:
-        plt.show()
-    if outpathfig is not None:
-        histofig_path=(outpathfig + subject + '_beta_histogram.png')
-        fig.savefig(histofig_path)
-        if verbose:
-            txt="file saved at "+histofig_path
-            print(txt)
-            send_mail(txt,subject="LifE save msg ")
-
-    """
-    vol_actor = actor.slicer(t1_data)
-    
-    vol_actor.display(x=40)
-    vol_actor2 = vol_actor.copy()
-    vol_actor2.display(z=35)        
-    
-    """
-
-    fig, ax = plt.subplots(1)
-    ax.hist(mean_rmse - model_rmse, bins=100, histtype='step')
-    ax.text(0.2, 0.9, 'Median RMSE, mean model: %.2f' % np.median(mean_rmse),
-        horizontalalignment='left',
-        verticalalignment='center',
-        transform=ax.transAxes)
-    ax.text(0.2, 0.8, 'Median RMSE, LiFE: %.2f' % np.median(model_rmse),
-        horizontalalignment='left',
-        verticalalignment='center',
-        transform=ax.transAxes)
-    ax.set_xlabel('RMS Error')
-    ax.set_ylabel('# voxels')
-    if interactive:
-        plt.show()
-    if outpathfig is not None:
-        errorhistofig_path=(outpathfig + subject + '_error_histograms.png')
-        fig.savefig(errorhistofig_path)
-        if verbose:
-            txt="file saved at "+errorhistofig_path
-            print(txt)
-            send_mail(txt,subject="LifE save msg ")
-
-    runspatialerrors=True
-    try:
-        dwidata.shape[:3]
-    except AttributeError:
-        runspatialerrors=False
-
-    if runspatialerrors:
-        vol_model = np.ones(dwidata.shape[:3]) * np.nan
-        vol_model[fiber_fit.vox_coords[:, 0],
-              fiber_fit.vox_coords[:, 1],
-              fiber_fit.vox_coords[:, 2]] = model_rmse
-        vol_mean = np.ones(dwidata.shape[:3]) * np.nan
-        vol_mean[fiber_fit.vox_coords[:, 0],
-            fiber_fit.vox_coords[:, 1],
-            fiber_fit.vox_coords[:, 2]] = mean_rmse
-        vol_improve = np.ones(dwidata.shape[:3]) * np.nan
-        vol_improve[fiber_fit.vox_coords[:, 0],
-            fiber_fit.vox_coords[:, 1],
-            fiber_fit.vox_coords[:, 2]] = mean_rmse - model_rmse
-        sl_idx = 49
-        fig = plt.figure()
-        fig.subplots_adjust(left=0.05, right=0.95)
-        ax = AxesGrid(fig, 111,
-            nrows_ncols=(1, 3),
-            label_mode="1",
-            share_all=True,
-            cbar_location="top",
-            cbar_mode="each",
-            cbar_size="10%",
-            cbar_pad="5%")
-
-        ax[0].matshow(np.rot90(t1_data[sl_idx, :, :]), cmap=matplotlib.cm.bone)
-        im = ax[0].matshow(np.rot90(vol_model[sl_idx, :, :]), cmap=matplotlib.cm.hot)
-        ax.cbar_axes[0].colorbar(im)
-        ax[1].matshow(np.rot90(t1_data[sl_idx, :, :]), cmap=matplotlib.cm.bone)
-        im = ax[1].matshow(np.rot90(vol_mean[sl_idx, :, :]), cmap=matplotlib.cm.hot)
-        ax.cbar_axes[1].colorbar(im)
-        ax[2].matshow(np.rot90(t1_data[sl_idx, :, :]), cmap=matplotlib.cm.bone)
-        im = ax[2].matshow(np.rot90(vol_improve[sl_idx, :, :]),
-            cmap=matplotlib.cm.RdBu)
-        ax.cbar_axes[2].colorbar(im)
-        for lax in ax:
-            lax.set_xticks([])
-            lax.set_yticks([])
-        if outpathfig is not None:
-            histofig_path=(outpathfig+ subject+ '/spatial_errors.png')
-            fig.savefig(histofig_path)
-        if verbose:
-            txt="spatial errors figure saved at "+histofig_path
-            print(txt)
-            send_mail(txt,subject="LifE save msg ")        
-
 def denoise_pick(data,affine,hdr,outpath,mask,type_denoise='macenko', processes = 1, savedenoise= True, verbose=False, display=None):
 
     allowed_strings=['mpca','yes','all','gibbs','none', 'macenko']
@@ -1208,178 +358,10 @@ def denoise_pick(data,affine,hdr,outpath,mask,type_denoise='macenko', processes 
 
     return data
 
-def make_tensorfit(data,mask,gtab,affine,subject,outpath,verbose=None):
 
+def dwi_preprocessing(dwipath,outpath,subject,denoise="none",savefa="yes",processes=1, labelslist=None, strproperty="", verbose = False):
 
-    from dipy.reconst.dti import TensorModel
-
-    if verbose:
-        print('Calculating the tensor model from bval/bvec values of ', subject)
-    tensor_model = TensorModel(gtab)
-
-    t1 = time()
-    tensor_fit = tensor_model.fit(data, mask)
-
-    duration1 = time() - t1
-    if verbose:
-        print(subject + ' DTI duration %.3f' % (duration1,))
-
-    outpathbmfa = outpath + 'bmfa' + subject + '.nii.gz'
-    print(outpathbmfa)
-    save_nifti(outpathbmfa, tensor_fit.fa, affine)
-    if verbose:
-        print('Saving subject'+ subject+ ' at ' + outpathbmfa)
-        #print('Warning: Failure to save the fa as nifti')
-        #outpathbmfa = None
-
-    #fa = tensor_fit.fa
-    return outpathbmfa
-
-def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_processes,outpathsubject,saved_tracts="small",verbose=None,subject = 'NA'):
-    # Compute odfs in Brain Mask
-    t2 = time()
-
-    csa_model = CsaOdfModel(gtab, 6)
-    if peak_processes < 2:
-        parallel = False
-    else:
-        parallel = True
-    if verbose:
-        send_mail("Starting calculation of Constant solid angle model for subject " + subject,subject="CSA model start")
-        #print("Starting calculation of Constant solid angle model for subject " + subject)
-        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start the CSA model for subject %s!\r\n\r\n" % (useremail,useremail,subject)
-        #text="""The CSA model is about to be calculated""" % (warning_time,max_run_hours,os.getpid())  
-        #message=headers+text 
-        #mailServer=smtplib.SMTP(serverURL) 
-        #mailServer.sendmail(useremail,useremail,message) 
-        #mailServer.quit() 
-    csa_peaks = peaks_from_model(model=csa_model,
-                                 data=data,
-                                 sphere=peaks.default_sphere,  # issue with complete sphere
-                                 mask=mask,
-                                 relative_peak_threshold=.5,
-                                 min_separation_angle=25,
-                                 parallel=parallel,
-                                 nbr_processes=peak_processes)
-
-    duration2 = time() - t2
-    if verbose:
-        print(duration2) \
-
-    if verbose:
-        print(subject + ' CSA duration %.3f' % (duration2,))
-
-    t3 = time()
-
-    from dipy.tracking.stopping_criterion import BinaryStoppingCriterion
-
-    if verbose:
-        send_mail('Computing classifier for local tracking for subject ' + subject,subject="Seed computation" )
-        print('Computing classifier for local tracking for subject ' + subject)
-        #headers="From: %s\r\nTo: %s\r\nSubject:Seed computation\r\n\r\n" % (useremail,useremail)
-        #text="""About to start binary stopping criterion, duration of CSA was %.2f""" % (duration2)  
-        #message=headers+text 
-        #mailServer=smtplib.SMTP(serverURL) 
-        #mailServer.sendmail(useremail,useremail,message) 
-        #mailServer.quit() 
-    classifier = BinaryStoppingCriterion(mask)
-    from dipy.tracking import utils
-
-    # generates about 2 seeds per voxel
-    # seeds = utils.random_seeds_from_mask(fa > .2, seeds_count=2,
-    #                                      affine=np.eye(4))
-
-    # generates about 2 million streamlines
-    # seeds = utils.seeds_from_mask(fa > .2, density=1,
-    #                              affine=np.eye(4))
-    # why are those not binary?
-    if verbose:
-        print('Computing seeds')
-    seeds = utils.seeds_from_mask(mask, density=1,
-                                  affine=np.eye(4))
-
-    ##streamlines_generator = local_tracking.local_tracker(csa_peaks,classifier,seeds,affine=np.eye(4),step_size=.5)
-    if verbose:
-        print('Computing the local tracking')
-        send_mail('Start of the local tracking ', subject="Seed computation")
-        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start the local tracking!\r\n\r\n" % (useremail,useremail)
-        #text="""Seeds have been computed, about to start the local tracking"""
-        #message=headers+text 
-        #mailServer=smtplib.SMTP(serverURL) 
-        #mailServer.sendmail(useremail,useremail,message) 
-        #mailServer.quit() 
-
-    stringstep = str(step_size)
-    stringstep = "_" + stringstep.replace(".", "_")
-    # stringstep=""
-    streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                          seeds, affine=np.eye(4), step_size=step_size)
-
-    # the function above will bring all streamlines in memory
-    # streamlines = Streamlines(streamlines_generator)
-
-    # save a smaller part by only keeping one in 10 streamlines
-    if verbose:
-        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start saving the file!\r\n\r\n" % (useremail,useremail)
-        try:
-            txt="About to save" + str(np.size(streamlines_generator)) + "streamlines at" + outpathsubject
-            send_mail(txt,subject="Seed computation")
-            #text="""About to save %d streamlines at %s""" % (np.size(streamlines_generator),outpathsubject) 
-        except:
-            send_mail('About to save streamlines at ' + outpathsubject,subject="Seed computation" )
-            #text="""About to save streamlines at %s""" % (outpathsubject) 
-
-    if saved_tracts == "small" or saved_tracts == "both":
-        sg_small = lambda: (s for i, s in enumerate(streamlines_generator) if i % 10 == 0)
-        outpathtrk = outpathsubject + "_bmCSA_detr_small_" + stringstep + "_v2.trk"
-        save_trk_heavy_duty(outpathtrk, streamlines=sg_small,
-                            affine=affine, header=trkheader,
-                            shape=mask.shape, vox_size=vox_size)
-        print("Tract files were saved at " + outpathtrk)
-    else:
-        outpathtrk = None
-    if saved_tracts == "large" or saved_tracts == "both" or saved_tracts == "all":
-        sg = lambda: (s for s in streamlines_generator)
-        outpathtrk = outpathsubject + "bmCSA_detr_all" + stringstep + ".trk"
-        save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                            affine=affine, header=trkheader,
-                            shape=mask.shape, vox_size=vox_size)
-        if verbose:
-            print("Tract files were saved at "+outpathtrk)
-    if saved_tracts == "none" or saved_tracts is None:
-        print("Tract files were not saved")
-
-    if verbose:
-        send_mail('Finished file save',subject="file save update" )
-        #headers="From: %s\r\nTo: %s\r\nSubject:Finished file save!\r\n\r\n" % (useremail,useremail)
-        #text="""Save the streamlines at """ % (outpathtrk) 
-        #message=headers+text 
-        #mailServer=smtplib.SMTP(serverURL) 
-        #mailServer.sendmail(useremail,useremail,message) 
-        #mailServer.quit() 
-    # save everything - will generate a 20+ GBytes of data - hard to manipulate
-
-    # possibly add parameter in csv file or other to decide whether to save large tractogram file
-    # outpathfile=outpath+subject+"bmCSA_detr"+stringstep+".trk"
-    # myheader=create_tractogram_header(outpathfile,*get_reference_info(fdwi))
-
-    # save_trk_heavy_duty(outpathfile, streamlines=sg_small,
-    #                    affine=affine, header=myheader,
-    #                    shape=mask.shape, vox_size=vox_size)
-
-    duration3 = time() - t3
-    if verbose:
-        print(duration3)
-    # wenlin make this change-adress name to each animal
-    #    print('Tracking duration %.3f' % (duration3,))
-    if verbose:
-        print(subject + ' Tracking duration %.3f' % (duration3,))
-
-    return outpathtrk
-
-def dwi_preprocessing(dwipath,outpath,subject,denoise="none",savefa="yes",processes=1, verbose = False):
-
-    fdwi_data, affine, gtab, labels, vox_size, fdwipath, hdr = getdwidata(dwipath, subject, verbose)
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, hdr = getdwidata(dwipath, subject, verbose)
     #fdwi_data, affine, vox_size = load_nifti(fdwi, return_voxsize=True)
 
     #labels = glob.glob(mypath + '/' + subject + '*labels*nii.gz') #ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
@@ -1389,33 +371,35 @@ def dwi_preprocessing(dwipath,outpath,subject,denoise="none",savefa="yes",proces
         
     # Build Brain Mask
     
-    mask = np.where(labels == 0, False, True)
-    
-    #if verbose:
-    #        print("Mask detected, proceeding as normal")
-    #except IndexError:
-    #    print("Warning: no mask detected (not recommended)")
-    #    mask = np.ones(fdwi_data.shape)
-
+    if labelslist is None:
+        mask = np.where(labelmask == 0, False, True)
+    else:
+        if labelmask is None:
+            raise ("File not found error: labels requested but labels file could not be found at " + dwipath + " for subject " + subject)
+        mask = np.zeros(np.shape(labelmask), dtype=int)
+        for label in labelslist:
+            mask = mask + (labelmask == label)
+        fdwi_data = fdwi_data * np.repeat(mask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
     if verbose:
         print('Running the ' + subject + ' file')
 
-    #preprocessing section (still have to test denoising functions)
-    #data = denoise_pick(data, mask, 'macenko', display=None) #data = denoise_pick(data, mask, 'gibbs', display=None)
-    #fdwi_data = denoise_pick(fdwi_data, mask, 'all', display=None)
+    mask= np.zeros(np.shape(mask),dtype=bool)
+    mask[90:110,90:110,90:110]
+    fdwi_data = fdwi_data * np.repeat(mask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
+
     outpathdenoise= outpath + subject + '_nii4D_RAS'
     #fdwi_data = denoise_pick(fdwi_data, affine,hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
 
     #testsnr => not yet fully implemented
     print(savefa)
     if savefa == "yes" or savefa == "y" or savefa == 1 or savefa is True or savefa == "all":
-        outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=outpath,verbose = verbose)
+        outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=outpath,strproperty=strproperty,verbose = verbose)
     else:
         print('FA was not calculated')
         outpathbmfa=None
 
-def dwi_create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",saved_tracts="small",save_fa="yes",
-                      denoise="none",verbose=None):
+def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",saved_tracts="small",save_fa="yes",
+                      labelslist = None, verbose=None):
 
     if verbose:
         print('Running the ' + subject + ' file')
@@ -1445,18 +429,29 @@ def dwi_create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproper
     mask = bm
     """
 
-    fdwi_data, affine, gtab, labels, vox_size, fdwipath, _ = getdwidata(dwipath, subject)
-    mask = np.where(labels == 0, False, True)
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _ = getdwidata(dwipath, subject)
+
+    if labelslist is None:
+        mask = np.where(labelmask == 0, False, True)
+    else:
+        if labelmask is None:
+            raise ("File not found error: labels requested but labels file could not be found at " + dwipath + " for subject " + subject)
+        mask = np.zeros(np.shape(labelmask), dtype=int)
+        for label in labelslist:
+            mask = mask + (labelmask == label)
+        fdwi_data = fdwi_data * np.repeat(mask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
 
     #preprocessing section (still have to test denoising functions)
     #data = denoise_pick(data, mask, 'macenko', display=None) #data = denoise_pick(data, mask, 'gibbs', display=None)
     #fdwi_data = denoise_pick(fdwi_data, mask, 'all', display=None)
     #fdwi_data = denoise_pick(fdwi_data, mask, denoise, verbose) #accepts mpca, gibbs, all, none
     #testsnr => not yet fully implemented
+
+
     if save_fa == "yes" or save_fa == "y" or save_fa == 1 or save_fa is True or save_fa == "all":
-        outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,verbose=verbose)
+        outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,outpath=outpath,strproperty=strproperty,verbose=verbose)
     else:
-        print('FA was not bcalculated')
+        print('FA was not calculated')
         outpathbmfa=None
 
     allowed_strings=["small","large","all","both","none"]
@@ -1480,7 +475,7 @@ def dwi_create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproper
     
     return subject, outpathbmfa, outpathtrk
 
-def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathfig=None, processes=1, doprune=True,
+def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, doprune=True,
                     display=True, verbose=None):
 
     """
@@ -1509,24 +504,37 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     else:
         if labelmask is None:
             raise ("File not found error: labels requested but labels file could not be found at "+dwipath+ " for subject " + subject)
-        roimask = np.zeros(np.shape(fdwi_data))
+        roimask = np.zeros(np.shape(labelmask),dtype=int)
         for label in labelslist:
             roimask = roimask + (labelmask == label)
     #(labels == 163) + (labels == 1163) + (labels == 120) + (labels == 1120)
-    picklepath="/mnt/BIAC/munin3.dhe.duke.edu/Badea/Lab/mouse/C57_JS/Figures/N57433_roi.p"
-    pickle.dump(roimask, open(picklepath, "wb"))
+    save_nifti(dwipath+"/"+subject+"_roimask.nii.gz",roimask,affine)
+    if outpathpickle is None:
+        outpathpickle=outpathtrk
+    if outpathfig is None:
+        outpathfig=outpathtrk
+    #picklepath="/mnt/BIAC/munin3.dhe.duke.edu/Badea/Lab/mouse/C57_JS/Figures/N57433_roi.p"
+    print(outpathpickle)
+    print(subject)
+    #outpathpickle=outpathpickle+"/"+subject
+    #pickle.dump(roimask, open(outpicklepath+"_roimask.p", "wb"))
     #roimask = labels > 1
-    outpathfig = outpathfig+'/'+subject
+
+    #Changing the outpathfig to include the subject prefix so I dont carry that particular value around needlessly
+    outpathfig = outpathfig+'/'
     print("Beginning Tract Evaluation of " + subject)
     stepsize = strfile(stepsize)
     trkpaths = glob.glob(trkpath+'/'+subject+'*'+tractsize+'*'+stepsize+'*.trk')
     trkfile = trkpaths[0]
-    outpathtrk = trkpath+'/'+subject
+    outpathtrk = trkpath+'/'
     if len(trkpaths) > 1:
         print("Warning, multiple files detected, only applying pipeline on " + trkfile)
     trkdata = load_trk(trkfile, 'same')
     trkdata.to_vox()
-    header = trkdata.space_attributes
+    if hasattr(trkdata, 'space_attribute'):
+        header = trkdata.space_attribute
+    elif hasattr(trkdata, 'space_attributes'):
+        header = trkdata.space_attributes
     trkstreamlines = trkdata.streamlines
 
     ratio = 1
@@ -1543,12 +551,78 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
                 ministream.append(stream)
         trkstreamlines = ministream
 
+    doprune=False
+    cutoff = 2
     if doprune:
-        cutoff = 2
         trkstreamlines=prune_streamlines(list(trkstreamlines), roimask, cutoff=cutoff, verbose=verbose)
-        fdwi_data=fdwi_data(roimask)
+        #fdwi_data = fdwi_data * np.repeat(roimask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
         #trkstreamlines=prune_streamlines(trkstreamlines, mask, cutoff=cutoff, verbose=verbose)
+    else:
+        affine=np.eye(4)
+        trktempstreamlines = target(trkstreamlines, affine, roimask, include=True, strict="longstring")
+        trkstreamlines = Streamlines(trktempstreamlines)
+        trkstreamlines = prune_streamlines(list(trkstreamlines), None, cutoff=cutoff, verbose=verbose)
+        saveconnectivitymatrix=True
 
+        from dipy.viz import window, actor, colormap as cmap
+
+        # Enables/disables interactive visualization
+        interactive = False
+
+        # Make display objects
+        if outpathfig is not None:
+            color = cmap.line_colors(trkstreamlines)
+            streamlines_actor = actor.line(trkstreamlines,
+                                              cmap.line_colors(trkstreamlines))
+            ROI_actor = actor.contour_from_roi(roimask, color=(1., 1., 0.),
+                                                  opacity=0.5)
+            labels_actor = actor.contour_from_roi(labelmask, color=(3., 3., 30.),
+                                                  opacity=0.2)
+            vol_actor = actor.slicer(labelmask)
+
+            vol_actor.display(x=40)
+            vol_actor2 = vol_actor.copy()
+            vol_actor2.display(z=35)
+
+            # Add display objects to canvas
+            r = window.Renderer()
+            r.add(vol_actor)
+            r.add(vol_actor2)
+            r.add(streamlines_actor)
+            r.add(ROI_actor)
+            r.add(labels_actor)
+
+            # Save figures
+            window.record(r, n_frames=1, out_path=outpathfig+ subject+'_fimbria_axial.png',
+                          size=(800, 800))
+            if verbose:
+                print("saving figure to: "+outpathfig+ subject+'_fimbria_axial.png')
+            interactive=False
+            if interactive:
+                window.show(r)
+            #outpathfile = str(outpathtrk) + "_fimbria.trk"
+            #myheader = create_tractogram_header(outpathfile, *header)
+            #optimized_sl_gen = lambda: (s for s in trkstreamlines)
+            #save_trk_heavy_duty(outpathfile, streamlines=optimized_sl_gen,
+            #                    affine=affine, header=myheader)
+            r.set_camera(position=[-1, -1, -1], focal_point=[0, 0, 0], view_up=[0, 0, 1])
+            window.record(r, n_frames=1, out_path=outpathfig+ subject + '_fimbria_sagittal.png',
+                          size=(800, 800))
+        #if interactive:
+        #    window.show(r)
+        """
+
+        if saveconnectivitymatrix:
+            M, grouping = utils.connectivity_matrix(trkstreamlines, affine,
+                                                    roimask.astype(np.uint8),
+                                                    return_mapping=True,
+                                                    mapping_as_streamlines=True)
+            M[:3, :] = 0
+            M[:, :3] = 0
+            plt.imshow(np.log1p(M), interpolation='nearest')
+            if outpathfig is not None:
+                plt.savefig(outpathfig+"connectivity.png")
+        """
 
     #if display:
     #    window_show_test(trkstreamlines, mask_roi, anat, interactive= True, outpath=None)
@@ -1557,12 +631,12 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     #trk_streamlines = [s[0] for s in nib.trackvis.read(trkfile, points_space='voxel')[0]]
     #len_sl=len(trk_streamlines)
     #% memit fiber_fit = fiber_model.fit(data, trk_streamlines[2 ** 12], affine=np.eye(4))
-    interactive = False
+    display = False
     duration=time()
-    model_error, mean_error = LiFEvaluation(fdwi_data, trkstreamlines, gtab, header=header, roimask=roimask,
-                                                     affine=affine,display=display, outpathfig=outpathfig,
-                                                     outpathtrk=outpathtrk, processes=processes,
-                                                     savefig = False,verbose=verbose)
+    model_error, mean_error = LiFEvaluation(fdwi_data, trkstreamlines, gtab, subject=subject, header=header, roimask=roimask,
+                                            affine=affine,display=display, outpathpickle=outpathpickle,
+                                            outpathtrk=outpathtrk, processes=processes, outpathfig=outpathfig,
+                                            verbose=verbose)
     #picklepath = '/Users/alex/jacques/test_pickle_subj'+subject+'.p'
     #results=[outpathtrk,model_error,mean_error]
     #if subject == "N54859":

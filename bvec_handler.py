@@ -73,12 +73,10 @@ from dipy.viz import window, actor, colormap as cmap
 import dipy.core.optimize as opt
 from functools import wraps
 
-from tractfile_handler import target, prune_streamlines
-from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
 from figures_handler import denoise_fig, show_bundles, window_show_test, LifEcreate_fig
 from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
-from daemon_tools import MyPool
+from BIAC_tools import MyPool
 
 def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2):
     """
@@ -283,3 +281,10 @@ def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):
         File_object.close() 
         
     return bvals,dsl,dpe,dro 
+
+def bvec_reorient(bvecs,orig_orient="ARI",new_orient="RAS"):
+    x=0
+    y=1
+    z=2
+
+    new_bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]]

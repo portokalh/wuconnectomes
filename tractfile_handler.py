@@ -74,12 +74,11 @@ from dipy.viz import window, actor, colormap as cmap
 import dipy.core.optimize as opt
 from functools import wraps
 
-from tractfile_handler import target, prune_streamlines
 from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
 from figures_handler import denoise_fig, show_bundles, window_show_test, LifEcreate_fig
 from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
-from daemon_tools import MyPool
+from BIAC_tools import MyPool
 
 def longstring(string,margin=0):
 

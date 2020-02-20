@@ -14,9 +14,12 @@ import os
 import multiprocessing as mp
 import pickle
 
-from tracking_func import dwi_create_tracts, evaluate_tracts, extractbvec_fromheader, dwi_preprocessing, MyPool, send_mail
+from tract_manager import create_tracts, evaluate_tracts, dwi_preprocessing, MyPool, send_mail
+from bvec_handler import extractbvec_fromheader
 
-l = ['N57437']
+
+l = ['N57433','N57434','N57435','N57436','N57437','N57440']
+l = ['N57433']
 
 max_processors = 100
 
@@ -30,21 +33,26 @@ print("Running on ", max_processors, " processors")
 # please set the parameter here
 
 # mypath = '/Users/alex/brain_data/E3E4/wenlin/'
-#dwipath = '/Users/alex/brain_data/19abb14/4DNifti'
+#dwipath = '/Users/alex/brain_data/19abb14/C57_RAS/'
 #BIGGUS_DISKUS = os.environ.get('BIGGUS_DISKUS')
-BIGGUS_DISKUS = "/mnt/BIAC/munin3.dhe.duke.edu/Badea/Lab/mouse"
-dwipath = BIGGUS_DISKUS + "/C57_JS/DWI/"
+BIGGUS_DISKUS = "/Volumes/Badea/Lab/mouse"
+dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_ARI/"
 
 #outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
-outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK/"
 
-figspath = BIGGUS_DISKUS + "/C57_JS/Figures/"
+#outtrkpath = '/Users/alex/bass/testdata/lifetest/'
+outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_ARI/"
+
+figspath = BIGGUS_DISKUS + "/C57_JS/Figures_ARI/"
+#figspath = '/Users/alex/bass/testdata/lifetest/'
+
+outpathpickle = BIGGUS_DISKUS + "/C57_JS/PicklesFig_ARI/"
 
 stepsize = 2
-subject_processes = np.size(l)
+subject_processes = 1 #np.size(l)
 if max_processors < subject_processes:
     subject_processes = max_processors
-saved_streamlines = "small"
+saved_streamlines = "all"
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
 # "none" or None variable for neither and "both" for both of them
 
@@ -65,7 +73,11 @@ savedenoise=True
 display=False
 savefig=False
 doprune=True
-strproperty = ""
+strproperty = "_yflip"
+labellist=[163,1163,120,1120]
+labellist=[121,1121]#corpuscallosum
+labellist=[120,1120]#fimbria
+labellist=None
 # ---------------------------------------------------------
 tall = time()
 tract_results=[]
@@ -83,19 +95,19 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-#    tract_results = pool.starmap_async(dwi_create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-#                                                            saved_streamlines, savefa, denoise, verbose) for subject in
-#                                                           l]).get()
-    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
-                                                         figspath, function_processes, doprune, display, verbose)
-                                                        for subject in l]).get()
+    tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+                                                            saved_streamlines, savefa, denoise, verbose) for subject in
+                                                           l]).get()
+#    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
+#                                                         figspath, function_processes, doprune, display, verbose)
+#                                                        for subject in l]).get()
     pool.close()
 else:
     for subject in l:
-#        tract_results.append(dwi_create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-#                                          saved_streamlines, denoise, savefa, verbose))
-        tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
-                                                              figspath, function_processes, doprune, display, verbose))
+        tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+                                          saved_streamlines, denoise, savefa, verbose))
+#        tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines, labellist,
+#                                             outpathpickle, figspath, function_processes, doprune, display, verbose))
 
 
 #dwip_results = pool.starmap_async(dwi_preprocessing[(dwipath,outpath,subject,denoise,savefa,function_processes, verbose) for subject in l]).get()
