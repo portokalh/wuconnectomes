@@ -18,6 +18,7 @@ from dipy.direction import peaks
 # multiprocessing module.
 from dipy.tracking import utils
 from BIAC_tools import send_mail
+from tractfile_handler import save_trk_heavy_duty
 
 #from dipy.denoise.localpca import mppca
 #import dipy.tracking.life as life

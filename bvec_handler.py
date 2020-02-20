@@ -283,8 +283,10 @@ def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):
     return bvals,dsl,dpe,dro 
 
 def bvec_reorient(bvecs,orig_orient="ARI",new_orient="RAS"):
-    x=0
-    y=1
-    z=2
+
+    orig
+    for i in range(3):
+        #if new_orient[i]
+        echo('jo')
 
     new_bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]]
