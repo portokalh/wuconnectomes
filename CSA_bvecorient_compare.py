@@ -18,9 +18,29 @@ from tract_manager import create_tracts, evaluate_tracts, dwi_preprocessing, MyP
 from bvec_handler import extractbvec_fromheader
 from BIAC_tools import send_mail
 
-l = ['N57433','N57434','N57435','N57436','N57437','N57440']
+def orient_to_str(bvec_orient):
+    mystr=""
+    for i in np.arange(3):
+        if np.abs(bvec_orient[i]) == 1:
+            if bvec_orient[i]<0:
+                mystr = mystr+"mx"
+            else:
+                mystr = mystr+"px"
+        if np.abs(bvec_orient[i]) == 2:
+            if bvec_orient[i] < 0:
+                mystr = mystr + "my"
+            else:
+                mystr = mystr + "py"
+        if np.abs(bvec_orient[i])==3:
+            if bvec_orient[i]<0:
+                mystr = mystr+"mz"
+            else:
+                mystr = mystr+"pz"
+    return mystr
+
+
 #l = ['N57433']
-#l = ['N54717']
+l = ['N54717']
 
 max_processors = 1
 
@@ -33,19 +53,18 @@ print("Running on ", max_processors, " processors")
 
 # please set the parameter here
 
-# mypath = '/Users/alex/brain_data/E3E4/wenlin/'
-#dwipath = '/Users/alex/brain_data/19abb14/C57_RAS/'
-#BIGGUS_DISKUS = os.environ.get('BIGGUS_DISKUS')
 BIGGUS_DISKUS = "/Volumes/Badea/Lab/mouse"
-dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS/"
+#dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS/"
+dwipath = '/Users/alex/code/Wenlin/data/wenlin_data/'
 #outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
 
 #outtrkpath = '/Users/alex/bass/testdata/lifetest/'
-outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS/"
-figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS/"
+#outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS/"
+outtrkpath = '/Users/alex/bass/testdata/' + 'btable_sanitycheck/'
+#figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS/"
 #figspath = '/Users/alex/bass/testdata/lifetest/'
 
-outpathpickle = BIGGUS_DISKUS + "/C57_JS/PicklesFig_RAS/"
+#outpathpickle = BIGGUS_DISKUS + "/C57_JS/PicklesFig_RAS/"
 
 stepsize = 2
 subject_processes = np.size(l)
@@ -72,25 +91,28 @@ savedenoise=True
 display=False
 savefig=False
 doprune=True
-#strproperty = "_pypxmz_wholebrain"
-strproperty = "_mypxpz_wholebrain"
-#labellist=[163,1163,120,1120]
-#labelslist=[121,1121]#corpuscallosum
-labelslist=[120,1120]#fimbria
-labelslist=None
-bvec_orient=[-2,1,3]
+strproperty = "_pzmypx_fimbria"
+labelslist = [120,1120]#fimbria
+bvec_orient = [1, 2, 3]
 # ---------------------------------------------------------
 tall = time()
-tract_results=[]
+tract_results = []
 
+import itertools
+bvec_orient1 = (np.array(list(itertools.permutations([1, 2, 3]))))
+bvec_orient2 = [elm*[-1, 1, 1] for elm in bvec_orient1]
+bvec_orient3 = [elm*[1, -1, 1] for elm in bvec_orient1]
+bvec_orient4 = [elm*[1, 1, -1] for elm in bvec_orient1]
+
+bvec_orient_list = np.concatenate((bvec_orient1, bvec_orient2, bvec_orient3, bvec_orient4))
 
 if verbose:
-    txt=("Process running with % d max processes available on % d subjects with % d subjects in parallel each using % d processes"
+    txt = ("Process running with % d max processes available on % d subjects with % d subjects in parallel each using % d processes"
       % (mp.cpu_count(), np.size(l), subject_processes, function_processes))
     print(txt)
-    send_mail(txt,subject="Main process start msg ")
+    send_mail(txt, subject="Main process start msg ")
 
-duration1=time()
+duration1 = time()
 
 if subject_processes>1:
     if function_processes>1:
@@ -107,9 +129,11 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in l:
-        tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-                                          saved_streamlines, savefa, labelslist, bvec_orient, verbose))
-#        tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines, labellist,
+        for bvec_orient in bvec_orient_list:
+            strproperty = orient_to_str(bvec_orient)
+            tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+                                              saved_streamlines, savefa, labelslist, bvec_orient, verbose))
+    #       tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines, labellist,
 #                                             outpathpickle, figspath, function_processes, doprune, display, verbose))
 
 

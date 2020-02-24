@@ -135,7 +135,7 @@ def getsize(obj):
     return size
 
 
-def getdwidata(mypath, subject, verbose=None):
+def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
 
     #fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
     #fdwipath = mypath + '/nii4D_' + subject + '.nii'
@@ -181,18 +181,20 @@ def getdwidata(mypath, subject, verbose=None):
 
     #fbvals = mypath + '4Dnii/' + subject + '_RAS_ecc_bvals.txt'
     #fbvecs = mypath + '4Dnii/' + subject + '_RAS_ecc_bvecs.txt'
-    fbvals = glob.glob(mypath + '*/*' + subject + '*_bval*.txt')[0]
-    fbvecs = glob.glob(mypath + '*/*' + subject + '*_bvec*.txt')[0]
-    #fbvals = glob.glob(mypath + '*' + subject + '*_bval*.txt')[0]
-    #fbvecs = glob.glob(mypath + '*' + subject + '*_bvec*.txt')[0]
-    #fbvecs = mypath + '/' + subject + '_bvec.txt'
+    #fbvals = glob.glob(mypath + '*/*' + subject + '*_bval*.txt')[0]
+    #fbvecs = glob.glob(mypath + '*/*' + subject + '*_bvec*.txt')[0]
+    fbvals = glob.glob(mypath + '*' + subject + '*_bval*.txt')[0]
+    fbvecs = glob.glob(mypath + '*' + subject + '*_bvec*.txt')[0]
     fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
     bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
 
     #bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]  # FOR RAS according to Alex
     #bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]] #FOR RAS
 
-    bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]] #FOR ARI (original form of C57)
+    #bvecs = np.c_[bvecs[:, -], bvecs[:, 0], -bvecs[:, 2]] #estimated for RAS based on headfile info
+    bvec_sign = bvec_orient/np.abs(bvec_orient)
+    bvecs = np.c_[bvec_sign[0]*bvecs[:, np.abs(bvec_orient[0])-1], bvec_sign[1]*bvecs[:, np.abs(bvec_orient[1])-1],
+                  bvec_sign[2]*bvecs[:, np.abs(bvec_orient[2])-1]]
 
     #bvecs = np.c_[bvecs[:, 1], bvecs[:, 0], -bvecs[:, 2]]
     #bvecs = np.c_[-bvecs[:, 1], bvecs[:, 0], bvecs[:, 2]]
@@ -378,7 +380,7 @@ def dwi_preprocessing(dwipath,outpath,subject,denoise="none",savefa="yes",proces
         outpathbmfa=None
 
 def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",saved_tracts="small",save_fa="yes",
-                      labelslist = None, verbose=None):
+                      labelslist = None, bvec_orient=[1,2,3], verbose=None):
 
     if verbose:
         print('Running the ' + subject + ' file')
@@ -408,7 +410,7 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
     mask = bm
     """
 
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _ = getdwidata(dwipath, subject)
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _ = getdwidata(dwipath, subject, bvec_orient)
 
     if labelslist is None:
         mask = np.where(labelmask == 0, False, True)
@@ -449,7 +451,8 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         #message=headers+text 
         #mailServer=smtplib.SMTP(serverURL) 
         #mailServer.sendmail(useremail,useremail,message) 
-        #mailServer.quit() 
+        #mailServer.quit()
+
     outpathtrk = QCSA_tractmake(fdwi_data,affine,vox_size,gtab,mask,trkheader,step_size,peak_processes,outpathsubject,saved_tracts=saved_tracts,verbose=verbose,subject=subject)
     
     return subject, outpathbmfa, outpathtrk

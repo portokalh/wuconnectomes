@@ -282,9 +282,14 @@ def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):
         
     return bvals,dsl,dpe,dro 
 
+def same_axis(first,second):
+    if first==second:
+        return 1
+    if first=="A" and second=="P" or first=="P" and second=="A" or first==" ":
+        print('hi')
+
 def bvec_reorient(bvecs,orig_orient="ARI",new_orient="RAS"):
 
-    orig
     for i in range(3):
         #if new_orient[i]
         echo('jo')

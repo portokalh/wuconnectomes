@@ -146,12 +146,13 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
         save_trk_heavy_duty(outpathtrk, streamlines=sg_small,
                             affine=affine, header=trkheader,
                             shape=mask.shape, vox_size=vox_size)
-        print("Tract files were saved at " + outpathtrk)
+        txt="Tract files were saved at " + outpathtrk
+
     else:
         outpathtrk = None
     if saved_tracts == "large" or saved_tracts == "both" or saved_tracts == "all":
         sg = lambda: (s for s in streamlines_generator)
-        outpathtrk = outpathsubject + "bmCSA_detr_all" + stringstep + ".trk"
+        outpathtrk = outpathsubject + "bmCSA_detr_all_" + stringstep + ".trk"
         save_trk_heavy_duty(outpathtrk, streamlines=sg,
                             affine=affine, header=trkheader,
                             shape=mask.shape, vox_size=vox_size)
@@ -166,7 +167,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
     # outpathfile=outpath+subject+"bmCSA_detr"+stringstep+".trk"
     # myheader=create_tractogram_header(outpathfile,*get_reference_info(fdwi))
 
-    duration3 = time() - t3
+    duration3 = time() - t2
     if verbose:
         print(duration3)
         print(subject + ' Tracking duration %.3f' % (duration3,))
