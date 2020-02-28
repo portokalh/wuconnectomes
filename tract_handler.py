@@ -116,13 +116,21 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
     if verbose:
         print("Starting the pruning")
     duration = time()
+    voxel_counter=0
     if mask is not None:
+        num_voxel=0
         for idx,s in enumerate(streamline): #iterate through all streams
-            s_vox=unique_rows(np.round(s).astype(np.intp))
+            j = 0
+            s_vox = np.round(s).astype(np.intp)
+            voxel_counter += len(s_vox)
             cutlist=[]
             for vox in range(np.shape(s_vox)[0]):
+                #if np.array_equal(s_vox[vox], [38, 149, 167]):
+                #    print(mask[tuple(s_vox[vox])])
                 if not mask[tuple(s_vox[vox])]:
                     cutlist.append(vox)         #if local mask is 0, add voxel to list of voxels to cut
+                    j += 1
+                    num_voxel += 1
             if harshcut:                        #if harshcut, destroy all voxels folloxing the out of mask voxel in streamline
                 startcut = np.min(cutlist)
                 cutlist = range(startcut, len(np.shape(s_vox)[0]))
@@ -134,7 +142,8 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
             if streamshape[0] < cutoff: #minimum number of voxels required in streamline, default and minimum at 2
                 delstream.append(idx)       #if number of voxels in streamline too low, cut it
                 if verbose == "oververbose":
-                    print("Skipped stream " + str(idx) + " out of " + str(len(streamline)) + " streamlines for being too small")
+                    print("Skipped stream " + str(idx) + " out of " + str(len(streamline)) + " streamlines for being too small after cutting off "+ str(j) +" voxels")
+
     else:
         for idx, s in enumerate(streamline):
             streamshape = np.shape(np.asarray(s))
@@ -147,6 +156,8 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
         if len(delstream) > 0:
             print("Skipped " + str(len(delstream)) + " out of " + str(
                 len(streamline)) + " due to size constraints (tiny streamlines)")
+        if num_voxel > 0:
+            print("Dropped " + str(num_voxel) + " voxels for being out of mask")
     for idx in reversed(delstream):
         streamline.pop(idx)
     return streamline

@@ -21,6 +21,10 @@ import matplotlib.pyplot as plt
 import JSdipy.tracking.life as life
 import dipy.core.optimize as opt
 
+from BIAC_tools import send_mail, getsize
+from tract_save import save_trk_heavy_duty
+from figures_handler import LifEcreate_fig
+
 def bundle_coherence(data,t1_data,hardi_img, gtab, labels_img,affine):
 
     # Enables/disables interactive visualization
@@ -217,8 +221,7 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=Non
     if roimask is None:
         roimask = dwidata > 0
     else:
-        #dwidata = dwidata * np.repeat(roimask[:, :, :, None], np.shape(dwidata)[3], axis=3)
-        dwidata=dwidata
+        dwidataroi = dwidata * np.repeat(roimask[:, :, :, None], np.shape(dwidata)[3], axis=3)
 
     print("verbose: "+str(verbose) +" outpathpickle: "+ str(outpathpickle))
     fiber_model = life.FiberModel(gtab)
@@ -233,15 +236,15 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=Non
         send_mail(txt,subject="LifE start msg ")
 
     fiber_fit = fiber_model.fit(dwidata, trk_streamlines, affine=np.eye(4), processes=processes, verbose=verbose)
+    #fiber_fit_roi = fiber_model.fit(dwidataroi, trk_streamlines, affine=np.eye(4), processes=processes, verbose=verbose)
     optimized_sl = list(np.array(trk_streamlines)[np.where(fiber_fit.beta > 0)[0]])
     plt.ioff()
     if verbose:
         txt="End of the evaluation over "+str(np.size(trk_streamlines))
         print(txt)
         send_mail(txt,subject="LifE status msg ")
-
     if outpathtrk is not None:
-        outpathfile = str(outpathtrk) + subject + "_lifeopt_test.trk"
+        outpathfile = str(outpathtrk) + subject + strproperty + "_lifeopt_test.trk"
         myheader = create_tractogram_header(outpathfile, *header)
         optimized_sl_gen = lambda: (s for s in optimized_sl)
         save_trk_heavy_duty(outpathfile, streamlines=optimized_sl_gen,
@@ -272,7 +275,7 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=Non
     """
     maxsize_var = 20525023825
 
-    sizebeta=getsize(fiber_fit.beta)
+    sizebeta = getsize(fiber_fit.beta)
     if sizebeta<maxsize_var:
         picklepath = outpathpickle + subject + '_beta.p'
         txt=("fiber_fit.beta saved at "+picklepath)

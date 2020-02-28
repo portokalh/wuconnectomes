@@ -19,9 +19,6 @@ from os.path import splitext
 from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
 import pickle
 
-from types import ModuleType, FunctionType
-from gc import get_referents
-
 import smtplib 
 
 import os, re, sys, io, struct, socket, datetime
@@ -77,10 +74,12 @@ import dipy.core.optimize as opt
 from functools import wraps
 
 from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
-from figures_handler import denoise_fig, show_bundles, window_show_test, LifEcreate_fig
+from figures_handler import denoise_fig, show_bundles, window_show_test
 from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
-from BIAC_tools import MyPool, send_mail
+from BIAC_tools import MyPool, send_mail, isempty, getsize
+from tract_handler import target, prune_streamlines
+import tract_save
 
 def string_inclusion(string_option,allowed_strings,option_name):
     "checks if option string is part of the allowed list of strings for that option"
@@ -110,30 +109,6 @@ def strfile(string):
             return(string)
         except AttributeError:
             raise AttributeError("strfile error: not a usable number or string ")
-
-# Custom objects know their class.
-# Function objects seem to know way too much, including modules.
-# Exclude modules as well.
-BLACKLIST = type, ModuleType, FunctionType
-
-
-def getsize(obj):
-    #sum size of object & all members within that object.
-    if isinstance(obj, BLACKLIST):
-        raise TypeError('getsize() does not take argument of type: '+ str(type(obj)))
-    seen_ids = set()
-    size = 0
-    objects = [obj]
-    while objects:
-        need_referents = []
-        for obj in objects:
-            if not isinstance(obj, BLACKLIST) and id(obj) not in seen_ids:
-                seen_ids.add(id(obj))
-                size += sys.getsizeof(obj)
-                need_referents.append(obj)
-        objects = get_referents(*need_referents)
-    return size
-
 
 def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
 
@@ -167,16 +142,18 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
         labels, affine_labels = load_nifti(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz')
     elif os.path.exists(mypath+'/'+subject+'_chass_symmetric2_labels_RAS.nii.gz'):
         labels, affine_labels = load_nifti(mypath+'/'+subject+'_chass_symmetric2_labels_RAS.nii.gz')
-    elif os.path.exists(mypath + '/mask.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/mask.nii.gz')
     elif os.path.exists(mypath + '/fa_labels_warp_' + subject +'_RAS.nii.gz'):
         labels, affine_labels = load_nifti(mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz')
     elif os.path.exists(mypath + '/labels/fa_labels_warp_' + subject +'_RAS.nii.gz'):
         labels, affine_labels = load_nifti(mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz')
+    elif os.path.exists(mypath + '/mask.nii.gz'):
+        labels, affine_labels = load_nifti(mypath + '/mask.nii.gz')
+    elif os.path.exists(mypath + '/mask.nii'):
+        labels, affine_labels = load_nifti(mypath + '/mask.nii')
     else:
         print('mask not found, taking all non null values in nii file instead (not recommended for complex operations)')
         labels = np.ones(fdwi_data.shape[0:3])
-        affine_labels=affine
+        affine_labels = affine
         
 
     #fbvals = mypath + '4Dnii/' + subject + '_RAS_ecc_bvals.txt'
@@ -352,7 +329,7 @@ def dwi_preprocessing(dwipath,outpath,subject,denoise="none",savefa="yes",proces
         
     # Build Brain Mask
     
-    if labelslist is None:
+    if isempty(labelslist):
         mask = np.where(labelmask == 0, False, True)
     else:
         if labelmask is None:
@@ -412,10 +389,10 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
 
     fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _ = getdwidata(dwipath, subject, bvec_orient)
 
-    if labelslist is None:
+    if isempty(labelslist):
         mask = np.where(labelmask == 0, False, True)
     else:
-        if labelmask is None:
+        if isempty(labelslist):
             raise ("File not found error: labels requested but labels file could not be found at " + dwipath + " for subject " + subject)
         mask = np.zeros(np.shape(labelmask), dtype=int)
         for label in labelslist:
@@ -457,8 +434,8 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
     
     return subject, outpathbmfa, outpathtrk
 
-def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, doprune=True,
-                    display=True, verbose=None):
+def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, allsave=False,
+                    display=True, strproperty = "", ratio = 1, verbose=None):
 
     """
     fdwi = dwipath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
@@ -481,15 +458,21 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     """
     fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _ = getdwidata(dwipath, subject)
     
-    if labelslist is None:
-        roimask = (fdwi_data[:, :, :, 0] > 0)
+    if isempty(labelslist):
+        if labelmask is None:
+            roimask = (fdwi_data[:, :, :, 0] > 0)
+        else:
+            roimask = np.where(labelmask == 0, False, True)
     else:
         if labelmask is None:
             raise ("File not found error: labels requested but labels file could not be found at "+dwipath+ " for subject " + subject)
         roimask = np.zeros(np.shape(labelmask),dtype=int)
         for label in labelslist:
             roimask = roimask + (labelmask == label)
-    #(labels == 163) + (labels == 1163) + (labels == 120) + (labels == 1120)
+
+    if roimask.dtype == "bool":
+        roimask=roimask.astype(int)
+
     save_nifti(dwipath+"/"+subject+"_roimask.nii.gz",roimask,affine)
     if outpathpickle is None:
         outpathpickle=outpathtrk
@@ -506,7 +489,10 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     outpathfig = outpathfig+'/'
     print("Beginning Tract Evaluation of " + subject)
     stepsize = strfile(stepsize)
-    trkpaths = glob.glob(trkpath+'/'+subject+'*'+tractsize+'*'+stepsize+'*.trk')
+
+
+    """
+    trkpaths = glob.glob(trkpath+'/'+subject+'*'+tractsize+'*'+stepsize+'_orig.trk')
     trkfile = trkpaths[0]
     outpathtrk = trkpath+'/'
     if len(trkpaths) > 1:
@@ -518,32 +504,130 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     elif hasattr(trkdata, 'space_attributes'):
         header = trkdata.space_attributes
     trkstreamlines = trkdata.streamlines
-
-    ratio = 1
+    """
 
     if verbose:
-        txt="Beginning the evaluation of subject "+ subject + "\n We will evaluate for one in "+str(ratio)+" streamlines"
+        txt="Beginning the evaluation of subject " + subject + "\n We will evaluate for one in " + str(ratio) \
+            + " streamlines"
         print(txt)
         send_mail(txt,subject="LifE start msg ")
 
-    if ratio != 1:
-        ministream = []
-        for idx, stream in enumerate(trkstreamlines):
-            if (idx % ratio) == 0:
-                ministream.append(stream)
-        trkstreamlines = ministream
+    trkpaths = glob.glob(trkpath + '/' + subject + '*_' + tractsize + '_*' + stepsize + '_orig.trk')
+    trkfile = trkpaths[0]
+    outpathtrk = trkpath + '/'
 
-    doprune=False
+    streamlinespath = "/Users/alex/jacques/trkstreamN54333.p"
+    headerpath = "/Users/alex/jacques/headertrk.p"
+
+    doprune=True
     cutoff = 2
     if doprune:
-        trkstreamlines=prune_streamlines(list(trkstreamlines), roimask, cutoff=cutoff, verbose=verbose)
-        #fdwi_data = fdwi_data * np.repeat(roimask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
-        #trkstreamlines=prune_streamlines(trkstreamlines, mask, cutoff=cutoff, verbose=verbose)
-    else:
-        affine=np.eye(4)
-        trktempstreamlines = target(trkstreamlines, affine, roimask, include=True, strict="longstring")
-        trkstreamlines = Streamlines(trktempstreamlines)
-        trkstreamlines = prune_streamlines(list(trkstreamlines), None, cutoff=cutoff, verbose=verbose)
+        trkprunefile = trkpath + '/' + subject + '_' + tractsize + '_' + stepsize + '_pruned.trk'
+        if not os.path.exists(trkprunefile):
+
+            trkdata = load_trk(trkfile, 'same')
+            trkdata.to_vox()
+            if hasattr(trkdata, 'space_attribute'):
+                header = trkdata.space_attribute
+            elif hasattr(trkdata, 'space_attributes'):
+                header = trkdata.space_attributes
+            trkstreamlines = trkdata.streamlines
+
+            trkstreamlines=prune_streamlines(list(trkstreamlines), fdwi_data[:, :, :, 0], cutoff=cutoff, verbose=verbose)
+            trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + stepsize + '.trk'
+            myheader = create_tractogram_header(trkroipath, *header)
+            roi_sl = lambda: (s for s in trkstreamlines)
+            tract_save.save_trk_heavy_duty(trkroipath, streamlines=roi_sl,
+                                           affine=affine, header=myheader)
+
+        trkfile = trkprunepath
+
+    if ratio != 1:
+        trkminipath = trkpath + '/' + subject + '_' + tractsize + '_brain_ratio_' + str(ratio) + '_' + stepsize + '.trk'
+        if not os.path.exists(trkminipath):
+            #if os.path.exists(headerpath) and os.path.exists(streamlinespath):
+            #    trkorigstreamlines=pickle.load(open(streamlinespath, "rb"))
+            #    header=pickle.load(open(headerpath, "rb"))
+            #else:
+            trkdata = load_trk(trkfile, 'same')
+            trkdata.to_vox()
+            if hasattr(trkdata, 'space_attribute'):
+                header = trkdata.space_attribute
+            elif hasattr(trkdata, 'space_attributes'):
+                header = trkdata.space_attributes
+            trkorigstreamlines = trkdata.streamlines
+            ministream = []
+            for idx, stream in enumerate(trkorigstreamlines):
+                if (idx % ratio) == 0:
+                    ministream.append(stream)
+            myheader = create_tractogram_header(trkminipath, *header)
+            ratioed_sl_gen = lambda: (s for s in ministream)
+            if allsave:
+                tract_save.save_trk_heavy_duty(trkminipath, streamlines=ratioed_sl_gen,
+                                    affine=affine, header=myheader)
+        elif isempty(labelslist):
+            trkdata = load_trk(trkminipath, 'same')
+            trkdata.to_vox()
+            if hasattr(trkdata, 'space_attribute'):
+                header = trkdata.space_attribute
+            elif hasattr(trkdata, 'space_attributes'):
+                header = trkdata.space_attributes
+            trkstreamlines = trkdata.streamlines
+
+    if not isempty(labelslist):
+        trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + stepsize + '.trk'
+        if not os.path.exists(trkroipath):
+            if not 'trkorigstreamlines' in locals():
+                trkdata = load_trk(trkfile, 'same')
+                trkdata.to_vox()
+                if hasattr(trkdata, 'space_attribute'):
+                    header = trkdata.space_attribute
+                elif hasattr(trkdata, 'space_attributes'):
+                    header = trkdata.space_attributes
+                trkorigstreamlines = trkdata.streamlines
+
+            affinetemp=np.eye(4)
+            trkstreamlines = target(trkorigstreamlines, affinetemp, roimask, include=True, strict="longstring")
+            del(trkorigstreamlines)
+            trkstreamlines = Streamlines(trkstreamlines)
+            trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + stepsize + '.trk'
+            myheader = create_tractogram_header(trkroipath, *header)
+            roi_sl = lambda: (s for s in trkstreamlines)
+            if allsave:
+                tract_save.save_trk_heavy_duty(trkroipath, streamlines=roi_sl,
+                            affine=affine, header=myheader)
+        else:
+            trkdata = load_trk(trkroipath, 'same')
+            trkdata.to_vox()
+            if hasattr(trkdata, 'space_attribute'):
+                header = trkdata.space_attribute
+            elif hasattr(trkdata, 'space_attributes'):
+                header = trkdata.space_attributes
+            trkstreamlines = trkdata.streamlines
+
+        if ratio != 1:
+            trkroiminipath = trkpath + '/' + subject + '_' + tractsize + strproperty + "ratio_" + str(ratio) + '_' + stepsize + '.trk'
+            if not os.path.exists(trkroiminipath):
+                ministream = []
+                for idx, stream in enumerate(trkstreamlines):
+                    if (idx % ratio) == 0:
+                        ministream.append(stream)
+                trkstreamlines = ministream
+                myheader = create_tractogram_header(trkminipath, *header)
+                ratioed_roi_sl_gen = lambda: (s for s in trkstreamlines)
+                if allsave:
+                    tract_save.save_trk_heavy_duty(trkroiminipath, streamlines=ratioed_roi_sl_gen,
+                                        affine=affine, header=myheader)
+            else:
+                trkdata = load_trk(trkminipath, 'same')
+                trkdata.to_vox()
+                if hasattr(trkdata, 'space_attribute'):
+                    header = trkdata.space_attribute
+                elif hasattr(trkdata, 'space_attributes'):
+                    header = trkdata.space_attributes
+                trkstreamlines = trkdata.streamlines
+
+    if display:
         saveconnectivitymatrix=True
 
         from dipy.viz import window, actor, colormap as cmap
@@ -582,11 +666,6 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
             interactive=False
             if interactive:
                 window.show(r)
-            #outpathfile = str(outpathtrk) + "_fimbria.trk"
-            #myheader = create_tractogram_header(outpathfile, *header)
-            #optimized_sl_gen = lambda: (s for s in trkstreamlines)
-            #save_trk_heavy_duty(outpathfile, streamlines=optimized_sl_gen,
-            #                    affine=affine, header=myheader)
             r.set_camera(position=[-1, -1, -1], focal_point=[0, 0, 0], view_up=[0, 0, 1])
             window.record(r, n_frames=1, out_path=outpathfig+ subject + '_fimbria_sagittal.png',
                           size=(800, 800))
@@ -615,10 +694,11 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     #% memit fiber_fit = fiber_model.fit(data, trk_streamlines[2 ** 12], affine=np.eye(4))
     display = False
     duration=time()
-    model_error, mean_error = LiFEvaluation(fdwi_data, trkstreamlines, gtab, subject=subject, header=header, roimask=roimask,
-                                            affine=affine,display=display, outpathpickle=outpathpickle,
+    strproperty = strproperty + "ratio_" + str(ratio)
+    model_error, mean_error = LiFEvaluation(fdwi_data, trkstreamlines, gtab, subject=subject, header=header,
+                                            roimask=roimask, affine=affine,display=display, outpathpickle=outpathpickle,
                                             outpathtrk=outpathtrk, processes=processes, outpathfig=outpathfig,
-                                            verbose=verbose)
+                                            strproperty=strproperty, verbose=verbose)
     #picklepath = '/Users/alex/jacques/test_pickle_subj'+subject+'.p'
     #results=[outpathtrk,model_error,mean_error]
     #if subject == "N54859":

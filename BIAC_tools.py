@@ -9,6 +9,11 @@ Small tools for multiprocessing
 
 import multiprocessing, io, datetime, os, smtplib
 from email.mime.text import MIMEText
+
+from types import ModuleType, FunctionType
+from gc import get_referents
+import sys
+
 mylogin = "jas297"
 
 class NoDaemonProcess(multiprocessing.Process):
@@ -23,12 +28,40 @@ class NoDaemonProcess(multiprocessing.Process):
 # We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
 # because the latter is only a wrapper function, not a proper class.
 
+# Custom objects know their class.
+# Function objects seem to know way too much, including modules.
+# Exclude modules as well.
+BLACKLIST = type, ModuleType, FunctionType
 
 class MyPool(multiprocessing.pool.Pool):
     #This whole class allows us to run sub processes within subprocesses (subprocesses cannot exceed max count though)
     Process = NoDaemonProcess
 
 
+def isempty(object):
+    if object is None:
+        return True
+    elif len(object) == 0:
+        return True
+    else:
+        return False
+
+def getsize(obj):
+    #sum size of object & all members within that object.
+    if isinstance(obj, BLACKLIST):
+        raise TypeError('getsize() does not take argument of type: '+ str(type(obj)))
+    seen_ids = set()
+    size = 0
+    objects = [obj]
+    while objects:
+        need_referents = []
+        for obj in objects:
+            if not isinstance(obj, BLACKLIST) and id(obj) not in seen_ids:
+                seen_ids.add(id(obj))
+                size += sys.getsizeof(obj)
+                need_referents.append(obj)
+        objects = get_referents(*need_referents)
+    return size
 
 def send_mail(msg_txt,subject="Cluster message"):
     #Send mail with specified txt (and subject) to default address specified in global variable

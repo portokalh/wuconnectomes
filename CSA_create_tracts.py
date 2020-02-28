@@ -18,11 +18,6 @@ from tract_manager import create_tracts, evaluate_tracts, dwi_preprocessing, MyP
 from bvec_handler import extractbvec_fromheader
 from BIAC_tools import send_mail
 
-import pandas as pd
-from pandas import ExcelWriter
-from pandas import ExcelFile
-from BIAC_tools import isempty
-
 l = ['N57433','N57434','N57435','N57436','N57437','N57440']
 #l = ['N57433']
 #l = ['N54717']
@@ -42,21 +37,15 @@ print("Running on ", max_processors, " processors")
 #dwipath = '/Users/alex/brain_data/19abb14/C57_RAS/'
 #BIGGUS_DISKUS = os.environ.get('BIGGUS_DISKUS')
 BIGGUS_DISKUS = "/Volumes/Badea/Lab/mouse"
-dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS/"
+dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_ARI/"
 #outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
 
 #outtrkpath = '/Users/alex/bass/testdata/lifetest/'
-outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS/"
-figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS/"
+outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_ARI/"
+figspath = BIGGUS_DISKUS + "/C57_JS/Figures_ARI/"
 #figspath = '/Users/alex/bass/testdata/lifetest/'
 
-outpathpickle = BIGGUS_DISKUS + "/C57_JS/PicklesFig_RAS/"
-
-atlas_legends = BIGGUS_DISKUS + "/atlases/CHASSSYMM3AtlasLegends.xlsx"
-
-df = pd.read_excel(atlas_legends, sheet_name='Sheet1')
-df['Structure'] = df['Structure'].str.lower()
-
+outpathpickle = BIGGUS_DISKUS + "/C57_JS/PicklesFig_ARI/"
 
 stepsize = 2
 subject_processes = np.size(l)
@@ -67,9 +56,15 @@ if max_processors < subject_processes:
 
 function_processes = np.int(max_processors/subject_processes)
 
-roi = "fimbria"
-ratio = 100
-saved_streamlines = "small"
+"""
+extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57433/co_reg_N57433_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57433',"all")
+extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57434/co_reg_N57434_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57434',"all")
+extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57435/co_reg_N57435_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57435',"all")
+extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57436/co_reg_N57436_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57436',"all")
+extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57437/co_reg_N57437_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57437',"all")
+"""
+
+saved_streamlines = "all"
 savefa="no"
 verbose=True
 denoise='mpca'
@@ -78,21 +73,12 @@ display=False
 savefig=False
 doprune=True
 #strproperty = "_pypxmz_wholebrain"
-allsave=True
-strproperty = "_" + roi + "_"
+strproperty = "_pxmymz_wholebrain"
 #labellist=[163,1163,120,1120]
 #labelslist=[121,1121]#corpuscallosum
 labelslist=[120,1120]#fimbria
-
-rslt_df = df.loc[df['Structure'] == roi.lower()]
-labelslist=np.array(rslt_df.index2)
-
-if isempty(labelslist) and roi.lower() != "wholebrain" and roi.lower() != "brain":
-    txt = "Warning: Unrecognized roi, will take whole brain as ROI. The roi specified was: " + roi
-    print(txt)
-
-#labelslist=None
-bvec_orient=[-2,1,3]
+labelslist=None
+bvec_orient=[1,-2,-3]
 # ---------------------------------------------------------
 tall = time()
 tract_results=[]
@@ -112,20 +98,19 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-#    tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-#                                                            saved_streamlines, savefa, labelslist, bvec_orient, verbose) for subject in
-#                                                           l]).get()
-    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
-                                                          labelslist, outpathpickle, figspath, function_processes,
-                                                          allsave, display, strproperty, ratio, verbose) for subject in l]).get()
+    tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+                                                            saved_streamlines, savefa, labelslist, bvec_orient, verbose) for subject in
+                                                           l]).get()
+#    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
+#                                                          labelslist, outpathpickle, figspath, function_processes,
+#                                                          doprune, display, verbose) for subject in l]).get()
     pool.close()
 else:
     for subject in l:
-#        tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-#                                         saved_streamlines, savefa, labelslist, bvec_orient, verbose))
-        tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines, labelslist,
-                                             outpathpickle, figspath, function_processes, allsave, display, strproperty,
-                                             ratio, verbose))
+        tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+                                         saved_streamlines, savefa, labelslist, bvec_orient, verbose))
+#        tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines, labelslist,
+#                                             outpathpickle, figspath, function_processes, doprune, display, verbose))
 
 #dwip_results = pool.starmap_async(dwi_preprocessing[(dwipath,outpath,subject,denoise,savefa,function_processes, verbose) for subject in l]).get()
 
