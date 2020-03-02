@@ -512,7 +512,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
         print(txt)
         send_mail(txt,subject="LifE start msg ")
 
-    trkpaths = glob.glob(trkpath + '/' + subject + '*_' + tractsize + '_*' + stepsize + '_orig.trk')
+    trkpaths = glob.glob(trkpath + '/' + subject + '*_' + tractsize + '_*' + stepsize + '.trk')
     trkfile = trkpaths[0]
     outpathtrk = trkpath + '/'
 
@@ -532,15 +532,13 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
             elif hasattr(trkdata, 'space_attributes'):
                 header = trkdata.space_attributes
             trkstreamlines = trkdata.streamlines
-
             trkstreamlines=prune_streamlines(list(trkstreamlines), fdwi_data[:, :, :, 0], cutoff=cutoff, verbose=verbose)
-            trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + stepsize + '.trk'
-            myheader = create_tractogram_header(trkroipath, *header)
-            roi_sl = lambda: (s for s in trkstreamlines)
-            tract_save.save_trk_heavy_duty(trkroipath, streamlines=roi_sl,
+            myheader = create_tractogram_header(trkprunefile, *header)
+            prune_sl = lambda: (s for s in trkstreamlines)
+            tract_save.save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
                                            affine=affine, header=myheader)
 
-        trkfile = trkprunepath
+        trkfile = trkprunefile
 
     if ratio != 1:
         trkminipath = trkpath + '/' + subject + '_' + tractsize + '_brain_ratio_' + str(ratio) + '_' + stepsize + '.trk'
@@ -694,7 +692,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     #% memit fiber_fit = fiber_model.fit(data, trk_streamlines[2 ** 12], affine=np.eye(4))
     display = False
     duration=time()
-    strproperty = strproperty + "ratio_" + str(ratio)
+    strproperty = tractsize + strproperty + "ratio_" + str(ratio) + "_" +stepsize
     model_error, mean_error = LiFEvaluation(fdwi_data, trkstreamlines, gtab, subject=subject, header=header,
                                             roimask=roimask, affine=affine,display=display, outpathpickle=outpathpickle,
                                             outpathtrk=outpathtrk, processes=processes, outpathfig=outpathfig,

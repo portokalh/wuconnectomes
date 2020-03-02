@@ -27,7 +27,7 @@ l = ['N57433','N57434','N57435','N57436','N57437','N57440']
 #l = ['N57433']
 #l = ['N54717']
 
-max_processors = 1
+max_processors = 6
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -68,8 +68,8 @@ if max_processors < subject_processes:
 function_processes = np.int(max_processors/subject_processes)
 
 roi = "fimbria"
-ratio = 100
-saved_streamlines = "small"
+ratio = 1
+saved_streamlines = "all"
 savefa="no"
 verbose=True
 denoise='mpca'

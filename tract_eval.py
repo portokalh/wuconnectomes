@@ -171,7 +171,7 @@ def bundle_coherence(data,t1_data,hardi_img, gtab, labels_img,affine):
 
 def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=None, roimask=None, affine=None,
                   display = True, outpathpickle = None, outpathtrk = None, processes = 1,
-                  outpathfig=None, verbose = None):
+                  outpathfig=None, strproperty="", verbose = None):
 
     """     Implementation of Linear Fascicle Evaluation, outputs histograms, evals
 
@@ -277,7 +277,7 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=Non
 
     sizebeta = getsize(fiber_fit.beta)
     if sizebeta<maxsize_var:
-        picklepath = outpathpickle + subject + '_beta.p'
+        picklepath = outpathpickle + subject + strproperty + '_beta.p'
         txt=("fiber_fit.beta saved at "+picklepath)
         pickle.dump(fiber_fit.beta, open(picklepath, "wb"))
         if verbose:
@@ -290,7 +290,7 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=Non
 
     sizecoords=getsize(fiber_fit.vox_coords)
     if sizecoords<maxsize_var:
-        picklepath = outpathpickle + subject + '_voxcoords.p'
+        picklepath = outpathpickle + subject + strproperty + '_voxcoords.p'
         txt=("fiber_fit.voxcoords saved at "+picklepath)
         pickle.dump(fiber_fit.vox_coords, open(picklepath, "wb"))
         if verbose:
@@ -322,7 +322,7 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=Non
 
     size_meanrmse=getsize(mean_rmse)
     if size_meanrmse<maxsize_var:
-        picklepath = outpathpickle + subject + '_mean_rmse.p'
+        picklepath = outpathpickle + subject + strproperty + '_mean_rmse.p'
         txt=("mean_rmse saved at "+picklepath)
         pickle.dump(mean_rmse, open(picklepath, "wb"))
         if verbose:
@@ -335,7 +335,7 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=Non
 
     size_modelrmse=getsize(model_rmse)
     if size_modelrmse<maxsize_var:
-        picklepath = outpathpickle + subject + '_model_rmse.p'
+        picklepath = outpathpickle + subject + strproperty + '_model_rmse.p'
         txt=("model_rmse saved at "+picklepath)
         pickle.dump(model_rmse, open(picklepath, "wb"))
         if verbose:
@@ -347,5 +347,11 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=Non
         send_mail(txt,subject="LifE error msg")   
 
     if outpathfig is not None:
-        LifEcreate_fig(fiber_fit.beta, mean_rmse, model_rmse, fiber_fit.vox_coords, dwidata, subject, t1_data = dwidata[:,:,:,0], outpathfig=outpathfig, interactive=False, verbose=verbose)
+        try:
+            import matplotlib.pyplot as myplot
+            fig, ax = plt.subplots(1)
+            ax.hist(fiber_fit.beta, bins=100, histtype='step')
+            LifEcreate_fig(fiber_fit.beta, mean_rmse, model_rmse, fiber_fit.vox_coords, dwidata, subject, t1_data = dwidata[:,:,:,0], outpathfig=outpathfig, interactive=False, verbose=verbose)
+        except:
+            print("Coult not launch life create fig, possibly qsub location (this is a template warning, to be improved upon")
     return model_error, mean_error
