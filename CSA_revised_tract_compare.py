@@ -24,10 +24,10 @@ from pandas import ExcelFile
 from BIAC_tools import isempty
 
 l = ['N57433','N57434','N57435','N57436','N57437','N57440']
-#l = ['N57433']
+l = ['N57433']
 #l = ['N54717']
 
-max_processors = 6
+max_processors = 100
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -67,7 +67,7 @@ if max_processors < subject_processes:
 
 function_processes = np.int(max_processors/subject_processes)
 
-roi = "fimbria"
+rois = ["hypothalamus","septum"]
 ratio = 1
 saved_streamlines = "all"
 savefa="no"
@@ -79,13 +79,23 @@ savefig=False
 doprune=True
 #strproperty = "_pypxmz_wholebrain"
 allsave=True
-strproperty = "_" + roi + "_"
+if len(rois)==1:
+    strproperty = "_" + rois[0] + "_"
+elif len(rois)>1:
+    strproperty="_"
+    for roi in rois:
+        strproperty = strproperty + roi[0:4]
+    strproperty = strproperty + "_"
 #labellist=[163,1163,120,1120]
 #labelslist=[121,1121]#corpuscallosum
-labelslist=[120,1120]#fimbria
+labelslist=[]#fimbria
 
-rslt_df = df.loc[df['Structure'] == roi.lower()]
-labelslist=np.array(rslt_df.index2)
+for roi in rois:
+    rslt_df = df.loc[df['Structure'] == roi.lower()]
+    if roi.lower() == "wholebrain" or roi.lower() == "brain":
+        labelslist=None
+    else:
+        labelslist=np.concatenate((labelslist,np.array(rslt_df.index2)))
 
 if isempty(labelslist) and roi.lower() != "wholebrain" and roi.lower() != "brain":
     txt = "Warning: Unrecognized roi, will take whole brain as ROI. The roi specified was: " + roi
