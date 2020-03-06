@@ -342,8 +342,6 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
     if verbose:
         print('Running the ' + subject + ' file')
 
-    mask = np.zeros(np.shape(mask),dtype=bool)
-    mask[90:110,90:110,90:110] = True
     fdwi_data = fdwi_data * np.repeat(mask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
 
     outpathdenoise= outpath + subject + '_nii4D_RAS'
