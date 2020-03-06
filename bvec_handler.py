@@ -76,7 +76,6 @@ from functools import wraps
 from figures_handler import denoise_fig, show_bundles, window_show_test, LifEcreate_fig
 from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
-from BIAC_tools import MyPool
 
 def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2):
     """

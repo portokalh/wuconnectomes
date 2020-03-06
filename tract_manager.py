@@ -77,7 +77,7 @@ from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
 from figures_handler import denoise_fig, show_bundles, window_show_test
 from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
-from BIAC_tools import MyPool, send_mail, isempty, getsize
+from BIAC_tools import send_mail, isempty, getsize
 from tract_handler import target, prune_streamlines
 import tract_save
 
@@ -317,10 +317,11 @@ def denoise_pick(data,affine,hdr,outpath,mask,type_denoise='macenko', processes 
     return data
 
 
-def dwi_preprocessing(dwipath,outpath,subject,denoise="none",savefa="yes",processes=1, labelslist=None, strproperty="", verbose = False):
+def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savefa="yes",processes=1, labelslist=None, strproperty="", verbose = False):
 
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, hdr = getdwidata(dwipath, subject, verbose)
-    #fdwi_data, affine, vox_size = load_nifti(fdwi, return_voxsize=True)
+    bvec_orient=[1,2,3]
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, hdr = getdwidata(dwipath, subject, bvec_orient, verbose)
+    #fdwi_data, affine, vox_size = load_nifti(fdwi, return_voxsize=True) (mypath, subject, bvec_orient=[1,2,3], verbose=None)
 
     #labels = glob.glob(mypath + '/' + subject + '*labels*nii.gz') #ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
 
@@ -328,7 +329,7 @@ def dwi_preprocessing(dwipath,outpath,subject,denoise="none",savefa="yes",proces
     #labelmask = labels + mask #Whether the image is a labels or a mask, we output a mask for mpca
         
     # Build Brain Mask
-    
+    print(labelslist)
     if isempty(labelslist):
         mask = np.where(labelmask == 0, False, True)
     else:
@@ -346,7 +347,8 @@ def dwi_preprocessing(dwipath,outpath,subject,denoise="none",savefa="yes",proces
     fdwi_data = fdwi_data * np.repeat(mask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
 
     outpathdenoise= outpath + subject + '_nii4D_RAS'
-    #fdwi_data = denoise_pick(fdwi_data, affine,hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
+    print(denoise)
+    fdwi_data = denoise_pick(fdwi_data, affine,hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
 
     #testsnr => not yet fully implemented
     print(savefa)
@@ -389,6 +391,7 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
 
     fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _ = getdwidata(dwipath, subject, bvec_orient)
 
+    """
     if isempty(labelslist):
         mask = np.where(labelmask == 0, False, True)
     else:
@@ -398,6 +401,8 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         for label in labelslist:
             mask = mask + (labelmask == label)
         fdwi_data = fdwi_data * np.repeat(mask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
+    """
+    mask=labelmask
 
     #preprocessing section (still have to test denoising functions)
     #data = denoise_pick(data, mask, 'macenko', display=None) #data = denoise_pick(data, mask, 'gibbs', display=None)
@@ -434,8 +439,7 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
     
     return subject, outpathbmfa, outpathtrk
 
-def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, allsave=False,
-                    display=True, strproperty = "", ratio = 1, verbose=None):
+def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, allsave=False, display=True, strproperty = "", ratio = 1, verbose=None):
 
     """
     fdwi = dwipath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
@@ -624,7 +628,17 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
                 elif hasattr(trkdata, 'space_attributes'):
                     header = trkdata.space_attributes
                 trkstreamlines = trkdata.streamlines
-
+    
+    else:
+        if not 'trkstreamlines' in locals():
+            trkdata = load_trk(trkfile, 'same')
+            trkdata.to_vox()
+            if hasattr(trkdata, 'space_attribute'):
+                header = trkdata.space_attribute
+            elif hasattr(trkdata, 'space_attributes'):
+                header = trkdata.space_attributes
+            trkstreamlines = trkdata.streamlines
+    
     if display:
         saveconnectivitymatrix=True
 
@@ -708,6 +722,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
         send_mail(txt,subject="LifE save msg ")
     #picklepath = trkpath+subject+'lifevals.p'
     #pickle.dump(tracteval_results, open(picklepath,"wb"))
+    
     return [outpathfig, model_error, mean_error]
 """
 def create_tracts(mypath,outpath,subject,step_size,peak_processes=1,saved_tracts="small",save_fa="yes",denoise="mpca",verbose=None):
