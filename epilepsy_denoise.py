@@ -14,9 +14,11 @@ import os
 import multiprocessing as mp
 import pickle
 
-from tracking_func import dwi_create_tracts, evaluate_tracts, extractbvec_fromheader, dwi_preprocessing, MyPool
+from tract_manager import create_tracts, evaluate_tracts, dwi_preprocessing, MyPool
+from bvec_handler import extractbvec_fromheader
+from BIAC_tools import send_mail
 
-l = ['00490']
+l = ['01912']
 
 max_processors = 100
 
@@ -41,14 +43,14 @@ outtrkpath = BIGGUS_DISKUS + "/epilepsy_coreg/TRK/"
 figspath = BIGGUS_DISKUS + "/C57_JS/Figures"
 
 stepsize = 2
-function_processes = 8
+function_processes = mp.cpu_count()
 if max_processors < function_processes:
     function_processes = max_processors
 saved_streamlines = "small"
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
 # "none" or None variable for neither and "both" for both of them
 
-subject_processes = np.int(max_processors/function_processes)
+subject_processes = np.size(l)
 
 """
 extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57433/co_reg_N57433_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57433',"all")
@@ -69,9 +71,12 @@ display=False
 savefig=False
 doprune=True
 strproperty = ""
+labelslist=None
 # ---------------------------------------------------------
 tall = time()
 tract_results=[]
+
+bvec_orient = [1,2,3]
 
 if subject_processes>1:
     print("here")
@@ -79,7 +84,7 @@ if subject_processes>1:
         pool = MyPool(subject_processes)
     else:
         pool = mp.Pool(subject_processes)
-    dwip_resultst = pool.starmap_async(dwi_preprocessing, [(dwipath, dwipath, subject, denoise, savedenoise, savefa, function_processes, verbose) for subject in l]).get()
+    dwip_resultst = pool.starmap_async(dwi_preprocessing, [(dwipath, dwipath, subject, bvec_orient, denoise, savefa, function_processes, labelslist, verbose) for subject in l]).get()
     #tract_results = pool.starmap_async(dwi_create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
     #                                                        saved_streamlines, denoise, savefa, verbose) for subject in
     #                                                       l]).get()
@@ -91,7 +96,7 @@ else:
     for subject in l:
         print("there")
         subject=str(subject)
-        dwip_resultst = dwi_preprocessing(dwipath, dwipath, subject, denoise, savedenoise, savefa, function_processes, verbose)
+        dwip_resultst = dwi_preprocessing(dwipath, dwipath, subject, bvec_orient, denoise, savefa, function_processes, labelslist, verbose)
         dwip_results.append(dwip_resultst)
 #        tract_results.append(dwi_create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
 #                                          saved_streamlines, denoise, savefa, verbose))

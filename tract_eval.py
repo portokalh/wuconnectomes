@@ -25,93 +25,12 @@ from BIAC_tools import send_mail, getsize
 from tract_save import save_trk_heavy_duty
 from figures_handler import LifEcreate_fig
 
-def bundle_coherence(data,t1_data,hardi_img, gtab, labels_img,affine):
-
-    # Enables/disables interactive visualization
-    interactive = False
-    # Fix seed
-    np.random.seed(1)
-
-    # Read data
-    #hardi_img, gtab, labels_img = read_stanford_labels()
-    #affine = hardi_img.affine
-    #t1 = read_stanford_t1()
-    #t1_data = t1.get_data()
-
-    # Select a relevant part of the data (left hemisphere)
-    # Coordinates given in x bounds, y bounds, z bounds
-    dshape = data.shape[:-1]
-    xa, xb, ya, yb, za, zb = [15, 42, 10, 65, 18, 65]
-    data_small = data[xa:xb, ya:yb, za:zb]
-    selectionmask = np.zeros(dshape, 'bool')
-    selectionmask[xa:xb, ya:yb, za:zb] = True
-
-    # Perform CSA
-    from dipy.reconst.shm import CsaOdfModel
-    from dipy.data import default_sphere
-    from dipy.direction import peaks_from_model
-
-    csa_model = CsaOdfModel(gtab, sh_order=6)
-    csa_peaks = peaks_from_model(csa_model, data, default_sphere,
-                                 relative_peak_threshold=.6,
-                                 min_separation_angle=45,
-                                 mask=selectionmask)
-
-    # Stopping Criterion
-    from dipy.tracking.stopping_criterion import ThresholdStoppingCriterion
-
-    stopping_criterion = ThresholdStoppingCriterion(csa_peaks.gfa, 0.25)
-
-    # Perform CSD on the original data
-    from dipy.reconst.csdeconv import auto_response
-    from dipy.reconst.csdeconv import ConstrainedSphericalDeconvModel
-
-    response, ratio = auto_response(gtab, data, roi_radius=10, fa_thr=0.7)
-    csd_model = ConstrainedSphericalDeconvModel(gtab, response)
-    csd_fit = csd_model.fit(data_small)
-    csd_fit_shm = np.lib.pad(csd_fit.shm_coeff, ((xa, dshape[0]-xb),
-                                                 (ya, dshape[1]-yb),
-                                                 (za, dshape[2]-zb),
-                                                 (0, 0)), 'constant')
-
-    # Probabilistic direction getting for fiber tracking
-    from dipy.direction import ProbabilisticDirectionGetter
-
-    prob_dg = ProbabilisticDirectionGetter.from_shcoeff(csd_fit_shm,
-                                                        max_angle=30.,
-                                                        sphere=default_sphere)
+from dipy.denoise.enhancement_kernel import EnhancementKernel
+from dipy.tracking.fbcmeasures import FBCMeasures
+from dipy.viz import window, actor
 
 
-    # Set a seed region region for tractography.
-
-    mask = np.zeros(data.shape[:-1], 'bool')
-    rad = 3
-    mask[26-rad:26+rad, 29-rad:29+rad, 31-rad:31+rad] = True
-    seeds = utils.seeds_from_mask(mask, affine, density=[4, 4, 4])
-
-    # Perform tracking using Local Tracking
-    from dipy.tracking.local_tracking import LocalTracking
-
-    streamlines_generator = LocalTracking(prob_dg, stopping_criterion, seeds,
-                                          affine, step_size=.5)
-
-    # Compute streamlines.
-    from dipy.tracking.streamline import Streamlines
-    streamlines = Streamlines(streamlines_generator)
-
-    # Set a mask for the lateral geniculate nucleus (LGN)
-    mask_lgn = np.zeros(data.shape[:-1], 'bool')
-    rad = 5
-    mask_lgn[35-rad:35+rad, 42-rad:42+rad, 28-rad:28+rad] = True
-
-    # Select all the fibers that enter the LGN and discard all others
-    filtered_fibers2 = utils.near_roi(streamlines, affine, mask_lgn, tol=1.8)
-
-    sfil = []
-    for i in range(len(streamlines)):
-        if filtered_fibers2[i]:
-            sfil.append(streamlines[i])
-    streamlines = Streamlines(sfil)
+def bundle_coherence(streamlines,affine,t1_data=None,interactive=False):
 
     # Compute lookup table
     from dipy.denoise.enhancement_kernel import EnhancementKernel
@@ -145,14 +64,15 @@ def bundle_coherence(data,t1_data,hardi_img, gtab, labels_img,affine):
     ren.add(lineactor)
 
     # Horizontal (axial) slice of T1 data
-    vol_actor1 = actor.slicer(t1_data, affine=affine)
-    vol_actor1.display(z=20)
-    ren.add(vol_actor1)
+    if t1_data is not None:
+        vol_actor1 = actor.slicer(t1_data, affine=affine)
+        vol_actor1.display(z=20)
+        ren.add(vol_actor1)
 
-    # Vertical (sagittal) slice of T1 data
-    vol_actor2 = actor.slicer(t1_data, affine=affine)
-    vol_actor2.display(x=35)
-    ren.add(vol_actor2)
+        # Vertical (sagittal) slice of T1 data
+        vol_actor2 = actor.slicer(t1_data, affine=affine)
+        vol_actor2.display(x=35)
+        ren.add(vol_actor2)
 
     # Show original fibers
     ren.set_camera(position=(-264, 285, 155),

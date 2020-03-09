@@ -20,6 +20,7 @@ from mpl_toolkits.axes_grid1 import AxesGrid
 import matplotlib
 #import dipy.tracking.life as life
 from dipy.viz import colormap as cmap
+from BIAC_tools import send_mail
 
 def denoise_fig(data,denoised_arr,type='macenko',savefigpath='none'):
     """ Sets up figure that shows differences between two data arrays
@@ -134,7 +135,7 @@ def window_show_test(bundles, mask_roi, anat, interactive= True, outpath=None):
     if interactive:
         window.show(ren)
 
-def LifEcreate_fig(fiber_fit_beta,mean_rmse,model_rmse, vox_coords, dwidata, subject, t1_data=None, outpathfig=None, interactive=False, verbose=False):
+def LifEcreate_fig(fiber_fit_beta,mean_rmse,model_rmse, vox_coords, dwidata, subject, t1_data=None, outpathfig=None, strproperty="_", interactive=False, verbose=False):
 
     #fiber_fit_beta_path = glob.glob(pickles_folder + '/*beta.p')[0]
     #mean_rmse_path = glob.glob(pickles_folder + '/*mean_rmse.p')[0]
@@ -153,7 +154,7 @@ def LifEcreate_fig(fiber_fit_beta,mean_rmse,model_rmse, vox_coords, dwidata, sub
     if interactive:
         plt.show()
     if outpathfig is not None:
-        histofig_path = (outpathfig + subject + "_beta_histogram.png")
+        histofig_path = (outpathfig + subject + strproperty + "beta_histogram.png")
         fig.savefig(histofig_path)
         if verbose:
             txt="file saved at "+histofig_path
@@ -184,7 +185,7 @@ def LifEcreate_fig(fiber_fit_beta,mean_rmse,model_rmse, vox_coords, dwidata, sub
     if interactive:
         plt.show()
     if outpathfig is not None:
-        errorhistofig_path=(outpathfig + subject + '_error_histograms.png')
+        errorhistofig_path=(outpathfig + subject + strproperty + "error_histograms.png")
         fig.savefig(errorhistofig_path)
         if verbose:
             txt="file saved at "+errorhistofig_path
@@ -236,9 +237,9 @@ def LifEcreate_fig(fiber_fit_beta,mean_rmse,model_rmse, vox_coords, dwidata, sub
             lax.set_xticks([])
             lax.set_yticks([])
         if outpathfig is not None:
-            histofig_path=(outpathfig+ subject+ '_spatial_errors.png')
+            histofig_path=(outpathfig+ subject+ strproperty + "spatial_errors.png")
             fig.savefig(histofig_path)
         if verbose:
-            txt="spatial errors figure saved at "+histofig_path
+            txt="spatial errors figure saved at " + histofig_path
             print(txt)
             send_mail(txt,subject="LifE save msg ")        

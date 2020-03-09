@@ -54,7 +54,7 @@ def make_tensorfit(data,mask,gtab,affine,subject,outpath,strproperty,verbose=Non
     #fa = tensor_fit.fa
     return outpathbmfa
 
-def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_processes,outpathsubject,saved_tracts="small",verbose=None,subject = 'NA'):
+def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_processes,outpathsubject,ratio,verbose=None,subject = 'NA'):
     # Compute odfs in Brain Mask
     t2 = time()
 
@@ -134,26 +134,41 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
     streamlines_generator = LocalTracking(csa_peaks, classifier,
                                           seeds, affine=np.eye(4), step_size=step_size)
 
-    sg = lambda: (s for s in streamlines_generator)
-    trkorigstreamlines = sg
-    tractsize=saved_tracts
+    if verbose:
+        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start saving the file!\r\n\r\n" % (useremail,useremail)
+        txt = 'About to save streamlines at ' + outpathsubject
+        send_mail(txt,subject="Seed computation" )
+
+    ratios=str(ratio)
+    sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
+    outpathtrk = outpathsubject + "_bmCSA_detr_ratio"+ ratios +"_stepsize_" + stringstep + ".trk"
+    save_trk_heavy_duty(outpathtrk, streamlines=sg,
+                affine=affine, header=trkheader,
+                shape=mask.shape, vox_size=vox_size)
+    txt="Tract files were saved at " + outpathtrk
+
+    # save everything - will generate a 20+ GBytes of data - hard to manipulate
+
+    # possibly add parameter in csv file or other to decide whether to save large tractogram file
+    # outpathfile=outpath+subject+"bmCSA_detr"+stringstep+".trk"
+    # myheader=create_tractogram_header(outpathfile,*get_reference_info(fdwi))
 
     doprune=True
     cutoff = 2
+    trkpath = outpathsubject
     if doprune:
-        trkprunefile = trkpath + '/' + subject + '_' + tractsize + '_' + stepsize + '_pruned.trk'
+        trkprunefile = trkpath + '/' + subject + '_ratio_' + ratios + '_stepsize_' + stepsize + '_pruned.trk'
         trkstreamlines = sg
         trkstreamlines=prune_streamlines(list(trkstreamlines), fdwi_data[:, :, :, 0], cutoff=cutoff, verbose=verbose)
         myheader = create_tractogram_header(trkprunefile, *header)
         prune_sl = lambda: (s for s in trkstreamlines)
         tract_save.save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
                                            affine=affine, header=myheader)
-
-    
+        trkfile = trkprunefile
 
     labelslist= [59, 1059, 62, 1062]
     labelmask=mask
-    roiname = "_hyptsept2_"
+    roiname = "_hyptsept_"
     strproperty = roiname
 
     if isempty(labelslist):
@@ -169,7 +184,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             roimask = roimask + (labelmask == label)
     
     if not isempty(labelslist):
-        trkroipath = trkpath + '/' + subject + '_' + tractsize + roiname + stepsize + '.trk'
+        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stepsize + '.trk'
         if not os.path.exists(trkroipath):
             affinetemp=np.eye(4)
             trkstreamlines = target(trkorigstreamlines, affinetemp, roimask, include=True, strict="longstring")
@@ -190,7 +205,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             trkstreamlines = trkdata.streamlines
 
         if ratio != 1:
-            trkroiminipath = trkpath + '/' + subject + '_' + tractsize + strproperty + "ratio_" + str(ratio) + '_' + stepsize + '.trk'
+            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stepsize + '.trk'
             if not os.path.exists(trkroiminipath):
                 ministream = []
                 for idx, stream in enumerate(trkstreamlines):
@@ -214,7 +229,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
 
     labelslist= [121, 1121]
     labelmask=mask
-    roiname = "_corpus_callosum2_"
+    roiname = "_corpus_callosum_"
     strproperty = roiname
 
     if isempty(labelslist):
@@ -224,18 +239,17 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             roimask = np.where(labelmask == 0, False, True)
     else:
         if labelmask is None:
-            raise ("File not found error: labels requested but labels file could not be found at "+dwipath+ " for subject " + subject)
+            raise ("File not found error: labels requested but labels file could not be found at " + dwipath+ " for subject " + subject)
         roimask = np.zeros(np.shape(labelmask),dtype=int)
         for label in labelslist:
             roimask = roimask + (labelmask == label)
     
     if not isempty(labelslist):
-        trkroipath = trkpath + '/' + subject + '_' + tractsize + roiname + stepsize + '.trk'
+        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stepsize + '.trk'
         if not os.path.exists(trkroipath):
             affinetemp=np.eye(4)
             trkstreamlines = target(trkorigstreamlines, affinetemp, roimask, include=True, strict="longstring")
             trkstreamlines = Streamlines(trkstreamlines)
-            trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + stepsize + '.trk'
             myheader = create_tractogram_header(trkroipath, *header)
             roi_sl = lambda: (s for s in trkstreamlines)
             if allsave:
@@ -251,7 +265,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             trkstreamlines = trkdata.streamlines
 
         if ratio != 1:
-            trkroiminipath = trkpath + '/' + subject + '_' + tractsize + strproperty + "ratio_" + str(ratio) + '_' + stepsize + '.trk'
+            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stepsize + '.trk'
             if not os.path.exists(trkroiminipath):
                 ministream = []
                 for idx, stream in enumerate(trkstreamlines):
@@ -274,7 +288,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
 
     labelslist= [19, 1019]
     labelmask=mask
-    roiname = "_primary_motor_cortex2_"
+    roiname = "_primary_motor_cortex_"
     strproperty = roiname
 
     if isempty(labelslist):
@@ -290,12 +304,11 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             roimask = roimask + (labelmask == label)
     
     if not isempty(labelslist):
-        trkroipath = trkpath + '/' + subject + '_' + tractsize + roiname + stepsize + '.trk'
+        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stepsize + '.trk'
         if not os.path.exists(trkroipath):
             affinetemp=np.eye(4)
             trkstreamlines = target(trkorigstreamlines, affinetemp, roimask, include=True, strict="longstring")
             trkstreamlines = Streamlines(trkstreamlines)
-            trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + stepsize + '.trk'
             myheader = create_tractogram_header(trkroipath, *header)
             roi_sl = lambda: (s for s in trkstreamlines)
             if allsave:
@@ -311,7 +324,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             trkstreamlines = trkdata.streamlines
 
         if ratio != 1:
-            trkroiminipath = trkpath + '/' + subject + '_' + tractsize + strproperty + "ratio_" + str(ratio) + '_' + stepsize + '.trk'
+            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stepsize + '.trk'
             if not os.path.exists(trkroiminipath):
                 ministream = []
                 for idx, stream in enumerate(trkstreamlines):
@@ -350,12 +363,11 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             roimask = roimask + (labelmask == label)
     
     if not isempty(labelslist):
-        trkroipath = trkpath + '/' + subject + '_' + tractsize + roiname + stepsize + '.trk'
+        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stepsize + '.trk'
         if not os.path.exists(trkroipath):
             affinetemp=np.eye(4)
             trkstreamlines = target(trkorigstreamlines, affinetemp, roimask, include=True, strict="longstring")
             trkstreamlines = Streamlines(trkstreamlines)
-            trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + stepsize + '.trk'
             myheader = create_tractogram_header(trkroipath, *header)
             roi_sl = lambda: (s for s in trkstreamlines)
             if allsave:
@@ -371,7 +383,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             trkstreamlines = trkdata.streamlines
 
         if ratio != 1:
-            trkroiminipath = trkpath + '/' + subject + '_' + tractsize + strproperty + "ratio_" + str(ratio) + '_' + stepsize + '.trk'
+            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stepsize + '.trk'
             if not os.path.exists(trkroiminipath):
                 ministream = []
                 for idx, stream in enumerate(trkstreamlines):

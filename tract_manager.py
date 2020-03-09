@@ -356,7 +356,7 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
         print('FA was not calculated')
         outpathbmfa=None
 
-def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",saved_tracts="small",save_fa="yes",
+def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",ratio=1,save_fa="yes",
                       labelslist = None, bvec_orient=[1,2,3], verbose=None):
 
     if verbose:
@@ -415,8 +415,8 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         print('FA was not calculated')
         outpathbmfa=None
 
-    allowed_strings=["small","large","all","both","none"]
-    string_inclusion(saved_tracts, allowed_strings, "saved_tracts")
+    #allowed_strings=["small","large","all","both","none"]
+    #string_inclusion(saved_tracts, allowed_strings, "saved_tracts")
     outpathsubject = outpath + subject + strproperty
 
     trkheader = create_tractogram_header("place.trk", *get_reference_info(fdwipath))
@@ -433,8 +433,7 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         #mailServer.sendmail(useremail,useremail,message) 
         #mailServer.quit()
 
-    outpathtrk = QCSA_tractmake(fdwi_data,affine,vox_size,gtab,mask,trkheader,step_size,peak_processes,outpathsubject,saved_tracts=saved_tracts,verbose=verbose,subject=subject)
-    
+    outpathtrk = QCSA_tractmake(fdwi_data,affine,vox_size,gtab,mask,trkheader,step_size,peak_processes,outpathsubject,ratio,verbose=verbose,subject=subject)
     return subject, outpathbmfa, outpathtrk
 
 def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, allsave=False, display=True, strproperty = "", ratio = 1, verbose=None):
@@ -524,7 +523,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     doprune=True
     cutoff = 2
     if doprune:
-        trkprunefile = trkpath + '/' + subject + '_' + tractsize + '_' + stepsize + '_pruned.trk'
+        trkprunefile = trkpath + '/' + subject + '_' + tractsize + '_stepsize_' + stepsize + '_pruned.trk'
         if not os.path.exists(trkprunefile):
 
             trkdata = load_trk(trkfile, 'same')
@@ -543,7 +542,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
         trkfile = trkprunefile
 
     if ratio != 1:
-        trkminipath = trkpath + '/' + subject + '_' + tractsize + '_brain_ratio_' + str(ratio) + '_' + stepsize + '.trk'
+        trkminipath = trkpath + '/' + subject + '_' + tractsize + '_brain_ratio_' + str(ratio) + '_stepsize_' + stepsize + '.trk'
         if not os.path.exists(trkminipath):
             #if os.path.exists(headerpath) and os.path.exists(streamlinespath):
             #    trkorigstreamlines=pickle.load(open(streamlinespath, "rb"))
@@ -575,7 +574,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
             trkstreamlines = trkdata.streamlines
 
     if not isempty(labelslist):
-        trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + stepsize + '.trk'
+        trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + "_stepsize_" + stepsize + '.trk'
         if not os.path.exists(trkroipath):
             if not 'trkorigstreamlines' in locals():
                 trkdata = load_trk(trkfile, 'same')
@@ -606,7 +605,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
             trkstreamlines = trkdata.streamlines
 
         if ratio != 1:
-            trkroiminipath = trkpath + '/' + subject + '_' + tractsize + strproperty + "ratio_" + str(ratio) + '_' + stepsize + '.trk'
+            trkroiminipath = trkpath + '/' + subject + '_' + tractsize + strproperty + "ratio_" + str(ratio) + '_stepsize_' + stepsize + '.trk'
             if not os.path.exists(trkroiminipath):
                 ministream = []
                 for idx, stream in enumerate(trkstreamlines):
@@ -704,7 +703,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     #% memit fiber_fit = fiber_model.fit(data, trk_streamlines[2 ** 12], affine=np.eye(4))
     display = False
     duration=time()
-    strproperty = tractsize + strproperty + "ratio_" + str(ratio) + "_" +stepsize
+    strproperty = tractsize + strproperty + "ratio_" + str(ratio) + "_stepsize_" +stepsize
     model_error, mean_error = LiFEvaluation(fdwi_data, trkstreamlines, gtab, subject=subject, header=header,
                                             roimask=roimask, affine=affine,display=display, outpathpickle=outpathpickle,
                                             outpathtrk=outpathtrk, processes=processes, outpathfig=outpathfig,
