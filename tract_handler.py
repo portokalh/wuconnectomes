@@ -9,9 +9,16 @@ Small tools for sorting through tracts
 
 import numpy as np
 from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
-from dipy.tracking.utils import unique_rows
+#from dipy.tracking.utils import unique_rows
 from time import time
 from functools import wraps
+import pandas as pd
+from BIAC_tools import isempty
+from dipy.tracking.streamline import Streamlines
+from dipy.io.utils import create_tractogram_header
+from tract_save import save_trk_heavy_duty
+from dipy.io.streamline import load_trk
+import os
 
 def longstring(string,margin=0):
 
@@ -161,3 +168,86 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
     for idx in reversed(delstream):
         streamline.pop(idx)
     return streamline
+
+def save_roisubset(streamlines, roislist, roisexcel, labelmask, stringstep, ratios, trkpath, subject, affine, header):
+    
+    #atlas_legends = BIGGUS_DISKUS + "/atlases/CHASSSYMM3AtlasLegends.xlsx"
+    
+    df = pd.read_excel(roisexcel, sheet_name='Sheet1')
+    df['Structure'] = df['Structure'].str.lower()    
+    
+    for rois in roislist:
+        if len(rois)==1:
+            roiname = "_" + rois[0] + "_"
+        elif len(rois)>1:
+            roiname="_"
+            for roi in rois:
+                roiname = roiname + roi[0:4]
+            roiname = roiname + "_"    
+            
+        labelslist=[]#fimbria
+
+        for roi in rois:
+            rslt_df = df.loc[df['Structure'] == roi.lower()]
+            if roi.lower() == "wholebrain" or roi.lower() == "brain":
+                labelslist=None
+            else:
+                labelslist=np.concatenate((labelslist,np.array(rslt_df.index2)))
+
+        if isempty(labelslist) and roi.lower() != "wholebrain" and roi.lower() != "brain":
+            txt = "Warning: Unrecognized roi, will take whole brain as ROI. The roi specified was: " + roi
+            print(txt)
+
+#bvec_orient=[-2,1,3]    
+    
+        if isempty(labelslist):
+            roimask = np.where(labelmask == 0, False, True)
+        else:
+            if labelmask is None:
+                raise ("Bad label data, could not define ROI for streams")
+            roimask = np.zeros(np.shape(labelmask),dtype=int)
+            for label in labelslist:
+                roimask = roimask + (labelmask == label)
+        
+        if not isempty(labelslist):
+            trkroipath = trkpath + '/' + subject + roiname + "_stepsize_" + stringstep + '.trk'
+            if not os.path.exists(trkroipath):
+                affinetemp=np.eye(4)
+                trkstreamlines = target(streamlines, affinetemp, roimask, include=True, strict="longstring")
+                trkstreamlines = Streamlines(trkstreamlines)
+                myheader = create_tractogram_header(trkroipath, *header)
+                roi_sl = lambda: (s for s in trkstreamlines)
+                save_trk_heavy_duty(trkroipath, streamlines=roi_sl,
+                            affine=affine, header=myheader)
+            else:
+                trkdata = load_trk(trkroipath, 'same')
+                trkdata.to_vox()
+                if hasattr(trkdata, 'space_attribute'):
+                    header = trkdata.space_attribute
+                elif hasattr(trkdata, 'space_attributes'):
+                    header = trkdata.space_attributes
+                trkstreamlines = trkdata.streamlines
+                
+        for ratio in ratios:
+            if ratio != 1:
+                trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stringstep + '.trk'
+                if not os.path.exists(trkroiminipath):
+                    ministream = []
+                    for idx, stream in enumerate(trkstreamlines):
+                        if (idx % ratio) == 0:
+                            ministream.append(stream)
+                    trkstreamlines = ministream
+                    myheader = create_tractogram_header(trkminipath, *header)
+                    ratioed_roi_sl_gen = lambda: (s for s in trkstreamlines)
+                    if allsave:
+                        tract_save.save_trk_heavy_duty(trkroiminipath, streamlines=ratioed_roi_sl_gen,
+                                            affine=affine, header=myheader)
+                else:
+                    trkdata = load_trk(trkminipath, 'same')
+                    trkdata.to_vox()
+                    if hasattr(trkdata, 'space_attribute'):
+                        header = trkdata.space_attribute
+                    elif hasattr(trkdata, 'space_attributes'):
+                        header = trkdata.space_attributes
+                    trkstreamlines = trkdata.streamlines
+

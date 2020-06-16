@@ -312,16 +312,16 @@ def genpca_parallel(arr, sigma=None, mask=None, patch_radius=2, pca_method='eig'
         #resultslist[0][3]
         #Xest, this_theta, this_var, numlist = resultslist
 
-        for j in range(len(jlist)):
-            jx1 = resultslist[j][3]
+        for jj in range(len(jlist)):
+            jx1 = resultslist[jj][3]
             jx2 = jx1 + 2 * patch_radius + 1
             for ix1 in range(arr_shape[0] - 2 * patch_radius):
                 ix2 = ix1 + 2 * patch_radius + 1
-                theta[ix1:ix2, jx1:jx2, kx1:kx2] += resultslist[j][1][ix1]
-                thetax[ix1:ix2, jx1:jx2, kx1:kx2] += resultslist[j][0][ix1] * resultslist[j][1][ix1]
+                theta[ix1:ix2, jx1:jx2, kx1:kx2] += resultslist[jj][1][ix1]
+                thetax[ix1:ix2, jx1:jx2, kx1:kx2] += resultslist[jj][0][ix1] * resultslist[jj][1][ix1]
                 if calc_sigma:
-                    var[ix1:ix2, jx1:jx2, kx1:kx2] += resultslist[j][2][ix1] * resultslist[j][1][ix1]
-                    thetavar[ix1:ix2, jx1:jx2, kx1:kx2] += resultslist[j][1][ix1]
+                    var[ix1:ix2, jx1:jx2, kx1:kx2] += resultslist[jj][2][ix1] * resultslist[jj][1][ix1]
+                    thetavar[ix1:ix2, jx1:jx2, kx1:kx2] += resultslist[jj][1][ix1]
                 else:
                     var = 0
                     thetavar = 0
@@ -490,18 +490,18 @@ def genpca(arr, sigma=None, mask=None, patch_radius=2, pca_method='eig',
     duration1=time()
     if verbose:
         print("Start of mpca process")
-    for k in range(patch_radius, arr.shape[2] - patch_radius):
-        for j in range(patch_radius, arr.shape[1] - patch_radius):
-            for i in range(patch_radius, arr.shape[0] - patch_radius):
+    for kk in range(patch_radius, arr.shape[2] - patch_radius):
+        for jj in range(patch_radius, arr.shape[1] - patch_radius):
+            for ii in range(patch_radius, arr.shape[0] - patch_radius):
                 # Shorthand for indexing variables:
-                if not mask[i, j, k]:
+                if not mask[ii, jj, kk]:
                     continue
-                ix1 = i - patch_radius
-                ix2 = i + patch_radius + 1
-                jx1 = j - patch_radius
-                jx2 = j + patch_radius + 1
-                kx1 = k - patch_radius
-                kx2 = k + patch_radius + 1
+                ix1 = ii - patch_radius
+                ix2 = ii + patch_radius + 1
+                jx1 = jj - patch_radius
+                jx2 = jj + patch_radius + 1
+                kx1 = kk - patch_radius
+                kx2 = kk + patch_radius + 1
 
                 X = arr[ix1:ix2, jx1:jx2, kx1:kx2].reshape(
                                 patch_size ** 3, dim)

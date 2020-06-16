@@ -7,7 +7,7 @@ Created on Wed Feb 19 15:39:41 2020
 """
 
 import numpy as np
-
+import os
 from time import time
 from dipy.io.image import save_nifti
 from dipy.reconst.shm import CsaOdfModel
@@ -19,11 +19,14 @@ from dipy.direction import peaks
 from dipy.tracking import utils
 from BIAC_tools import send_mail
 from tract_save import save_trk_heavy_duty
+from dipy.io.utils import create_tractogram_header
 
 #from dipy.denoise.localpca import mppca
 #import dipy.tracking.life as life
 
 from tract_handler import target, prune_streamlines
+import nibabel as nib
+from dipy.tracking.streamline import Streamlines
 
 def make_tensorfit(data,mask,gtab,affine,subject,outpath,strproperty,verbose=None):
 
@@ -54,7 +57,63 @@ def make_tensorfit(data,mask,gtab,affine,subject,outpath,strproperty,verbose=Non
     #fa = tensor_fit.fa
     return outpathbmfa
 
-def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_processes,outpathsubject,ratio,verbose=None,subject = 'NA'):
+
+def save_roisubset(streamlines_generator, roislist, roisexcel, labelmask, stringstep, ratios, trkpath, subject, affine, header):
+    trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + "_stepsize_" + stepsize + '.trk'
+    trkdata = streamlines_generator
+    if not os.path.exists(trkroipath):
+        if not 'trkorigstreamlines' in locals():
+            trkdata = load_trk(trkfile, 'same')
+            trkdata.to_vox()
+            if hasattr(trkdata, 'space_attribute'):
+                header = trkdata.space_attribute
+            elif hasattr(trkdata, 'space_attributes'):
+                header = trkdata.space_attributes
+            trkorigstreamlines = trkdata.streamlines
+
+        affinetemp = np.eye(4)
+        trkstreamlines = target(trkorigstreamlines, affinetemp, roimask, include=True, strict="longstring")
+        del (trkorigstreamlines)
+        trkstreamlines = Streamlines(trkstreamlines)
+        trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + stepsize + '.trk'
+        myheader = create_tractogram_header(trkroipath, *header)
+        roi_sl = lambda: (s for s in trkstreamlines)
+        if allsave:
+            tract_save.save_trk_heavy_duty(trkroipath, streamlines=roi_sl,
+                                           affine=affine, header=myheader)
+    else:
+        trkdata = load_trk(trkroipath, 'same')
+        trkdata.to_vox()
+        if hasattr(trkdata, 'space_attribute'):
+            header = trkdata.space_attribute
+        elif hasattr(trkdata, 'space_attributes'):
+            header = trkdata.space_attributes
+        trkstreamlines = trkdata.streamlines
+
+    if ratio != 1:
+        trkroiminipath = trkpath + '/' + subject + '_' + tractsize + strproperty + "ratio_" + str(
+            ratio) + '_stepsize_' + stepsize + '.trk'
+        if not os.path.exists(trkroiminipath):
+            ministream = []
+            for idx, stream in enumerate(trkstreamlines):
+                if (idx % ratio) == 0:
+                    ministream.append(stream)
+            trkstreamlines = ministream
+            myheader = create_tractogram_header(trkminipath, *header)
+            ratioed_roi_sl_gen = lambda: (s for s in trkstreamlines)
+            if allsave:
+                tract_save.save_trk_heavy_duty(trkroiminipath, streamlines=ratioed_roi_sl_gen,
+                                               affine=affine, header=myheader)
+        else:
+            trkdata = load_trk(trkminipath, 'same')
+            trkdata.to_vox()
+            if hasattr(trkdata, 'space_attribute'):
+                header = trkdata.space_attribute
+            elif hasattr(trkdata, 'space_attributes'):
+                header = trkdata.space_attributes
+            trkstreamlines = trkdata.streamlines
+
+def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processes,outpathsubject,saved_streamlines,verbose=None,subject = 'NA'):
     # Compute odfs in Brain Mask
     t2 = time()
 
@@ -73,6 +132,10 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
         #mailServer.sendmail(useremail,useremail,message) 
         #mailServer.quit() 
     wholemask = np.where(mask == 0, False, True)
+    print(outpathsubject)
+    print(subject)
+    parallel=False
+    nbr_processes=1
     csa_peaks = peaks_from_model(model=csa_model,
                                  data=data,
                                  sphere=peaks.default_sphere,  # issue with complete sphere
@@ -82,19 +145,18 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
                                  parallel=parallel,
                                  nbr_processes=peak_processes)
 
-    duration2 = time() - t2
+    duration = time() - t2
     if verbose:
-        print(duration2) \
-
-    if verbose:
-        print(subject + ' CSA duration %.3f' % (duration2,))
+        print(subject + ' CSA duration %.3f' % (duration,))
 
     t3 = time()
 
     from dipy.tracking.stopping_criterion import BinaryStoppingCriterion
 
     if verbose:
-        send_mail('Computing classifier for local tracking for subject ' + subject,subject="Seed computation" )
+        send_mail('Computing classifier for local tracking for subject ' + subject +
+                  ',it has been ' + str(round(duration)) + 'seconds since the start of tractmaker',subject="Seed computation" )
+
         print('Computing classifier for local tracking for subject ' + subject)
         #headers="From: %s\r\nTo: %s\r\nSubject:Seed computation\r\n\r\n" % (useremail,useremail)
         #text="""About to start binary stopping criterion, duration of CSA was %.2f""" % (duration2)  
@@ -120,7 +182,9 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
     ##streamlines_generator = local_tracking.local_tracker(csa_peaks,classifier,seeds,affine=np.eye(4),step_size=.5)
     if verbose:
         print('Computing the local tracking')
-        send_mail('Start of the local tracking ', subject="Seed computation")
+        duration = time() - t2
+        send_mail('Start of the local tracking ' + ',it has been ' + str(round(duration)) +
+                  'seconds since the start of tractmaker', subject="Seed computation")
         #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start the local tracking!\r\n\r\n" % (useremail,useremail)
         #text="""Seeds have been computed, about to start the local tracking"""
         #message=headers+text 
@@ -130,22 +194,10 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
 
     stringstep = str(step_size)
     stringstep = stringstep.replace(".", "_")
+    print("stringstep is "+stringstep)
     # stringstep=""
     streamlines_generator = LocalTracking(csa_peaks, classifier,
                                           seeds, affine=np.eye(4), step_size=step_size)
-
-    if verbose:
-        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start saving the file!\r\n\r\n" % (useremail,useremail)
-        txt = 'About to save streamlines at ' + outpathsubject
-        send_mail(txt,subject="Seed computation" )
-
-    ratios=str(ratio)
-    sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-    outpathtrk = outpathsubject + "_bmCSA_detr_ratio"+ ratios +"_stepsize_" + stringstep + ".trk"
-    save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                affine=affine, header=trkheader,
-                shape=mask.shape, vox_size=vox_size)
-    txt="Tract files were saved at " + outpathtrk
 
     # save everything - will generate a 20+ GBytes of data - hard to manipulate
 
@@ -153,24 +205,65 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
     # outpathfile=outpath+subject+"bmCSA_detr"+stringstep+".trk"
     # myheader=create_tractogram_header(outpathfile,*get_reference_info(fdwi))
 
+    if saved_streamlines == "all":
+        ratio = 1
+    if saved_streamlines == "small":
+        ratio = 100
+
+    sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
+    outpathtrk = outpathsubject + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
+
+    if verbose:
+        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start saving the file!\r\n\r\n" % (useremail,useremail)
+        duration = time() - t2
+        txt = 'About to save streamlines at ' + outpathtrk + ',it has been ' + str(round(duration)) + \
+              'seconds since the start of tractmaker',
+        send_mail(txt,subject="Tract saving" )
+
+    myheader = create_tractogram_header(outpathtrk, *header)
+    save_trk_heavy_duty(outpathtrk, streamlines=sg,
+                        affine=affine, header=myheader,
+                        shape=mask.shape, vox_size=vox_size)
+    if verbose:
+        duration = time() - t2
+        txt = "Tract files were saved at "+outpathtrk + ',it has been ' + str(round(duration)) + \
+              'seconds since the start of tractmaker'
+        print(txt)
+        send_mail(txt,subject="Tract saving" )
+
+    """"
     doprune=True
     cutoff = 2
-    trkpath = outpathsubject
     if doprune:
-        trkprunefile = trkpath + '/' + subject + '_ratio_' + ratios + '_stepsize_' + stepsize + '_pruned.trk'
-        trkstreamlines = sg
-        trkstreamlines=prune_streamlines(list(trkstreamlines), fdwi_data[:, :, :, 0], cutoff=cutoff, verbose=verbose)
-        myheader = create_tractogram_header(trkprunefile, *header)
-        prune_sl = lambda: (s for s in trkstreamlines)
-        tract_save.save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
-                                           affine=affine, header=myheader)
-        trkfile = trkprunefile
+        trkprunefile = trkpath + '/' + subject + '_stepsize_' + stringstep + '_pruned.trk'
+        if not os.path.exists(trkprunefile):
+            trkstreamlines = Streamlines(streamlines_generator)
+            trkstreamlines=prune_streamlines(list(trkstreamlines), data[:, :, :, 0], cutoff=cutoff, verbose=verbose)
+            myheader = create_tractogram_header(trkprunefile, *header)
+            prune_sl = lambda: (s for s in trkstreamlines)
+            save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
+                                               affine=affine, header=myheader)
+        else:
+            from dipy.io.streamline import load_trk
+            trkdata = load_trk(trkprunefile, 'same')
+            trkdata.to_vox()
+            if hasattr(trkdata, 'space_attribute'):
+                header = trkdata.space_attribute
+            elif hasattr(trkdata, 'space_attributes'):
+                header = trkdata.space_attributes
+    
+    """
 
     labelslist= [59, 1059, 62, 1062]
     labelmask=mask
     roiname = "_hyptsept_"
     strproperty = roiname
-
+    
+    ratios = [1]
+    roislist = [['fimbria'], ['corpus_callosum'], ['hypothalamus', 'septum'], ['primary_motor_cortex']]
+    print("reached this spot")
+    #save_roisubset(streamlines_generator, roislist, roisexcel, labelmask, stringstep, ratios, trkpath, subject, affine, header)
+    """
     if isempty(labelslist):
         if labelmask is None:
             roimask = (fdwi_data[:, :, :, 0] > 0)
@@ -184,12 +277,11 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             roimask = roimask + (labelmask == label)
     
     if not isempty(labelslist):
-        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stepsize + '.trk'
+        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stringstep + '.trk'
         if not os.path.exists(trkroipath):
             affinetemp=np.eye(4)
             trkstreamlines = target(trkorigstreamlines, affinetemp, roimask, include=True, strict="longstring")
             trkstreamlines = Streamlines(trkstreamlines)
-            trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + stepsize + '.trk'
             myheader = create_tractogram_header(trkroipath, *header)
             roi_sl = lambda: (s for s in trkstreamlines)
             if allsave:
@@ -205,7 +297,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             trkstreamlines = trkdata.streamlines
 
         if ratio != 1:
-            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stepsize + '.trk'
+            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stringstep + '.trk'
             if not os.path.exists(trkroiminipath):
                 ministream = []
                 for idx, stream in enumerate(trkstreamlines):
@@ -245,7 +337,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             roimask = roimask + (labelmask == label)
     
     if not isempty(labelslist):
-        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stepsize + '.trk'
+        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stringstep + '.trk'
         if not os.path.exists(trkroipath):
             affinetemp=np.eye(4)
             trkstreamlines = target(trkorigstreamlines, affinetemp, roimask, include=True, strict="longstring")
@@ -265,7 +357,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             trkstreamlines = trkdata.streamlines
 
         if ratio != 1:
-            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stepsize + '.trk'
+            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stringstep + '.trk'
             if not os.path.exists(trkroiminipath):
                 ministream = []
                 for idx, stream in enumerate(trkstreamlines):
@@ -304,7 +396,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             roimask = roimask + (labelmask == label)
     
     if not isempty(labelslist):
-        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stepsize + '.trk'
+        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stringstep + '.trk'
         if not os.path.exists(trkroipath):
             affinetemp=np.eye(4)
             trkstreamlines = target(trkorigstreamlines, affinetemp, roimask, include=True, strict="longstring")
@@ -324,7 +416,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             trkstreamlines = trkdata.streamlines
 
         if ratio != 1:
-            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stepsize + '.trk'
+            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stringstep + '.trk'
             if not os.path.exists(trkroiminipath):
                 ministream = []
                 for idx, stream in enumerate(trkstreamlines):
@@ -363,7 +455,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             roimask = roimask + (labelmask == label)
     
     if not isempty(labelslist):
-        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stepsize + '.trk'
+        trkroipath = trkpath + '/' + subject + "_" + roiname + "_stepsize_" + stringstep + '.trk'
         if not os.path.exists(trkroipath):
             affinetemp=np.eye(4)
             trkstreamlines = target(trkorigstreamlines, affinetemp, roimask, include=True, strict="longstring")
@@ -383,7 +475,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
             trkstreamlines = trkdata.streamlines
 
         if ratio != 1:
-            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stepsize + '.trk'
+            trkroiminipath = trkpath + '/' + subject + '_ratio_' + ratios + roiname + "_stepsize_" + stringstep + '.trk'
             if not os.path.exists(trkroiminipath):
                 ministream = []
                 for idx, stream in enumerate(trkstreamlines):
@@ -410,38 +502,13 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,trkheader,step_size,peak_proce
 
     # save a smaller part by only keeping one in 10 streamlines
     """
-    if verbose:
-        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start saving the file!\r\n\r\n" % (useremail,useremail)
-        txt = 'About to save streamlines at ' + outpathsubject
-        send_mail(txt,subject="Seed computation" )
 
-    if saved_tracts == "small" or saved_tracts == "both":
-        sg_small = lambda: (s for i, s in enumerate(streamlines_generator) if i % 10 == 0)
-        outpathtrk = outpathsubject + "_bmCSA_detr_small_" + stringstep + ".trk"
-        save_trk_heavy_duty(outpathtrk, streamlines=sg_small,
-                            affine=affine, header=trkheader,
-                            shape=mask.shape, vox_size=vox_size)
-        txt="Tract files were saved at " + outpathtrk
-
-    else:
-        outpathtrk = None
-    if saved_tracts == "large" or saved_tracts == "both" or saved_tracts == "all":
-        sg = lambda: (s for s in streamlines_generator)
-        outpathtrk = outpathsubject + "bmCSA_detr_all_" + stringstep + ".trk"
-        save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                            affine=affine, header=trkheader,
-                            shape=mask.shape, vox_size=vox_size)
-        if verbose:
-            print("Tract files were saved at "+outpathtrk)
-    if saved_tracts == "none" or saved_tracts is None:
-        print("Tract files were not saved")
 
     # save everything - will generate a 20+ GBytes of data - hard to manipulate
 
     # possibly add parameter in csv file or other to decide whether to save large tractogram file
     # outpathfile=outpath+subject+"bmCSA_detr"+stringstep+".trk"
     # myheader=create_tractogram_header(outpathfile,*get_reference_info(fdwi))
-   """
     duration3 = time() - t2
     if verbose:
         print(duration3)

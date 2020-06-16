@@ -122,6 +122,8 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
         fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
     elif os.path.exists(mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'):
         fdwipath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
+    elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
+        fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
     #fdwi_data, affine, vox_size = load_nifti(fdwipath, return_voxsize=True)
 
     if verbose:
@@ -129,11 +131,18 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
         print(txt)
         send_mail(txt,subject="Begin data extraction")
 
+    if 'fdwipath' not in locals():
+        txt = "The subject " + subject + " was not detected, exit"
+        print(txt)
+        send_mail(txt,subject="Error")
+        return(0,0,0,0,0,0,0,0)
+
     img = nib.load(fdwipath)
     fdwi_data = img.get_data()
     vox_size = img.header.get_zooms()[:3]
     affine = img.affine
     hdr = img.header
+    header = get_reference_info(fdwipath)
     del(img)
 
     #ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
@@ -163,6 +172,7 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
     fbvals = glob.glob(mypath + '*' + subject + '*_bval*.txt')[0]
     fbvecs = glob.glob(mypath + '*' + subject + '*_bvec*.txt')[0]
     fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
+    print(fbvecs)
     bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
 
     #bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]  # FOR RAS according to Alex
@@ -182,7 +192,7 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
     bm = np.where(labels == 0, False, True)
     mask = bm
     
-    return fdwi_data,affine,gtab,labels,vox_size, fdwipath, hdr
+    return fdwi_data,affine,gtab,labels,vox_size, fdwipath, hdr, header
 
 
 def almicedf_fix(df, verbose=None):
@@ -320,7 +330,7 @@ def denoise_pick(data,affine,hdr,outpath,mask,type_denoise='macenko', processes 
 def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savefa="yes",processes=1, labelslist=None, strproperty="", verbose = False):
 
     bvec_orient=[1,2,3]
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, hdr = getdwidata(dwipath, subject, bvec_orient, verbose)
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, header, hdr, _ = getdwidata(dwipath, subject, bvec_orient, verbose)
     #fdwi_data, affine, vox_size = load_nifti(fdwi, return_voxsize=True) (mypath, subject, bvec_orient=[1,2,3], verbose=None)
 
     #labels = glob.glob(mypath + '/' + subject + '*labels*nii.gz') #ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
@@ -356,39 +366,21 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
         print('FA was not calculated')
         outpathbmfa=None
 
-def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",ratio=1,save_fa="yes",
+def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",saved_streamlines="all",save_fa="yes",
                       labelslist = None, bvec_orient=[1,2,3], verbose=None):
 
     if verbose:
         print('Running the ' + subject + ' file')
 
-    """
-    fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
-    fdwi = mypath + '/nii4D_' + subject + '.nii'
-    fdwi_data, affine, vox_size = load_nifti(fdwi, return_voxsize=True)
+    outpathsubject = outpath + subject + strproperty
+    outpath_subject = outpathsubject + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
+    if os.path.isfile(outpath_subject):
+        print("subject " + subject + " already done")
+        return
 
-    ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
-    ffalabels = mypath + '/mask.nii.gz'
-    labels, affine_labels = load_nifti(ffalabels)
-
-    fbvals = mypath + '4Dnii/' + subject + '_RAS_ecc_bvals.txt'
-    fbvecs = mypath + '4Dnii/' + subject + '_RAS_ecc_bvecs.txt'
-    fbvals = mypath + '/' + subject + '_bvals.txt'
-    fbvecs = mypath + '/' + subject + '_bvec.txt'
-    fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
-    bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
-
-    bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]]
-
-    gtab = gradient_table(bvals, bvecs)
-
-    # Build Brain Mask
-    bm = np.where(labels == 0, False, True)
-    mask = bm
-    """
-
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _ = getdwidata(dwipath, subject, bvec_orient)
-
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata(dwipath, subject, bvec_orient)
+    if np.mean(fdwi_data) == 0:
+        return
     """
     if isempty(labelslist):
         mask = np.where(labelmask == 0, False, True)
@@ -419,7 +411,7 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
     #string_inclusion(saved_tracts, allowed_strings, "saved_tracts")
     outpathsubject = outpath + subject + strproperty
 
-    trkheader = create_tractogram_header("place.trk", *get_reference_info(fdwipath))
+    #trkheader = create_tractogram_header("place.trk", *get_reference_info(fdwipath))
     #if multishell_split: #possible idea to creatr tracts from either one bval or another before doing it on all
     print(verbose)
     if verbose:
@@ -433,10 +425,92 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         #mailServer.sendmail(useremail,useremail,message) 
         #mailServer.quit()
 
-    outpathtrk = QCSA_tractmake(fdwi_data,affine,vox_size,gtab,mask,trkheader,step_size,peak_processes,outpathsubject,ratio,verbose=verbose,subject=subject)
+
+    outpathtrk = QCSA_tractmake(fdwi_data,affine,vox_size,gtab,mask,header,step_size,peak_processes,outpathsubject,saved_streamlines,verbose=verbose,subject=subject)
     return subject, outpathbmfa, outpathtrk
 
-def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, allsave=False, display=True, strproperty = "", ratio = 1, verbose=None):
+
+def evaluate_coherence(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, allsave=False, display=True, strproperty = "", ratio = 1, verbose=None):
+
+    _, affine, gtab, labelmask, vox_size, fdwipath, _, _ = getdwidata(dwipath, subject)
+
+    if isempty(labelslist):
+        if labelmask is None:
+            roimask = (fdwi_data[:, :, :, 0] > 0)
+        else:
+            roimask = np.where(labelmask == 0, False, True)
+    else:
+        if labelmask is None:
+            raise ("File not found error: labels requested but labels file could not be found at "+dwipath+ " for subject " + subject)
+        roimask = np.zeros(np.shape(labelmask),dtype=int)
+        for label in labelslist:
+            roimask = roimask + (labelmask == label)
+            
+    if roimask.dtype == "bool":
+        roimask = roimask.astype(int)
+    """     
+    if outpathpickle is None:
+        outpathpickle=outpathtrk
+    if outpathfig is None:
+        outpathfig=outpathtrk
+    #picklepath="/mnt/BIAC/munin3.dhe.duke.edu/Badea/Lab/mouse/C57_JS/Figures/N57433_roi.p"
+    print(outpathpickle)
+    print(subject)
+    #outpathpickle=outpathpickle+"/"+subject
+    #pickle.dump(roimask, open(outpicklepath+"_roimask.p", "wb"))
+    #roimask = labels > 1
+
+    #Changing the outpathfig to include the subject prefix so I dont carry that particular value around needlessly
+    """
+    trkpaths = glob.glob(trkpath + '/' + subject + '_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
+    trkfile = trkpaths[0]
+    outpathtrk = trkpath + '/'    
+    
+    outpathfig = outpathfig+'/'
+    print("Beginning Tract Evaluation of " + subject)
+    stepsize = strfile(stepsize)
+    doprune = True
+    """
+    if doprune:
+        trkprunefile = trkpath + '/' + subject + '_' + tractsize + '_stepsize_' + stepsize + '_pruned.trk'
+        if not os.path.exists(trkprunefile):
+
+            trkdata = load_trk(trkfile, 'same')
+            trkdata.to_vox()
+            if hasattr(trkdata, 'space_attribute'):
+                header = trkdata.space_attribute
+            elif hasattr(trkdata, 'space_attributes'):
+                header = trkdata.space_attributes
+            trkstreamlines = trkdata.streamlines
+            trkstreamlines=prune_streamlines(list(trkstreamlines), fdwi_data[:, :, :, 0], cutoff=cutoff, verbose=verbose)
+            myheader = create_tractogram_header(trkprunefile, *header)
+            prune_sl = lambda: (s for s in trkstreamlines)
+            tract_save.save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
+                                           affine=affine, header=myheader)
+    """
+
+    trkdata = load_trk(trkfile, "same")
+    trkdata.to_vox()
+    trkstreamlines = trkdata.streamlines
+
+    if verbose:
+        txt="Beginning the evaluation of subject " + subject + "\n We will evaluate for one in " + str(ratio) \
+            + " streamlines"
+        print(txt)
+        send_mail(txt,subject="LifE start msg ")
+
+    kpath = (outpathpickle+"/Enhancekernel.p")
+
+    from dipy.denoise.enhancement_kernel import EnhancementKernel
+    D33 = 1.0
+    D44 = 0.02
+    t = 1
+    k = EnhancementKernel(D33, D44, t)
+
+    k = bundle_coherence(trkstreamlines,affine, k, t1_data=None,interactive=False)
+
+    
+def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, allsave=False, display=True, strproperty = "", verbose=None):
 
     """
     fdwi = dwipath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
@@ -457,8 +531,14 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     gtab = gradient_table(bvals, bvecs)
 
     """
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _ = getdwidata(dwipath, subject)
-    
+    if tractsize=="small":
+        ratio=100
+    elif tractsize=="all":
+        ratio=1
+    elif tractsize=="tiny":
+        ratio=1000
+
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata(dwipath, subject)
     if isempty(labelslist):
         if labelmask is None:
             roimask = (fdwi_data[:, :, :, 0] > 0)
@@ -491,22 +571,6 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     print("Beginning Tract Evaluation of " + subject)
     stepsize = strfile(stepsize)
 
-
-    """
-    trkpaths = glob.glob(trkpath+'/'+subject+'*'+tractsize+'*'+stepsize+'_orig.trk')
-    trkfile = trkpaths[0]
-    outpathtrk = trkpath+'/'
-    if len(trkpaths) > 1:
-        print("Warning, multiple files detected, only applying pipeline on " + trkfile)
-    trkdata = load_trk(trkfile, 'same')
-    trkdata.to_vox()
-    if hasattr(trkdata, 'space_attribute'):
-        header = trkdata.space_attribute
-    elif hasattr(trkdata, 'space_attributes'):
-        header = trkdata.space_attributes
-    trkstreamlines = trkdata.streamlines
-    """
-
     if verbose:
         txt="Beginning the evaluation of subject " + subject + "\n We will evaluate for one in " + str(ratio) \
             + " streamlines"
@@ -516,9 +580,6 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     trkpaths = glob.glob(trkpath + '/' + subject + '*_' + tractsize + '_*' + stepsize + '.trk')
     trkfile = trkpaths[0]
     outpathtrk = trkpath + '/'
-
-    streamlinespath = "/Users/alex/jacques/trkstreamN54333.p"
-    headerpath = "/Users/alex/jacques/headertrk.p"
 
     doprune=True
     cutoff = 2

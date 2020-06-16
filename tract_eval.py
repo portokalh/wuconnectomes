@@ -11,7 +11,7 @@ Created on Wed Feb 19 15:17:04 2020
 import numpy as np
 import pickle
 
-from dipy.io.utils import (create_tractogram_header)
+from dipy.io.utils import create_tractogram_header
 # We must import this explicitly, it is not imported by the top-level
 # multiprocessing module.
 from dipy.tracking import utils
@@ -30,15 +30,9 @@ from dipy.tracking.fbcmeasures import FBCMeasures
 from dipy.viz import window, actor
 
 
-def bundle_coherence(streamlines,affine,t1_data=None,interactive=False):
+def bundle_coherence(streamlines, affine, k, t1_data=None,interactive=False):
 
     # Compute lookup table
-    from dipy.denoise.enhancement_kernel import EnhancementKernel
-
-    D33 = 1.0
-    D44 = 0.02
-    t = 1
-    k = EnhancementKernel(D33, D44, t)
 
     # Apply FBC measures
     from dipy.tracking.fbcmeasures import FBCMeasures
@@ -88,6 +82,8 @@ def bundle_coherence(streamlines,affine,t1_data=None,interactive=False):
     window.record(ren, n_frames=1, out_path='OR_after.png', size=(900, 900))
     if interactive:
         window.show(ren)
+
+    return k
 
 def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=None, roimask=None, affine=None,
                   display = True, outpathpickle = None, outpathtrk = None, processes = 1,
@@ -271,7 +267,7 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=Non
             import matplotlib.pyplot as myplot
             fig, ax = plt.subplots(1)
             ax.hist(fiber_fit.beta, bins=100, histtype='step')
-            LifEcreate_fig(fiber_fit.beta, mean_rmse, model_rmse, fiber_fit.vox_coords, dwidata, subject, t1_data = dwidata[:,:,:,0], outpathfig=outpathfig, interactive=False, verbose=verbose)
+            LifEcreate_fig(fiber_fit.beta, mean_rmse, model_rmse, fiber_fit.vox_coords, dwidata, subject, t1_data = dwidata[:,:,:,0], outpathfig=outpathfig, interactive=False, strproperty=strproperty, verbose=verbose)
         except:
             print("Coult not launch life create fig, possibly qsub location (this is a template warning, to be improved upon")
     return model_error, mean_error

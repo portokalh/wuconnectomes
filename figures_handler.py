@@ -135,7 +135,7 @@ def window_show_test(bundles, mask_roi, anat, interactive= True, outpath=None):
     if interactive:
         window.show(ren)
 
-def LifEcreate_fig(fiber_fit_beta,mean_rmse,model_rmse, vox_coords, dwidata, subject, t1_data=None, outpathfig=None, strproperty="_", interactive=False, verbose=False):
+def LifEcreate_fig(fiber_fit_beta,mean_rmse,model_rmse, vox_coords, dwidata, subject, t1_data=None, outpathfig=None, interactive=False, strproperty="_", verbose=False):
 
     #fiber_fit_beta_path = glob.glob(pickles_folder + '/*beta.p')[0]
     #mean_rmse_path = glob.glob(pickles_folder + '/*mean_rmse.p')[0]
