@@ -21,6 +21,8 @@ import matplotlib
 #import dipy.tracking.life as life
 from dipy.viz import colormap as cmap
 from BIAC_tools import send_mail
+from dipy.reconst.shore import ShoreModel
+
 
 def denoise_fig(data,denoised_arr,type='macenko',savefigpath='none'):
     """ Sets up figure that shows differences between two data arrays
@@ -66,6 +68,61 @@ def denoise_fig(data,denoised_arr,type='macenko',savefigpath='none'):
             pass
         else:
             fig1.savefig(savefigpath)
+
+
+def shore_scalarmaps(data, gtab, outpath_fig, verbose = None):
+
+    #bvecs[1:] = (bvecs[1:] /
+    #             np.sqrt(np.sum(bvecs[1:] * bvecs[1:], axis=1))[:, None])
+    #gtab = gradient_table(bvals, bvecs)
+    if verbose:
+        print('data.shape (%d, %d, %d, %d)' % data.shape)
+    asm = ShoreModel(gtab)
+    #Let’s just use only one slice only from the data.
+
+    dataslice = data[30:70, 20:80, data.shape[2] // 2]
+    #Fit the signal with the model and calculate the SHORE coefficients.
+
+    asmfit = asm.fit(dataslice)
+    #Calculate the analytical RTOP on the signal that corresponds to the integral of the signal.
+    if verbose:
+        print('Calculating... rtop_signal')
+    rtop_signal = asmfit.rtop_signal()
+    #Now we calculate the analytical RTOP on the propagator, that corresponds to its central value.
+
+    if verbose:
+        print('Calculating... rtop_pdf')
+    rtop_pdf = asmfit.rtop_pdf()
+    #In theory, these two measures must be equal, to show that we calculate the mean square error on this two measures.
+
+    mse = np.sum((rtop_signal - rtop_pdf) ** 2) / rtop_signal.size
+    if verbose:
+        print("MSE = %f" % mse)
+    MSE = 0.000000
+
+    #Let’s calculate the analytical mean square displacement on the propagator.
+    if verbose:
+        print('Calculating... msd')
+    msd = asmfit.msd()
+    #Show the maps and save them to a file.
+
+    fig = plt.figure(figsize=(6, 6))
+    ax1 = fig.add_subplot(2, 2, 1, title='rtop_signal')
+    ax1.set_axis_off()
+    ind = ax1.imshow(rtop_signal.T, interpolation='nearest', origin='lower')
+    plt.colorbar(ind)
+    ax2 = fig.add_subplot(2, 2, 2, title='rtop_pdf')
+    ax2.set_axis_off()
+    ind = ax2.imshow(rtop_pdf.T, interpolation='nearest', origin='lower')
+    plt.colorbar(ind)
+    ax3 = fig.add_subplot(2, 2, 3, title='msd')
+    ax3.set_axis_off()
+    ind = ax3.imshow(msd.T, interpolation='nearest', origin='lower', vmin=0)
+    plt.colorbar(ind)
+    print("about to save")
+    plt.savefig(outpath_fig)
+    print("save done")
+
 
 def show_bundles(bundles, colors=None, show=True, fname=None,fa = False, str_tube = False, size=(900,900)):
     """ Displays bundles
@@ -154,7 +211,7 @@ def LifEcreate_fig(fiber_fit_beta,mean_rmse,model_rmse, vox_coords, dwidata, sub
     if interactive:
         plt.show()
     if outpathfig is not None:
-        histofig_path = (outpathfig + subject + strproperty + "beta_histogram.png")
+        histofig_path = (outpathfig + subject + strproperty + "_beta_histogram.png")
         fig.savefig(histofig_path)
         if verbose:
             txt="file saved at "+histofig_path
@@ -185,7 +242,7 @@ def LifEcreate_fig(fiber_fit_beta,mean_rmse,model_rmse, vox_coords, dwidata, sub
     if interactive:
         plt.show()
     if outpathfig is not None:
-        errorhistofig_path=(outpathfig + subject + strproperty + "error_histograms.png")
+        errorhistofig_path=(outpathfig + subject + strproperty + "_error_histograms.png")
         fig.savefig(errorhistofig_path)
         if verbose:
             txt="file saved at "+errorhistofig_path
@@ -237,7 +294,7 @@ def LifEcreate_fig(fiber_fit_beta,mean_rmse,model_rmse, vox_coords, dwidata, sub
             lax.set_xticks([])
             lax.set_yticks([])
         if outpathfig is not None:
-            histofig_path=(outpathfig+ subject+ strproperty + "spatial_errors.png")
+            histofig_path=(outpathfig+ subject+ strproperty + "_spatial_errors.png")
             fig.savefig(histofig_path)
         if verbose:
             txt="spatial errors figure saved at " + histofig_path

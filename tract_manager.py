@@ -74,7 +74,7 @@ import dipy.core.optimize as opt
 from functools import wraps
 
 from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
-from figures_handler import denoise_fig, show_bundles, window_show_test
+from figures_handler import denoise_fig, show_bundles, window_show_test, shore_scalarmaps
 from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
 from BIAC_tools import send_mail, isempty, getsize
@@ -127,7 +127,7 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
     #fdwi_data, affine, vox_size = load_nifti(fdwipath, return_voxsize=True)
 
     if verbose:
-        txt="Extracting information from the dwi file located at "+ fdwipath
+        txt = "Extracting information from the dwi file located at " + fdwipath
         print(txt)
         send_mail(txt,subject="Begin data extraction")
 
@@ -169,9 +169,13 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
     #fbvecs = mypath + '4Dnii/' + subject + '_RAS_ecc_bvecs.txt'
     #fbvals = glob.glob(mypath + '*/*' + subject + '*_bval*.txt')[0]
     #fbvecs = glob.glob(mypath + '*/*' + subject + '*_bvec*.txt')[0]
-    fbvals = glob.glob(mypath + '*' + subject + '*_bval*.txt')[0]
-    fbvecs = glob.glob(mypath + '*' + subject + '*_bvec*.txt')[0]
-    fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
+    try:
+        fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
+        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
+    except IndexError:
+        fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
+        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec.txt')[0]
+        fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
     print(fbvecs)
     bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
 
@@ -280,6 +284,16 @@ def testsnr():
                   gtab.bvecs[direction], "is :", SNR)
 
 
+def analysis_diffusion_figures(dwipath,outpath,subject, bvec_orient=[1,2,3], verbose=None):
+
+    if verbose:
+        print('Running the ' + subject + ' file')
+
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata(dwipath, subject, bvec_orient)
+    outpath_fig = outpath + subject + "SHORE_maps.png"
+    shore_scalarmaps(fdwi_data, gtab, outpath_fig, verbose = verbose)
+
+
 def denoise_pick(data,affine,hdr,outpath,mask,type_denoise='macenko', processes = 1, savedenoise= True, verbose=False, display=None):
 
     allowed_strings=['mpca','yes','all','gibbs','none', 'macenko']
@@ -367,16 +381,13 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
         outpathbmfa=None
 
 def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",saved_streamlines="all",save_fa="yes",
-                      labelslist = None, bvec_orient=[1,2,3], verbose=None):
+                      labelslist = None, bvec_orient=[1,2,3], overwrite="no", verbose=None):
 
     if verbose:
         print('Running the ' + subject + ' file')
 
     outpathsubject = outpath + subject + strproperty
     outpath_subject = outpathsubject + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
-    if os.path.isfile(outpath_subject):
-        print("subject " + subject + " already done")
-        return
 
     fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata(dwipath, subject, bvec_orient)
     if np.mean(fdwi_data) == 0:
@@ -401,8 +412,9 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
     #testsnr => not yet fully implemented
 
 
-    if save_fa == "yes" or save_fa == "y" or save_fa == 1 or save_fa is True or save_fa == "all":
-        outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,outpath=outpath,strproperty=strproperty,verbose=verbose)
+    if save_fa == "yes" or save_fa == "y" or save_fa == 1 or save_fa is True or save_fa == "all" or save_fa == "only":
+        outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=dwipath,strproperty=strproperty,verbose=verbose)
+
     else:
         print('FA was not calculated')
         outpathbmfa=None
@@ -425,8 +437,14 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         #mailServer.sendmail(useremail,useremail,message) 
         #mailServer.quit()
 
+    if os.path.isfile(outpath_subject) and overwrite == "no":
+        print("subject " + subject + " already done")
+        return
 
-    outpathtrk = QCSA_tractmake(fdwi_data,affine,vox_size,gtab,mask,header,step_size,peak_processes,outpathsubject,saved_streamlines,verbose=verbose,subject=subject)
+    if save_fa != "only":
+        outpathtrk = QCSA_tractmake(fdwi_data,affine,vox_size,gtab,mask,header,step_size,peak_processes,outpathsubject,saved_streamlines,verbose=verbose,subject=subject)
+    else:
+        return
     return subject, outpathbmfa, outpathtrk
 
 

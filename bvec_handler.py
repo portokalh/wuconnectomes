@@ -180,13 +180,15 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2):
 
     base, ext = splitext(fbvals)
     fbvals = base + '_fix' + ext
-    np.savetxt(fbvals, bvals)
+    if not os.path.isfile(fbvals):
+        np.savetxt(fbvals, bvals)
 #    with open(fbvals, 'w') as f:
 #        f.write(str(bvals))
 #    os.remove(fbvec)
     base, ext = splitext(fbvecs)
     fbvecs = base + '_fix' + ext
-    np.savetxt(fbvecs, bvecs)
+    if not os.path.isfile(fbvecs):
+        np.savetxt(fbvecs, bvecs)
 #    with open(fbvecs, 'w') as f:
 #        f.write(str(bvec))
 
