@@ -51,6 +51,7 @@ import multiprocessing
 import multiprocessing.pool
 
 
+from dipy.reconst import shm
 
 from scipy.ndimage.morphology import binary_dilation
 from dipy.tracking import utils
@@ -149,8 +150,10 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
 
     if os.path.exists(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz'):
         labels, affine_labels = load_nifti(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz')
-    elif os.path.exists(mypath+'/'+subject+'_chass_symmetric2_labels_RAS.nii.gz'):
-        labels, affine_labels = load_nifti(mypath+'/'+subject+'_chass_symmetric2_labels_RAS.nii.gz')
+    elif os.path.exists(mypath+'/'+subject+'_chass_symmetric3_labels_RAS.nii.gz'):
+        labels, affine_labels = load_nifti(mypath+'/'+subject+'_chass_symmetric3_labels_RAS.nii.gz')
+    elif os.path.exists(mypath+'/'+subject+'_chass_symmetric3_labels_RAS_combined.nii.gz'):
+        labels, affine_labels = load_nifti(mypath+'/'+subject+'_chass_symmetric3_labels_RAS_combined.nii.gz')
     elif os.path.exists(mypath + '/fa_labels_warp_' + subject +'_RAS.nii.gz'):
         labels, affine_labels = load_nifti(mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz')
     elif os.path.exists(mypath + '/labels/fa_labels_warp_' + subject +'_RAS.nii.gz'):
@@ -193,8 +196,8 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
     gtab = gradient_table(bvals, bvecs)
 
     # Build Brain Mask
-    bm = np.where(labels == 0, False, True)
-    mask = bm
+    #bm = np.where(labels == 0, False, True)
+    #mask = bm
     
     return fdwi_data,affine,gtab,labels,vox_size, fdwipath, hdr, header
 
@@ -292,6 +295,356 @@ def analysis_diffusion_figures(dwipath,outpath,subject, bvec_orient=[1,2,3], ver
     fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata(dwipath, subject, bvec_orient)
     outpath_fig = outpath + subject + "SHORE_maps.png"
     shore_scalarmaps(fdwi_data, gtab, outpath_fig, verbose = verbose)
+
+
+def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetrois, labelslist, bvec_orient=[1,2,3], verbose=None):
+
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, header, hdr = getdwidata(dwipath, subject, bvec_orient, verbose)
+    #from dipy.data import read_stanford_labels, read_stanford_t1
+    #hardi_img, gtab_hardi, labels_hardi = read_stanford_labels()
+    #data = hardi_img.get_data()
+    #labels = labels_img.get_data()
+
+    #t1 = read_stanford_t1()
+    #t1_data = t1.get_data()
+
+    import numpy as np
+    whitemask = np.zeros(np.shape(labelmask),dtype=int)
+    for label in whitematter_labels:
+        whitemask = whitemask + (labelmask == label)
+
+    roimask = np.zeros(np.shape(labelmask),dtype=int)
+    for label in labelslist:
+        roimask = roimask + (labelmask == label)
+
+    white_matter = binary_dilation(whitemask)
+    csamodel = shm.CsaOdfModel(gtab, 6)
+    csapeaks = peaks.peaks_from_model(model=csamodel,
+                                      data=fdwi_data,
+                                      sphere=peaks.default_sphere,
+                                      relative_peak_threshold=.8,
+                                      min_separation_angle=45,
+                                      mask=white_matter)
+    affine = np.eye(4)
+    seeds = utils.seeds_from_mask(white_matter, affine, density=1)
+    stopping_criterion = BinaryStoppingCriterion(white_matter)
+
+    streamline_generator = LocalTracking(csapeaks, stopping_criterion, seeds,
+                                         affine=affine, step_size=0.5)
+    streamlines = Streamlines(streamline_generator)
+
+    cc_slice = roimask == 1
+    #cc_slice = roilabels
+    cc_streamlines = utils.target(streamlines, affine, cc_slice)
+    cc_streamlines = Streamlines(cc_streamlines)
+
+    other_streamlines = utils.target(streamlines, affine, cc_slice,
+                                     include=False)
+    other_streamlines = Streamlines(other_streamlines)
+    assert len(other_streamlines) + len(cc_streamlines) == len(streamlines)
+
+    from dipy.viz import window, actor, colormap as cmap
+
+    # Enables/disables interactive visualization
+    interactive = False
+
+    # Make display objects
+    color = cmap.line_colors(cc_streamlines)
+    cc_streamlines_actor = actor.line(cc_streamlines,
+                                      cmap.line_colors(cc_streamlines))
+    cc_ROI_actor = actor.contour_from_roi(cc_slice, color=(1., 1., 0.),
+                                          opacity=0.5)
+
+    #vol_actor = actor.slicer(t1_data)
+    vol_actor = actor.slicer(fdwi_data[:,:,:,0])
+
+
+    vol_actor.display(x=40)
+    vol_actor2 = vol_actor.copy()
+    vol_actor2.display(z=35)
+
+    # Add display objects to canvas
+    r = window.Renderer()
+    r.add(vol_actor)
+    r.add(vol_actor2)
+    r.add(cc_streamlines_actor)
+    r.add(cc_ROI_actor)
+
+    # Save figures
+    targetrois = targetrois[0]
+    window.record(r, n_frames=1, out_path=outpath + subject + targetrois + '_axial.png',
+                  size=(800, 800))
+    if interactive:
+        window.show(r)
+    r.set_camera(position=[-1, 0, 0], focal_point=[0, 0, 0], view_up=[0, 0, 1])
+    window.record(r, n_frames=1, out_path=outpath + subject + targetrois + '_sagittal.png',
+                  size=(800, 800))
+    if interactive:
+        window.show(r)
+
+    atlas_legends = "/Users/alex/jacques/atlases/CHASSSYMM3AtlasLegends.xlsx"
+
+    M, grouping = utils.connectivity_matrix(cc_streamlines, affine, labelmask,
+                                            return_mapping=True,
+                                            mapping_as_streamlines=True)
+    M2, grouping2 = utils.connectivity_matrix(cc_streamlines, affine, labelmask,
+                                            return_mapping=True,
+                                            mapping_as_streamlines=True)
+
+    M[:3, :] = 0
+    M[:, :3] = 0
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    plt.imshow(np.log1p(M), interpolation='nearest')
+    plt.savefig(outpath + subject + "connectivity.png")
+
+    lr_superiorfrontal_track = grouping[11, 54]
+    shape = labelmask.shape
+    dm = utils.density_map(lr_superiorfrontal_track, affine, shape)
+
+    import nibabel as nib
+    from dipy.io.stateful_tractogram import Space, StatefulTractogram
+    from dipy.io.streamline import save_trk
+
+    # Save density map
+    dm_img = nib.Nifti1Image(dm.astype("int16"), affine)
+    dm_img.to_filename(outpath + subject + "lr-superiorfrontal-dm.nii.gz")
+
+    lr_sf_trk = Streamlines(lr_superiorfrontal_track)
+
+    # Save streamlines
+    sft = StatefulTractogram(lr_sf_trk, dm_img, Space.VOX)
+    save_trk(sft, outpath + subject + "lr-superiorfrontal.trk")
+
+def gettrkdata(trkpath, subject, tractsize, strproperty, stepsize):
+    trkpaths = glob.glob(trkpath + '/' + subject + '_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
+    trkfile = trkpaths[0]
+    return trkfile
+
+def getfa(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
+
+    # fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
+    if os.path.exists(mypath + '/' + subject + '_fa_RAS.nii.gz'):
+        fapath = mypath + '/' + subject + '_fa_RAS.nii.gz'
+    # fdwi_data, affine, vox_size = load_nifti(fdwipath, return_voxsize=True)
+
+    if verbose:
+        txt = "Extracting information from the fa file located at " + mypath
+        print(txt)
+        send_mail(txt, subject="Begin data extraction")
+
+    if 'fapath' not in locals():
+        txt = "The subject " + subject + " was not detected, exit"
+        print(txt)
+        send_mail(txt, subject="Error")
+        return (0, 0, 0, 0, 0, 0, 0, 0)
+
+    img = nib.load(fapath)
+    fa_data = img.get_data()
+    vox_size = img.header.get_zooms()[:3]
+    affine = img.affine
+    hdr = img.header
+    header = get_reference_info(fapath)
+    del (img)
+
+    try:
+        fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
+        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
+    except IndexError:
+        fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
+        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec.txt')[0]
+        fbvals, fbvecs = fix_bvals_bvecs(fbvals, fbvecs)
+    print(fbvecs)
+    bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
+
+    # bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]  # FOR RAS according to Alex
+    # bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]] #FOR RAS
+
+    # bvecs = np.c_[bvecs[:, -], bvecs[:, 0], -bvecs[:, 2]] #estimated for RAS based on headfile info
+    bvec_sign = bvec_orient / np.abs(bvec_orient)
+    bvecs = np.c_[bvec_sign[0] * bvecs[:, np.abs(bvec_orient[0]) - 1], bvec_sign[1] * bvecs[:, np.abs(bvec_orient[1]) - 1],
+        bvec_sign[2] * bvecs[:, np.abs(bvec_orient[2]) - 1]]
+
+    # bvecs = np.c_[bvecs[:, 1], bvecs[:, 0], -bvecs[:, 2]]
+    # bvecs = np.c_[-bvecs[:, 1], bvecs[:, 0], bvecs[:, 2]]
+
+    gtab = gradient_table(bvals, bvecs)
+
+    # Build Brain Mask
+    # bm = np.where(labels == 0, False, True)
+    # mask = bm
+
+    return fa_data, affine, gtab, vox_size, hdr, header
+
+
+def getlabelmask(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
+
+    # ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
+
+    if os.path.exists(mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'):
+        labels, affine_labels = load_nifti(mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz')
+    elif os.path.exists(mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'):
+        labels, affine_labels = load_nifti(mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz')
+    elif os.path.exists(mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz'):
+        labels, affine_labels = load_nifti(mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz')
+    elif os.path.exists(mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz'):
+        labels, affine_labels = load_nifti(mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz')
+    elif os.path.exists(mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz'):
+        labels, affine_labels = load_nifti(mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz')
+    elif os.path.exists(mypath + '/mask.nii.gz'):
+        labels, affine_labels = load_nifti(mypath + '/mask.nii.gz')
+    elif os.path.exists(mypath + '/mask.nii'):
+        labels, affine_labels = load_nifti(mypath + '/mask.nii')
+    else:
+        print('mask not found, taking all non null values in nii file instead (not recommended for complex operations)')
+        labels = np.ones(fdwi_data.shape[0:3])
+        affine_labels = affine
+
+    # Build Brain Mask
+    # bm = np.where(labels == 0, False, True)
+    # mask = bm
+
+    return labels, affine_labels
+
+
+def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize, outpath, subject, whitematter_labels, targetrois, labelslist, bvec_orient=[1,2,3], verbose=None):
+
+    trkfile = gettrkdata(trkpath, subject, tractsize, "_", stepsize)
+    fa_data, _, gtab, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
+    labelmask, _ = getlabelmask(dwipath, subject, bvec_orient, verbose)
+    #from dipy.data import read_stanford_labels, read_stanford_t1
+    #hardi_img, gtab_hardi, labels_hardi = read_stanford_labels()
+    #data = hardi_img.get_data()
+    #labels = labels_img.get_data()
+
+    #t1 = read_stanford_t1()
+    #t1_data = t1.get_data()
+
+    import numpy as np
+    whitemask = np.zeros(np.shape(labelmask),dtype=int)
+    for label in whitematter_labels:
+        whitemask = whitemask + (labelmask == label)
+
+    roimask = np.zeros(np.shape(labelmask),dtype=int)
+    for label in labelslist:
+        roimask = roimask + (labelmask == label)
+
+    """
+    white_matter = binary_dilation(whitemask)
+    
+    csamodel = shm.CsaOdfModel(gtab, 6)
+    csapeaks = peaks.peaks_from_model(model=csamodel,
+                                      data=fdwi_data,
+                                      sphere=peaks.default_sphere,
+                                      relative_peak_threshold=.8,
+                                      min_separation_angle=45,
+                                      mask=white_matter)
+    affine = np.eye(4)
+    seeds = utils.seeds_from_mask(white_matter, affine, density=1)
+    stopping_criterion = BinaryStoppingCriterion(white_matter)
+
+    streamline_generator = LocalTracking(csapeaks, stopping_criterion, seeds,
+                                         affine=affine, step_size=0.5)
+    streamlines = Streamlines(streamline_generator)
+    """
+
+    trkdata = load_trk(trkfile, "same")
+    affine = trkdata._affine
+    trkdata.to_vox()
+    trkstreamlines = trkdata.streamlines
+
+    #whitem_slice = whitemask == 1
+    #white_streamlines = utils.target(trkstreamlines, affine, whitem_slice)
+    #white_streamlines = Streamlines(white_streamlines)
+
+    cc_slice = roimask == 1
+    #cc_slice = roilabels
+    affine_streams = np.eye(4)
+    cc_streamlines = utils.target(trkstreamlines, affine_streams, cc_slice)
+    cc_streamlines = Streamlines(cc_streamlines)
+
+    other_streamlines = utils.target(trkstreamlines, affine_streams, cc_slice,
+                                     include=False)
+    other_streamlines = Streamlines(other_streamlines)
+    assert len(other_streamlines) + len(cc_streamlines) == len(trkstreamlines)
+
+    from dipy.viz import window, actor, colormap as cmap
+
+    # Enables/disables interactive visualization
+    interactive = False
+
+    # Make display objects
+    color = cmap.line_colors(cc_streamlines)
+    cc_streamlines_actor = actor.line(cc_streamlines,
+                                      cmap.line_colors(cc_streamlines))
+    cc_ROI_actor = actor.contour_from_roi(cc_slice, color=(1., 1., 0.),
+                                          opacity=0.5)
+
+    #vol_actor = actor.slicer(t1_data)
+    vol_actor = actor.slicer(fa_data)
+
+    vol_actor.display(x=40)
+    vol_actor2 = vol_actor.copy()
+    vol_actor2.display(z=35)
+
+    # Add display objects to canvas
+    r = window.Renderer()
+    r.add(vol_actor)
+    r.add(vol_actor2)
+    r.add(cc_streamlines_actor)
+    r.add(cc_ROI_actor)
+
+    # Save figures
+    targetrois = targetrois[0]
+    window.record(r, n_frames=1, out_path=outpath + subject + targetrois + '_axial.png',
+                  size=(800, 800))
+    if interactive:
+        window.show(r)
+    r.set_camera(position=[-1, 0, 0], focal_point=[0, 0, 0], view_up=[0, 0, 1])
+    window.record(r, n_frames=1, out_path=outpath + subject + targetrois + '_sagittal.png',
+                  size=(800, 800))
+    if interactive:
+        window.show(r)
+
+    atlas_legends = "/Users/alex/jacques/atlases/CHASSSYMM3AtlasLegends.xlsx"
+
+    M, grouping = utils.connectivity_matrix(cc_streamlines, affine_streams, labelmask,
+                                            return_mapping=True,
+                                            mapping_as_streamlines=True)
+
+    picklepath_connect = outpath + subject + '_connectomes.p'
+    picklepath_grouping = outpath + subject + '_grouping.p'
+    pickle.dump(M, open(picklepath_connect,"wb"))
+    pickle.dump(grouping, open(picklepath_grouping,"wb"))
+
+    M[:3, :] = 0
+    M[:, :3] = 0
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    plt.imshow(np.log1p(M), interpolation='nearest')
+    plt.savefig(outpath + subject + "connectivity.png")
+
+    lr_superiorfrontal_track = grouping[11, 54]
+    shape = labelmask.shape
+    dm = utils.density_map(lr_superiorfrontal_track, affine_streams, shape)
+
+    import nibabel as nib
+    from dipy.io.stateful_tractogram import Space, StatefulTractogram
+    from dipy.io.streamline import save_trk
+
+    # Save density map
+    dm_img = nib.Nifti1Image(dm.astype("int16"), affine_streams)
+    dm_img.to_filename(outpath + subject + "lr-superiorfrontal-dm.nii.gz")
+
+    lr_sf_trk = Streamlines(lr_superiorfrontal_track)
+
+    # Save streamlines
+    sft = StatefulTractogram(lr_sf_trk, dm_img, Space.VOX)
+    save_trk(sft, outpath + subject + "lr-superiorfrontal.trk")
+
+
 
 
 def denoise_pick(data,affine,hdr,outpath,mask,type_denoise='macenko', processes = 1, savedenoise= True, verbose=False, display=None):
@@ -549,11 +902,11 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     gtab = gradient_table(bvals, bvecs)
 
     """
-    if tractsize=="small":
+    if tractsize == "small":
         ratio=100
-    elif tractsize=="all":
+    elif tractsize == "all":
         ratio=1
-    elif tractsize=="tiny":
+    elif tractsize == "tiny":
         ratio=1000
 
     fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata(dwipath, subject)
