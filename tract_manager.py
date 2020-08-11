@@ -18,8 +18,8 @@ from dipy.io.streamline import load_trk
 from os.path import splitext
 from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
 import pickle
-
-import smtplib 
+import pandas as pd
+import smtplib
 
 import os, re, sys, io, struct, socket, datetime
 from email.mime.text import MIMEText
@@ -507,8 +507,33 @@ def getlabelmask(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
 
     return labels, affine_labels
 
+def connectomes_to_excel(connectome,ROI_excel,output_path):
 
-def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize, outpath, subject, whitematter_labels, targetrois, labelslist, bvec_orient=[1,2,3], verbose=None):
+    import xlsxwriter
+
+    df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
+    structure = df['Structure']
+
+    workbook = xlsxwriter.Workbook(output_path)
+    worksheet = workbook.add_worksheet()
+
+    num = 1
+    for struct in structure:
+        worksheet.write(0, num, struct)
+        worksheet.write(num, 0, struct)
+        num += 1
+
+    row=0
+    for col, data in enumerate(connectome):
+        worksheet.write_column(row+1, col+1, data)
+
+    workbook.close()
+
+    return
+
+
+
+def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize, outpath, subject, whitematter_labels, targetrois, labelslist, ROI_excel, bvec_orient=[1,2,3], verbose=None):
 
     trkfile = gettrkdata(trkpath, subject, tractsize, "_", stepsize)
     fa_data, _, gtab, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
@@ -530,6 +555,7 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
     for label in labelslist:
         roimask = roimask + (labelmask == label)
 
+
     """
     white_matter = binary_dilation(whitemask)
     
@@ -549,18 +575,65 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
     streamlines = Streamlines(streamline_generator)
     """
 
+    """
     trkdata = load_trk(trkfile, "same")
     affine = trkdata._affine
     trkdata.to_vox()
     trkstreamlines = trkdata.streamlines
 
+    fullstreamlines = Streamlines(trkstreamlines)
+    """
+
+    trkprunepath = trkpath + '/' + subject + '_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '_pruned.trk'
+    #trkpaths = glob.glob(trkpath + '/' + subject + '_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
+
+    prunesave = True
+    if not os.path.isfile(trkprunepath):
+
+        trkdata = load_trk(trkfile, "same")
+        affine = trkdata._affine
+        trkdata.to_vox()
+        trkstreamlines = trkdata.streamlines
+
+        cutoff=4
+        pruned_streamlines = prune_streamlines(list(trkstreamlines), fa_data, cutoff=cutoff, verbose=verbose)
+        pruned_streamlines_SL = Streamlines(pruned_streamlines)
+        header = trkdata.space_attribute
+        myheader = create_tractogram_header(trkprunepath, *header)
+        prune_sl = lambda: (s for s in pruned_streamlines)
+        if prunesave:
+            tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
+    else:
+        trkprunedata = load_trk(trkprunepath, "same")
+        trkprunedata.to_vox()
+        pruned_streamlines_SL = trkprunedata.streamlines
+
+    affine_streams = np.eye(4)
+    """
+    #cc_slice = roimask == 1
+    #cc_slice = roilabels
+    #cc_streamlines = utils.target(trkstreamlines, affine_streams, cc_slice)
+    #cc_streamlines = Streamlines(cc_streamlines)
+    """
+
+    M, grouping = utils.connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask,
+                                            return_mapping=True,
+                                            mapping_as_streamlines=True)
+
+    picklepath_connect = outpath + subject + "_" + tractsize + '_connectomes.p'
+    picklepath_grouping = outpath + subject + tractsize + '_grouping.p'
+    pickle.dump(M, open(picklepath_connect,"wb"))
+    pickle.dump(grouping, open(picklepath_grouping,"wb"))
+
+    excel_path = outpath + subject + "_" + tractsize + "_connectomes.xlsx"
+    connectomes_to_excel(M, ROI_excel, excel_path)
+
     #whitem_slice = whitemask == 1
     #white_streamlines = utils.target(trkstreamlines, affine, whitem_slice)
     #white_streamlines = Streamlines(white_streamlines)
-
+    """
     cc_slice = roimask == 1
     #cc_slice = roilabels
-    affine_streams = np.eye(4)
     cc_streamlines = utils.target(trkstreamlines, affine_streams, cc_slice)
     cc_streamlines = Streamlines(cc_streamlines)
 
@@ -613,8 +686,8 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
                                             return_mapping=True,
                                             mapping_as_streamlines=True)
 
-    picklepath_connect = outpath + subject + '_connectomes.p'
-    picklepath_grouping = outpath + subject + '_grouping.p'
+    picklepath_connect = outpath + subject + "_" + tractsize + '_connectomes.p'
+    picklepath_grouping = outpath + subject + tractsize + '_grouping.p'
     pickle.dump(M, open(picklepath_connect,"wb"))
     pickle.dump(grouping, open(picklepath_grouping,"wb"))
 
@@ -643,6 +716,7 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
     # Save streamlines
     sft = StatefulTractogram(lr_sf_trk, dm_img, Space.VOX)
     save_trk(sft, outpath + subject + "lr-superiorfrontal.trk")
+    """
 
 
 
