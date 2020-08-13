@@ -588,7 +588,8 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
     #trkpaths = glob.glob(trkpath + '/' + subject + '_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
 
     prunesave = True
-    if not os.path.isfile(trkprunepath):
+    pruneforcestart = True
+    if not os.path.isfile(trkprunepath) or pruneforcestart:
 
         trkdata = load_trk(trkfile, "same")
         affine = trkdata._affine
@@ -596,7 +597,7 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
         trkstreamlines = trkdata.streamlines
 
         cutoff=4
-        pruned_streamlines = prune_streamlines(list(trkstreamlines), fa_data, cutoff=cutoff, verbose=verbose)
+        pruned_streamlines = prune_streamlines(list(trkstreamlines), labelmask, cutoff=cutoff, verbose=verbose)
         pruned_streamlines_SL = Streamlines(pruned_streamlines)
         header = trkdata.space_attribute
         myheader = create_tractogram_header(trkprunepath, *header)
@@ -620,12 +621,16 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
                                             return_mapping=True,
                                             mapping_as_streamlines=True)
 
-    picklepath_connect = outpath + subject + "_" + tractsize + '_connectomes.p'
+    print("The nunmber of tracts associated with the label 0 for subject " + subject+" is " + str(np.sum(M[0,:])))
+    M = np.delete(M, 0, 0)
+    M = np.delete(M, 0, 1)
+
+    picklepath_connect = outpath + subject + "_" + tractsize + '_connectomes_v2.p'
     picklepath_grouping = outpath + subject + tractsize + '_grouping.p'
     pickle.dump(M, open(picklepath_connect,"wb"))
     pickle.dump(grouping, open(picklepath_grouping,"wb"))
 
-    excel_path = outpath + subject + "_" + tractsize + "_connectomes.xlsx"
+    excel_path = outpath + subject + "_" + tractsize + "_connectomes_v2.xlsx"
     connectomes_to_excel(M, ROI_excel, excel_path)
 
     #whitem_slice = whitemask == 1
