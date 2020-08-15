@@ -418,24 +418,36 @@ def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetro
     save_trk(sft, outpath + subject + "lr-superiorfrontal.trk")
 
 def gettrkdata(trkpath, subject, tractsize, strproperty, stepsize):
-    trkpaths = glob.glob(trkpath + '/' + subject + '_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
-    trkfile = trkpaths[0]
+    filepath=(trkpath + '/' + subject + '_wholebrain_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
+    trkpaths = glob.glob(filepath)
+    if trkpaths:
+    	trkfile = trkpaths[0]
+    else:
+        print("Could not find "+filepath)
     return trkfile
 
 def getfa(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
 
     # fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
-    if os.path.exists(mypath + '/' + subject + '_fa_RAS.nii.gz'):
+    fapath = mypath + '/' + subject + '_fa_RAS.nii.gz'
+    if os.path.exists(fapath):
         fapath = mypath + '/' + subject + '_fa_RAS.nii.gz'
     # fdwi_data, affine, vox_size = load_nifti(fdwipath, return_voxsize=True)
 
+    if os.path.exists(mypath + '/' + subject + '_fa_RAS.nii.gz'):
+        fapath = (mypath + '/' + subject + '_fa_RAS.nii.gz')
+    elif os.path.exists(mypath+'/'+'bmfa' + subject+'_wholebrain_.nii.gz'):
+        fapath = (mypath+'/'+'bmfa' + subject+'_wholebrain_.nii.gz')
+    else:
+        print("Could not find at either "+ (mypath + '/' + subject + '_fa_RAS.nii.gz') + " or " + (mypath+'/'+'bmfa' + subject+'_wholebrain.nii.gz'))
+
     if verbose:
-        txt = "Extracting information from the fa file located at " + mypath
+        txt = "Extracting information from the fa file located at " + fapath
         print(txt)
         send_mail(txt, subject="Begin data extraction")
 
     if 'fapath' not in locals():
-        txt = "The subject " + subject + " was not detected, exit"
+        txt = "The fa of subject " + subject + " was not detected at " + fapath + ", exit"
         print(txt)
         send_mail(txt, subject="Error")
         return (0, 0, 0, 0, 0, 0, 0, 0)
@@ -592,6 +604,7 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
     if not os.path.isfile(trkprunepath) or pruneforcestart:
 
         trkdata = load_trk(trkfile, "same")
+        print(trkfile)
         affine = trkdata._affine
         trkdata.to_vox()
         trkstreamlines = trkdata.streamlines
