@@ -612,8 +612,10 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
         cutoff=4
         pruned_streamlines = prune_streamlines(list(trkstreamlines), labelmask, cutoff=cutoff, verbose=verbose)
         pruned_streamlines_SL = Streamlines(pruned_streamlines)
-        header = trkdata.space_attribute
-        myheader = create_tractogram_header(trkprunepath, *header)
+        if hasattr(trkdata,'space_attribute'):
+            header = trkdata.space_attribute
+        elif hasattr(trkdata,'space_attributes'):
+            header = trkdata.space_attributes        myheader = create_tractogram_header(trkprunepath, *header)
         prune_sl = lambda: (s for s in pruned_streamlines)
         if prunesave:
             tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
@@ -641,7 +643,7 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
     picklepath_connect = outpath + subject + "_" + tractsize + '_connectomes_v2.p'
     picklepath_grouping = outpath + subject + tractsize + '_grouping.p'
     pickle.dump(M, open(picklepath_connect,"wb"))
-    pickle.dump(grouping, open(picklepath_grouping,"wb"))
+    #pickle.dump(grouping, open(picklepath_grouping,"wb"))
 
     excel_path = outpath + subject + "_" + tractsize + "_connectomes_v2.xlsx"
     connectomes_to_excel(M, ROI_excel, excel_path)

@@ -28,13 +28,14 @@ l = ['N57433','N57434','N57435','N57436','N57437','N57440']
 l = ['N57433']
 l = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518', 'N57520','N57522','N57546','N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518','N57520','N57522','N57546','N57548', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
 l = ['N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518', 'N57520','N57522','N57546','N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518','N57520','N57522','N57546','N57548', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
+l = ['N57500','N57502','N57504','N57513','N57515','N57518', 'N57520','N57522','N57546','N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518','N57520','N57522','N57546','N57548', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
 #l = ['N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518','N57520','N57522','N57546','N57548', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
 #l = ['N57520','N57522','N57546', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
 #l = ['N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518','N57522','N57546','N57548']
-l = ['N57433','N57434','N57435','N57436','N57437','N57440']
+#l = ['N57434','N57435','N57436','N57437','N57440']
+#l = ['N57433']
 
-
-max_processors = 100
+max_processors = 5
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -48,10 +49,11 @@ print("Running on ", max_processors, " processors")
 # mypath = '/Users/alex/brain_data/E3E4/wenlin/'
 #dwipath = '/Users/alex/brain_data/19abb14/C57_RAS/'
 #BIGGUS_DISKUS = os.environ.get('BIGGUS_DISKUS')
-BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse"
+#BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse"
+BIGGUS_DISKUS = "/Volumes/dusom_dibs_ad_decode/all_staff/munin3badea/mouse"
 #BIGGUS_DISKUS = "/mnt/BIAC/munin3.dhe.duke.edu/Badea/Lab/mouse/"
 dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS_40subj/"
-dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS"
+#dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS"
 #dwipath = "/Users/alex/jacques/connectomes_testing/DWI_RAS/"
 
 #dwipath = "/Users/alex/jacques/tempDWI/"
@@ -59,10 +61,10 @@ dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS"
 
 #outtrkpath = '/Users/alex/bass/testdata/lifetest/'
 outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS_40subj/"
-outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS"
+#outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS"
 #outtrkpath = "/Users/alex/jacques/connectomes_testing/TRK_RAS/"
 
-figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS_diff/"
+figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS_40subj/"
 #figspath = "/Users/alex/jacques/connectomes_testing/Fig_RAS_connectomes/"
 #figspath = '/Users/alex/bass/testdata/lifetest/'
 
@@ -77,7 +79,6 @@ df['Structure'] = df['Structure'].str.lower()
 
 stepsize = 2
 subject_processes = np.size(l)
-#subject_processes = 1
 if max_processors < subject_processes:
     subject_processes = max_processors
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
@@ -87,7 +88,7 @@ function_processes = np.int(max_processors/subject_processes)
 
 rois = ["fimbria"]
 ratio = 10
-saved_streamlines = "small"
+saved_streamlines = "all"
 overwrite = "yes"
 savefa="only"
 verbose=True
