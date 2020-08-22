@@ -417,13 +417,18 @@ def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetro
     sft = StatefulTractogram(lr_sf_trk, dm_img, Space.VOX)
     save_trk(sft, outpath + subject + "lr-superiorfrontal.trk")
 
-def gettrkdata(trkpath, subject, tractsize, strproperty, stepsize):
-    filepath=(trkpath + '/' + subject + '_wholebrain_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
+#def gettrkpath(trkpath, subject, tractsize, strproperty, stepsize, verbose=False):
+def gettrkpath(trkpath, subject, str_identifier, verbose=False):
+    #filepath=(trkpath + '/' + subject + '_wholebrain_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
+    filepath=(trkpath + '/' + subject + str_identifier + '.trk')
     trkpaths = glob.glob(filepath)
     if trkpaths:
-    	trkfile = trkpaths[0]
+        trkfile = trkpaths[0]
+        if verbose:
+            print("Subject " + subject + " was found at " + trkfile)
     else:
         print("Could not find "+filepath)
+        return
     return trkfile
 
 def getfa(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
@@ -547,7 +552,7 @@ def connectomes_to_excel(connectome,ROI_excel,output_path):
 
 def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize, outpath, subject, whitematter_labels, targetrois, labelslist, ROI_excel, bvec_orient=[1,2,3], verbose=None):
 
-    trkfile = gettrkdata(trkpath, subject, tractsize, "_", stepsize)
+    trkfile = gettrkpath(trkpath, subject, tractsize, "_", stepsize)
     fa_data, _, gtab, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
     labelmask, _ = getlabelmask(dwipath, subject, bvec_orient, verbose)
     #from dipy.data import read_stanford_labels, read_stanford_t1
@@ -615,7 +620,8 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
         if hasattr(trkdata,'space_attribute'):
             header = trkdata.space_attribute
         elif hasattr(trkdata,'space_attributes'):
-            header = trkdata.space_attributes        myheader = create_tractogram_header(trkprunepath, *header)
+            header = trkdata.space_attributes
+        myheader = create_tractogram_header(trkprunepath, *header)
         prune_sl = lambda: (s for s in pruned_streamlines)
         if prunesave:
             tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
@@ -838,6 +844,7 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
 
     fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata(dwipath, subject, bvec_orient)
     if np.mean(fdwi_data) == 0:
+        print("The subject " + subject + "could not be found at "+ dwipath)
         return
     """
     if isempty(labelslist):

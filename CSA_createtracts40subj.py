@@ -29,11 +29,12 @@ l = ['N57433']
 l = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518', 'N57520','N57522','N57546','N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518','N57520','N57522','N57546','N57548', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
 l = ['N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518', 'N57520','N57522','N57546','N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518','N57520','N57522','N57546','N57548', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
 l = ['N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518','N57520','N57522','N57546','N57548', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
-l = ['N57520','N57522','N57546', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
+l = ['N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
+#l = ['N57550']
 #l = ['N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518','N57522','N57546','N57548']
 
 
-max_processors = 100
+max_processors = 3
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -48,13 +49,14 @@ print("Running on ", max_processors, " processors")
 #dwipath = '/Users/alex/brain_data/19abb14/C57_RAS/'
 #BIGGUS_DISKUS = os.environ.get('BIGGUS_DISKUS')
 BIGGUS_DISKUS = "/Volumes/Badea/Lab/mouse"
-#BIGGUS_DISKUS = "/mnt/BIAC/munin3.dhe.duke.edu/Badea/Lab/mouse/"
+BIGGUS_DISKUS = "/Volumes/dusom_dibs_ad_decode/all_staff/munin3badea/mouse"
 dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS_40subj/"
 #dwipath = "/Users/alex/jacques/tempDWI/"
 #outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
 
 #outtrkpath = '/Users/alex/bass/testdata/lifetest/'
 outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS_40subj/"
+outtrkpath = "/Volumes/dusom_dibs_ad_decode/all_staff/munin3badea/mouse/C57_JS/TRK_RAS_40subj/"
 figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS/"
 #figspath = '/Users/alex/bass/testdata/lifetest/'
 
@@ -78,7 +80,7 @@ function_processes = np.int(max_processors/subject_processes)
 
 rois = ["wholebrain"]
 ratio = 10
-saved_streamlines = "small"
+saved_streamlines = "all"
 savefa="no"
 verbose=True
 denoise='mpca'
