@@ -228,6 +228,34 @@ def almicedf_fix(df, verbose=None):
     # df = mice_day2.groupby('runno')['Acq Number'].nunique()
 
 
+def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, verbose=False):
+
+    trkdata = load_trk(oldtrkfile, "same")
+    if verbose:
+        print("laoaded ")
+    trkdata.to_vox()
+    header = trkdata.space_attribute
+    affine = trkdata._affine
+    trkstreamlines = trkdata.streamlines
+
+    ministream=[]
+    for idx, stream in enumerate(trkstreamlines):
+        if (idx % ratio) == 0:
+            ministream.append(stream)
+    del trkstreamlines
+    myheader = create_tractogram_header(newtrkfilepath, *header)
+    ratioed_sl = lambda: (s for s in ministream)
+    tract_save.save_trk_heavy_duty(newtrkfilepath, streamlines=ratioed_sl,
+                                   affine=affine, header=myheader)
+    if verbose:
+        print("The file " + oldtrifle + "was reduced to one "+str(ratio)+"th of its size and saved to "+newtrkfilepath)
+
+    if getdata:
+        return(ministream)
+    else:
+        return
+
+
 def testsnr():
 
     corpus_mask = np.where(labels == 121, 1, 0) + np.where(labels == 1121, 1, 0)
