@@ -36,7 +36,7 @@ l = ['N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','
 #l = ['N57433']
 l = ['N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
 
-max_processors = 5
+max_processors = 15
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -87,7 +87,9 @@ if max_processors < subject_processes:
 
 function_processes = np.int(max_processors/subject_processes)
 
-rois = ["fimbria"]
+
+
+targetrois = ["fimbria"]
 ratio = 10
 saved_streamlines = "all"
 overwrite = "yes"
@@ -100,18 +102,29 @@ savefig=False
 doprune=True
 #strproperty = "_pypxmz_wholebrain"
 allsave=True
-if len(rois)==1:
-    strproperty = "_" + rois[0] + "_"
-elif len(rois)>1:
-    strproperty="_"
+
+trkroi = ["wholebrain"]
+if len(trkroi)==1:
+    roistring = "_" + trkroi[0] + "_"
+elif len(trkroi)>1:
+    roistring="_"
+    for roi in trkroi:
+        roistring = roistring + roi[0:4]
+    roistring = roistring + "_"
+str_identifier = roistring + saved_streamlines + '_stepsize_' + str(stepsize)
+
+if len(targetrois)==1:
+    targetroistring = "_" + targetrois[0] + "_"
+elif len(targetrois)>1:
+    roistring="_"
     for roi in rois:
-        strproperty = strproperty + roi[0:4]
-    strproperty = strproperty + "_"
+        targetoistring = roistring + roi[0:4]
+    targetroistring = roistring + "_"
 #labellist=[163,1163,120,1120]
 #labelslist=[121,1121]#corpuscallosum
 
 labelslist=[]
-for roi in rois:
+for roi in targetrois:
     rslt_df = df.loc[df['Structure'] == roi.lower()]
     if roi.lower() == "wholebrain" or roi.lower() == "brain":
         labelslist=None
@@ -147,16 +160,16 @@ if subject_processes>1:
         pool = MyPool(subject_processes)
     else:
         pool = mp.Pool(subject_processes)
-    tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath, outtrkpath, saved_streamlines, strproperty, stepsize, figspath, subject, whitematter_label, rois, labelslist, atlas_legends, bvec_orient, verbose) for subject in
+    tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath, outtrkpath, str_identifier, figspath, subject, whitematter_label, targetrois, labelslist, atlas_legends, bvec_orient, verbose) for subject in
                                                            l]).get()
 #    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
 #                                                          labelslist, outpathpickle, figspath, function_processes,
-#                                                          allsave, display, strproperty, ratio,
+#                                                          allsave, display, roistring, ratio,
 #                                                          verbose) for subject in l]).get()
 #    pool.close()
 else:
     for subject in l:
-        tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, saved_streamlines, strproperty, stepsize, figspath, subject, whitematter_label, rois, labelslist, atlas_legends, bvec_orient, verbose))
+        tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject, whitematter_label, targetrois, labelslist, atlas_legends, bvec_orient, verbose))
 #        tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines, labelslist,
-#                                             outpathpickle, figspath, function_processes, allsave, display, strproperty,
+#                                             outpathpickle, figspath, function_processes, allsave, display, roistring,
 #                                             ratio, verbose))

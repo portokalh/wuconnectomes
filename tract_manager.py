@@ -550,9 +550,10 @@ def connectomes_to_excel(connectome,ROI_excel,output_path):
 
 
 
-def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize, outpath, subject, whitematter_labels, targetrois, labelslist, ROI_excel, bvec_orient=[1,2,3], verbose=None):
+def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, whitematter_labels, targetrois, labelslist, ROI_excel, bvec_orient=[1,2,3], verbose=None):
 
-    trkfile = gettrkpath(trkpath, subject, tractsize, "_", stepsize)
+    #str_identifier = roistring + tractsize + '_stepsize_' + str(stepsize)
+    trkfile = gettrkpath(trkpath, subject, str_identifier, verbose)
     fa_data, _, gtab, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
     labelmask, _ = getlabelmask(dwipath, subject, bvec_orient, verbose)
     #from dipy.data import read_stanford_labels, read_stanford_t1
@@ -601,7 +602,7 @@ def tract_connectome_analysis(dwipath, trkpath, tractsize, strproperty, stepsize
     fullstreamlines = Streamlines(trkstreamlines)
     """
 
-    trkprunepath = trkpath + '/' + subject + '_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '_pruned.trk'
+    trkprunepath = trkpath + '/' + subject + str_identifier + '_pruned.trk'
     #trkpaths = glob.glob(trkpath + '/' + subject + '_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
 
     prunesave = True
