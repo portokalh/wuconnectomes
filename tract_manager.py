@@ -42,6 +42,7 @@ from dipy.io.utils import (create_tractogram_header,
                            get_reference_info)
 from dipy.viz import window, actor
 
+import xlsxwriter
 from dipy.segment.mask import segment_from_cfa
 from dipy.segment.mask import bounding_box
 
@@ -248,7 +249,7 @@ def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, verbos
     tract_save.save_trk_heavy_duty(newtrkfilepath, streamlines=ratioed_sl,
                                    affine=affine, header=myheader)
     if verbose:
-        print("The file " + oldtrifle + "was reduced to one "+str(ratio)+"th of its size and saved to "+newtrkfilepath)
+        print("The file " + oldtrkfile + "was reduced to one "+str(ratio)+"th of its size and saved to "+newtrkfilepath)
 
     if getdata:
         return(ministream)
@@ -554,8 +555,6 @@ def getlabelmask(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
 
 def connectomes_to_excel(connectome,ROI_excel,output_path):
 
-    import xlsxwriter
-
     df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
     structure = df['Structure']
 
@@ -675,12 +674,16 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     M = np.delete(M, 0, 0)
     M = np.delete(M, 0, 1)
 
-    picklepath_connect = outpath + subject + "_" + tractsize + '_connectomes_v2.p'
-    picklepath_grouping = outpath + subject + tractsize + '_grouping.p'
+    picklepath_connect = outpath + subject + "_" + str_identifier + '_connectomes_v4.p'
+    picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
     pickle.dump(M, open(picklepath_connect,"wb"))
     #pickle.dump(grouping, open(picklepath_grouping,"wb"))
 
-    excel_path = outpath + subject + "_" + tractsize + "_connectomes_v2.xlsx"
+    txt= ("The connectomes were saved at "+picklepath_connect)
+    send_mail(txt, subject="Pickle save")
+    print(txt)
+
+    excel_path = outpath + subject + "_" + str_identifier + "_connectomes_v4.xlsx"
     connectomes_to_excel(M, ROI_excel, excel_path)
 
     #whitem_slice = whitemask == 1
