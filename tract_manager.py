@@ -42,7 +42,6 @@ from dipy.io.utils import (create_tractogram_header,
                            get_reference_info)
 from dipy.viz import window, actor
 
-import xlsxwriter
 from dipy.segment.mask import segment_from_cfa
 from dipy.segment.mask import bounding_box
 
@@ -74,6 +73,7 @@ import JSdipy.tracking.life as life
 from dipy.viz import window, actor, colormap as cmap
 import dipy.core.optimize as opt
 from functools import wraps
+import xlsxwriter
 
 from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
 from figures_handler import denoise_fig, show_bundles, window_show_test, shore_scalarmaps
@@ -633,7 +633,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     #trkpaths = glob.glob(trkpath + '/' + subject + '_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
 
     prunesave = True
-    pruneforcestart = True
+    pruneforcestart = False
     if not os.path.isfile(trkprunepath) or pruneforcestart:
 
         trkdata = load_trk(trkfile, "same")
@@ -653,10 +653,12 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         prune_sl = lambda: (s for s in pruned_streamlines)
         if prunesave:
             tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
+        del(prune_sl,pruned_streamlines,trkdata)
     else:
         trkprunedata = load_trk(trkprunepath, "same")
         trkprunedata.to_vox()
         pruned_streamlines_SL = trkprunedata.streamlines
+        del(trkprunedata)
 
     affine_streams = np.eye(4)
     """
@@ -674,17 +676,22 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     M = np.delete(M, 0, 0)
     M = np.delete(M, 0, 1)
 
-    picklepath_connect = outpath + subject + "_" + str_identifier + '_connectomes_v4.p'
+    picklepath_connect = outpath + subject + "_" + str_identifier + '_connectomes.p'
     picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
     pickle.dump(M, open(picklepath_connect,"wb"))
     #pickle.dump(grouping, open(picklepath_grouping,"wb"))
 
-    txt= ("The connectomes were saved at "+picklepath_connect)
-    send_mail(txt, subject="Pickle save")
-    print(txt)
+    if verbose:
+        txt= ("The connectomes were saved at "+picklepath_connect)
+        send_mail(txt, subject="Pickle save")
+        print(txt)
 
-    excel_path = outpath + subject + "_" + str_identifier + "_connectomes_v4.xlsx"
+    excel_path = outpath + subject + "_" + str_identifier + "_connectomes.xlsx"
     connectomes_to_excel(M, ROI_excel, excel_path)
+    if verbose:
+        txt= ("The excelfile was saved at "+excel_path)
+        send_mail(txt, subject="Excel save")
+        print(txt)
 
     #whitem_slice = whitemask == 1
     #white_streamlines = utils.target(trkstreamlines, affine, whitem_slice)
