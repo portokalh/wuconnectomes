@@ -74,6 +74,7 @@ from dipy.viz import window, actor, colormap as cmap
 import dipy.core.optimize as opt
 from functools import wraps
 import xlsxwriter
+from dipy.tracking.utils import length
 
 from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
 from figures_handler import denoise_fig, show_bundles, window_show_test, shore_scalarmaps
@@ -82,6 +83,7 @@ from dif_to_trk import make_tensorfit, QCSA_tractmake
 from BIAC_tools import send_mail, isempty, getsize
 from tract_handler import target, prune_streamlines
 import tract_save
+import xlrd
 
 def string_inclusion(string_option,allowed_strings,option_name):
     "checks if option string is part of the allowed list of strings for that option"
@@ -111,6 +113,29 @@ def strfile(string):
             return(string)
         except AttributeError:
             raise AttributeError("strfile error: not a usable number or string ")
+
+def get_tract_params(mypath, subject, str_identifier, verbose):
+
+    trkpath = gettrkpath(mypath, subject, str_identifier, verbose)
+    trkdata = load_trk(trkpath, "same")
+    verbose = True
+    if verbose:
+        print("loaded ")
+    # trkdata.to_vox()
+    header = trkdata.space_attribute
+    affine = trkdata._affine
+    lengths = length(trkdata.streamlines)
+    del trkdata
+    # lengths = list(length(trkstreamlines))
+    lengths = list(lengths)
+    numtracts = np.size(lengths)
+    minlength = np.min(lengths)
+    maxlength = np.max(lengths)
+    meanlength = np.mean(lengths)
+    stdlength = np.std(lengths)
+
+    return subject, numtracts, minlength, maxlength, meanlength, stdlength, header, affine
+
 
 def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
 
@@ -575,7 +600,21 @@ def connectomes_to_excel(connectome,ROI_excel,output_path):
 
     return
 
+def excel_extract(roi_path):
 
+    #from __future__ import print_function
+    from os.path import join, dirname, abspath
+    xl_workbook = xlrd.open_workbook(roi_path)
+
+    xl_sheet = xl_workbook.sheet_by_index(0)
+    print('Sheet name: %s' % xl_sheet.name)
+    data = np.zeros(xl_sheet.nrows-1,xl_sheet.nrows-1)
+    num_cols = xl_sheet.ncols  # Number of columns
+    for row_idx in range(1, xl_sheet.nrows):  # Iterate through rows
+        for col_idx in range(1, num_cols):  # Iterate through columns
+            cell_obj = xl_sheet.cell(row_idx, col_idx)  # Get cell object by row, col
+            data[row_idx-1,col_idx-1]=cell_obj
+    return data
 
 def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, whitematter_labels, targetrois, labelslist, ROI_excel, bvec_orient=[1,2,3], verbose=None):
 
