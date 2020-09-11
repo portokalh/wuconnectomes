@@ -1059,6 +1059,25 @@ def evaluate_coherence(dwipath,trkpath,subject,stepsize, tractsize, labelslist=N
 
     k = bundle_coherence(trkstreamlines,affine, k, t1_data=None,interactive=False)
 
+
+def tract_getroi(trkstreamlines, affine, myheader, labelslist, labelmask, trkroipath, verbose = False):
+
+    roimask = np.zeros(np.shape(labelmask), dtype=int)
+    for label in labelslist:
+        roimask = roimask + (labelmask == label)
+
+    affinetemp=np.eye(4)
+    trkroistreamlines = target(trkstreamlines, affinetemp, roimask, include=True, strict="longstring")
+    trkroistreamlines = Streamlines(trkroistreamlines)
+    #trkroipath = trkpath + '/' + subject + '_' + tractsize + strproperty + stepsize + '.trk'
+    #myheader = create_tractogram_header(trkroipath, *header)
+    roi_sl = lambda: (s for s in trkroistreamlines)
+    tract_save.save_trk_heavy_duty(trkroipath, streamlines=roi_sl,
+                affine=affine, header=myheader)
+    if verbose:
+        txt = "Successfully saved trk roi at "+trkroipath
+    return trkroistreamlines, roi_sl
+
     
 def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, allsave=False, display=True, strproperty = "", verbose=None):
 
@@ -1332,267 +1351,3 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     #pickle.dump(tracteval_results, open(picklepath,"wb"))
     
     return [outpathfig, model_error, mean_error]
-"""
-def create_tracts(mypath,outpath,subject,step_size,peak_processes=1,saved_tracts="small",save_fa="yes",denoise="mpca",verbose=None):
-
-    fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
-
-    ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
-
-    fbvals = mypath + '4Dnii/' + subject + '_RAS_ecc_bvals.txt'
-
-    fbvecs = mypath + '4Dnii/' + subject + '_RAS_ecc_bvecs.txt'
-
-    labels, affine_labels = load_nifti(ffalabels)
-
-    bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
-
-    allowed_strings=["small","large","all","both","none"]
-    try:
-        saved_tracts=saved_tracts.lower()
-    except AttributeError:
-        pass
-
-    if not any(saved_tracts == x for x in allowed_strings):
-        raise ValueError("Unrecognized string, please check your input for 'saved tracts' ")
-    if saved_tracts == "None" or saved_tracts is None:
-        raise Warning("Saved_tracts stated as None value, no tracts will be saved for this run")
-    if verbose:
-        print('Running the ' + subject + ' file')
-    # Correct flipping issue
-    bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]]
-
-    gtab = gradient_table(bvals, bvecs)
-
-    data, affine, vox_size = load_nifti(fdwi, return_voxsize=True)
-
-    try:
-        denoise=denoise.lower()
-    except AttributeError:
-        pass
-
-
-
-
-    if denoise == 'mpca' or denoise == 'yes' or denoise == 'all':
-        #data, snr = marcenko_denoise(data, False, verbose=verbose)
-        t = time()
-        denoised_arr, sigma = mppca(data, patch_radius=2, return_sigma=True)
-
-        mean_sigma = np.mean(sigma[mask])
-        b0 = denoised_arr[..., 0]
-
-        mean_signal = np.mean(b0[mask])
-
-        snr = mean_signal / mean_sigma
-
-        if verbose:
-            print("Time taken for local MP-PCA ", -t +
-                  time())
-            print("The SNR of the b0 image appears to be at " + str(snr))
-        if display:
-            marcenko_denoise_fig(data, denoised_arr, 'None')
-
-        data=denoised_arr
-
-    if denoise == 'gibbs' or denoise =='all':
-        data_corrected = gibbs_removal(data_slices, slice_axis=2)
-
-        data=data_corrected
-
-    # Build Brain Mask
-    bm = np.where(labels == 0, False, True)
-    mask = bm
-
-    sphere = get_sphere('repulsion724')
-
-    from dipy.reconst.dti import TensorModel
-
-    if verbose:
-        print('Calculating the tensor model from bval/bvec values of ', subject)
-    tensor_model = TensorModel(gtab)
-
-    t1 = time()
-    #tensor_fit = tensor_model.fit(data, mask)
-    import pickle
-    picklepath = '/Users/alex/jacques/tensor4589.p'
-    #pickle.dump(tensor_fit, open(picklepath, "wb"))
-    tensor_fit = pickle.load(open(picklepath, "rb"))
-    testsnr=False
-    if testsnr:
-        corpus_mask = np.where(labels == 121, 1, 0) + np.where(labels == 1121, 1, 0)
-        #meed to change threshold, possibly ROI, that better corresponds to mice (pick area with high FA)
-        #probably should investigate area with
-        threshold = (0.6, 1, 0, 0.1, 0, 0.1)
-        mask_cc_part, cfa = segment_from_cfa(tensor_fit,corpus_mask,threshold,return_cfa = True)
-        cfa_img = nib.Nifti1Image((cfa * 255).astype(np.uint8), affine)
-        mask_cc_part_img = nib.Nifti1Image(corpus_mask.astype(np.uint8), affine)
-        nib.save(mask_cc_part_img, '/Users/alex/jacques/mask_CC_part.nii.gz')
-
-        region = 30
-        fig = plt.figure('Corpus callosum segmentation')
-
-        plt.subplot(1, 3, 1)
-        plt.title("Corpus callosum (CC)")
-        plt.axis('off')
-        red = cfa[..., 0]
-        plt.imshow(np.rot90(corpus_mask[region, ...]))
-
-        plt.subplot(1, 3, 2)
-        plt.title("Corpus callosum (CC)")
-        plt.axis('off')
-        red = cfa[..., 0]
-        plt.imshow(np.rot90(red[region, ...]))
-
-        plt.subplot(1, 3, 3)
-        plt.title("CC mask used for SNR computation")
-        plt.axis('off')
-        plt.imshow(np.rot90(mask_cc_part[region, ...]))
-        fig.savefig("CC_segmentation.png", bbox_inches='tight')
-
-        mean_signal = np.mean(data[mask_cc_part], axis=0)
-        from scipy.ndimage.morphology import binary_dilation
-        mask_noise = binary_dilation(mask, iterations=10)
-        mask_noise[..., :mask_noise.shape[-1] // 2] = 1
-        mask_noise = ~mask_noise
-        mask_noise_img = nib.Nifti1Image(mask_noise.astype(np.uint8), affine)
-        nib.save(mask_noise_img, 'mask_noise.nii.gz')
-
-        noise_std = np.std(data[mask_noise, :])
-        print('Noise standard deviation sigma= ', noise_std)
-
-        # Exclude null bvecs from the search
-        idx = np.sum(gtab.bvecs, axis=-1) == 0
-        gtab.bvecs[idx] = np.inf
-        axis_X = np.argmin(np.sum((gtab.bvecs - np.array([1, 0, 0])) ** 2, axis=-1))
-        axis_Y = np.argmin(np.sum((gtab.bvecs - np.array([0, 1, 0])) ** 2, axis=-1))
-        axis_Z = np.argmin(np.sum((gtab.bvecs - np.array([0, 0, 1])) ** 2, axis=-1))
-
-        for direction in [0, axis_X, axis_Y, axis_Z]:
-            SNR = mean_signal[direction] / noise_std
-            if direction == 0:
-                print("SNR for the b=0 image is :", SNR)
-            else:
-                print("SNR for direction", direction, " ",
-                      gtab.bvecs[direction], "is :", SNR)
-
-    try:
-        save_fa=save_fa.lower()
-    except AttributeError:
-        pass
-    if save_fa == "yes" or save_fa == "y" or save_fa == 1 or save_fa is True or save_fa == "all":
-        outpathbmfa = outpath + 'bmfa' + subject + '.nii.gz'
-        save_nifti(outpathbmfa, tensor_fit.fa, affine)
-        if verbose:
-            print('Saving subject'+ subject+ ' at ' + outpathbmfa)
-    else:
-        outpathbmfa = None
-    fa = tensor_fit.fa
-    duration1 = time() - t1
-    # wenlin make this change-adress name to each animal
-    #    print('DTI duration %.3f' % (duration1,))
-    if verbose:
-        print(subject + ' DTI duration %.3f' % (duration1,))
-
-    # Compute odfs in Brain Mask
-    t2 = time()
-
-    csa_model = CsaOdfModel(gtab, 6)
-    if peak_processes < 2:
-        parallel=False
-    else:
-        parallel=True
-    csa_peaks = peaks_from_model(model=csa_model,
-                                 data=data,
-                                 sphere=peaks.default_sphere,  # issue with complete sphere
-                                 mask=mask,
-                                 relative_peak_threshold=.5,
-                                 min_separation_angle=25,
-                                 parallel=parallel,
-                                 nbr_processes=peak_processes)
-
-    duration2 = time() - t2
-    if verbose:
-        print(duration2) \
-
-    if verbose:
-        print(subject + ' CSA duration %.3f' % (duration2,))
-
-    t3 = time()
-
-    from dipy.tracking.stopping_criterion import BinaryStoppingCriterion
-
-    if verbose:
-        print('Computing classifier for local tracking')
-    classifier = BinaryStoppingCriterion(bm)
-    from dipy.tracking import utils
-
-    # generates about 2 seeds per voxel
-    # seeds = utils.random_seeds_from_mask(fa > .2, seeds_count=2,
-    #                                      affine=np.eye(4))
-
-    # generates about 2 million streamlines
-    # seeds = utils.seeds_from_mask(fa > .2, density=1,
-    #                              affine=np.eye(4))
-    # why are those not binary?
-    if verbose:
-        print('Computing seeds')
-    seeds = utils.seeds_from_mask(mask, density=1,
-                                  affine=np.eye(4))
-
-    ##streamlines_generator = local_tracking.local_tracker(csa_peaks,classifier,seeds,affine=np.eye(4),step_size=.5)
-    if verbose:
-        print('Computing the local tracking')
-
-    stringstep = str(step_size)
-    stringstep = "_" + stringstep.replace(".", "_")
-    # stringstep=""
-    streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                          seeds, affine=np.eye(4), step_size=step_size)
-
-    # the function above will bring all streamlines in memory
-    # streamlines = Streamlines(streamlines_generator)
-
-    # save a smaller part by only keeping one in 10 streamlines
-
-    if saved_tracts == "small" or saved_tracts == "both":
-        sg_small = lambda: (s for i, s in enumerate(streamlines_generator) if i % 10 == 0)
-        outpathtrk = outpath + subject + "_bmCSA_detr_small_" + stringstep + "_v3.trk"
-        myheader = create_tractogram_header(outpathtrk, *get_reference_info(fdwi))
-        save_trk_heavy_duty(outpathtrk, streamlines=sg_small,
-                affine=affine, header=myheader,
-                shape=mask.shape, vox_size=vox_size)
-    else:
-        outpathtrk = None
-    if saved_tracts == "large" or saved_tracts == "both" or saved_tracts == "all":
-        sg = lambda: (s for s in streamlines_generator)
-        outpathtrk = outpath+subject+"bmCSA_detr_all"+stringstep+"_v1.trk"
-        myheader = create_tractogram_header(outpathtrk,*get_reference_info(fdwi))
-        save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                affine=affine, header=myheader,
-                shape=mask.shape, vox_size=vox_size)
-    if saved_tracts == "none" or saved_tracts is None:
-        print("Tract files were not saved")
-
-
-
-    # save everything - will generate a 20+ GBytes of data - hard to manipulate
-
-    # possibly add parameter in csv file or other to decide whether to save large tractogram file
-    # outpathfile=outpath+subject+"bmCSA_detr"+stringstep+".trk"
-    # myheader=create_tractogram_header(outpathfile,*get_reference_info(fdwi))
-
-    # save_trk_heavy_duty(outpathfile, streamlines=sg_small,
-    #                    affine=affine, header=myheader,
-    #                    shape=mask.shape, vox_size=vox_size)
-
-    duration3 = time() - t3
-    if verbose:
-        print(duration3)
-    # wenlin make this change-adress name to each animal
-    #    print('Tracking duration %.3f' % (duration3,))
-    if verbose:
-        print(subject + ' Tracking duration %.3f' % (duration3,))
-
-    return subject, outpathtrk, outpathbmfa
-"""
