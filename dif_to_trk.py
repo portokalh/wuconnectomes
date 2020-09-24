@@ -266,6 +266,17 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
     print("reached this spot")
     #save_roisubset(streamlines_generator, roislist, roisexcel, labelmask, stringstep, ratios, trkpath, subject, affine, header)
 
+    from dipy.tracking.utils import length
+    lengths = length(sg)
+    del trkdata
+    # lengths = list(length(trkstreamlines))
+    lengths = list(lengths)
+    numtracts = np.size(lengths)
+    minlength = np.min(lengths)
+    maxlength = np.max(lengths)
+    meanlength = np.mean(lengths)
+    stdlength = np.std(lengths)
+    print("Numtracts is "+ numtracts + ", minlength is "+minlength+", maxlength is "+maxlength+", meanlength is "+meanlength+", stdlength is"+stdlength)
 
 
     # save everything - will generate a 20+ GBytes of data - hard to manipulate

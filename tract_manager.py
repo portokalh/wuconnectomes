@@ -133,7 +133,8 @@ def get_tract_params(mypath, subject, str_identifier, verbose):
     maxlength = np.max(lengths)
     meanlength = np.mean(lengths)
     stdlength = np.std(lengths)
-
+    if verbose:
+        print("For subject " + subject + " the number of tracts is " + numbtracts + ", the minimum length is " + minlength + ", the maximum length is " + maxlength + ", the mean length is " + meanlength + ", the std is " + stdlength)
     return subject, numtracts, minlength, maxlength, meanlength, stdlength, header, affine
 
 
@@ -599,6 +600,32 @@ def connectomes_to_excel(connectome,ROI_excel,output_path):
     workbook.close()
 
     return
+
+def prunestreamline(trkorigpath, trkprunepath, cutoff = 4, forcestart = False)
+
+    #trkprunepath = trkpath + '/' + subject + str_identifier + '_pruned.trk'
+    #trkpaths = glob.glob(trkpath + '/' + subject + '_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
+
+    if not os.path.isfile(trkprunepath) or forcestart:
+
+        trkdata = load_trk(trkorigpath, "same")
+        affine = trkdata._affine
+        trkdata.to_vox()
+        trkstreamlines = trkdata.streamlines
+        if hasattr(trkdata,'space_attribute'):
+            header = trkdata.space_attribute
+        elif hasattr(trkdata,'space_attributes'):
+            header = trkdata.space_attributes
+
+        cutoff=4
+        pruned_streamlines = prune_streamlines(list(trkstreamlines), labelmask, cutoff=cutoff, verbose=verbose)
+        del(trkdata)
+        pruned_streamlines_SL = Streamlines(pruned_streamlines)
+        myheader = create_tractogram_header(trkprunepath, *header)
+        prune_sl = lambda: (s for s in pruned_streamlines)
+        if prunesave:
+            tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
+        return(pruned_streamlines)
 
 def excel_extract(roi_path):
 

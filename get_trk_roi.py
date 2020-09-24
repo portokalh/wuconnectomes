@@ -9,19 +9,19 @@ from dipy.io.streamline import load_trk
 
 trkpath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/TRK_RAS_40subj/N57442_small_fimbria_stepsize_2_pruned.trk"
 
-trkpath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/TRK_RAS_40subj/"
-dwipath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/DWI_RAS_40subj/"
+trkpath = "/mnt/munin6/Badea/Lab/mouse/C57_JS/TRK_RAS_40subj"
+dwipath = "/mnt/munin6/Badea/Lab/mouse/C57_JS/DWI_RAS_40subj/"
 str_identifier = "_small_fimbria_stepsize_2_pruned"
-
-l = ['N57442', 'N57446']
+l = ['N57496','N57554','N57580','N57692','N57437']
 verbose = True
 
 
 atlas_legends = "/Users/alex/jacques/connectomes_testing//atlases/CHASSSYMM3AtlasLegends.xlsx"
+atlas_legends = "/mnt/munin6/Badea/Lab/atlases/CHASSSYMM3AtlasLegends.xlsx"
 df = pd.read_excel(atlas_legends, sheet_name='Sheet1')
 df['Structure'] = df['Structure'].str.lower()
 
-targetrois = ["fimbria", "hippocampus"]
+targetrois = ["hippocampus"]
 labelslist = []
 
 
@@ -47,7 +47,7 @@ for targetroi in targetrois:
         affine = trkdata._affine
         trkstreamlines = trkdata.streamlines
 
-        trkroipath = trkpath + '/' + subject + '_' + str_identifier + '_' + targetroi + '.trk'
+        trkroipath = trkpath + '/' + subject + str_identifier + '_' + targetroi + '.trk'
         myheader = create_tractogram_header(trkroipath, *header)
         _, _, _, labelmask, _, _, _, _ = getdwidata(dwipath, subject)
         tract_getroi(trkstreamlines, affine, myheader, labelslist, labelmask, trkroipath), verbose
