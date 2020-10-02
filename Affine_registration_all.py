@@ -11,6 +11,7 @@ from dipy.align.transforms import (TranslationTransform3D,
                                    AffineTransform3D)
 from dipy.io.image import load_nifti
 
+from registration_handler import register_save, registrationparams
 
 subjects = ['N54717','N54718','N54719','N54720']
 
@@ -26,14 +27,15 @@ target = basepath + "/DWI/"
 outputpath = basepath + "/TRK/"
 figspath = basepath + "/Figures/"
 
-registration = ["AffineTransform3D"]
+registration_type = ["AffineTransform3D"]
 nbins = 32
 sampling_prop = None
 #metric = MutualInformationMetric(nbins, sampling_prop)
 level_iters = [10000, 1000, 100]
 sigmas = [3.0, 1.0, 0.0]
 factors = [4, 2, 1]
-params = registrationparams()
+params = registrationparams(nbins, sampling_prop, level_iters, sigmas, factors)
+verbose = True
 
 if subject_processes>1:
     if function_processes>1:
@@ -41,16 +43,19 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    tract_results = pool.starmap_async(register, [(inputpath, target, outputpath, figspath, registration, metric, level_iters, labelslist, bvec_orient, verbose) for subject in
+    register_save_path = pool.starmap_async(register_save, [(inputpath, target, subject, outputpath, figspath,
+                                                        registrationparams, registration_type, verbose) for subject in
                                                            l]).get()
-#    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
-#                                                          labelslist, outpathpickle, figspath, function_processes,
-#                                                          doprune, display, verbose) for subject in l]).get()
+    """register_apply_path = pool.starmap_async(register_apply, [(inputpath, target, subject, outputpath, figspath,
+                                                             registrationparams, registration_type, verbose) for subject
+                                                        in l]).get()
+    """
     pool.close()
 else:
     for subject in subj_list:
-        dwi_results.append(dwi_preprocessing(dwipath, outpath, subject, bvec_orient, denoise, savefa, function_processes,
-                          labelslist, str_identifier, verbose=False)
-        tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-                                         saved_streamlines, savefa, labelslist, bvec_orient, verbose))
-
+        register_save_path.append(register_save(inputpath, target, subject, outputpath, figspath, registrationparams,
+                                           registration_type, verbose))
+        """
+        register_apply_path.append(register_save(inputpath, target, subject, outputpath, figspath, registrationparams,
+                                           registration_type, verbose))
+        """
