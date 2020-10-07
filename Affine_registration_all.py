@@ -11,9 +11,11 @@ from dipy.align.transforms import (TranslationTransform3D,
                                    AffineTransform3D)
 from dipy.io.image import load_nifti
 
+import multiprocessing as mp
+
 from registration_handler import register_save, registrationparams
 
-subjects = ['N54717','N54718','N54719','N54720']
+subjects = ['N57500']
 
 max_processors = 1
 
@@ -22,20 +24,32 @@ if mp.cpu_count() < max_processors:
 
 print("Running on ", max_processors, " processors")
 
-inputpath = "/Users/alex/bass/testdata/lifetest"
-target = basepath + "/DWI/"
-outputpath = basepath + "/TRK/"
-figspath = basepath + "/Figures/"
+inputpath = "/Users/alex/jacques/registration_test/"
+target = "/Volumes/Data/Badea/Lab/19abb14/N57437_nii4D.nii"
+toapply = "TRK"
+outputpath = inputpath + "/TRK/"
+figspath = inputpath + "/Figures/"
 
 registration_type = ["AffineTransform3D"]
 nbins = 32
 sampling_prop = None
-#metric = MutualInformationMetric(nbins, sampling_prop)
+metric = MutualInformationMetric(nbins, sampling_prop)
 level_iters = [10000, 1000, 100]
 sigmas = [3.0, 1.0, 0.0]
 factors = [4, 2, 1]
 params = registrationparams(nbins, sampling_prop, level_iters, sigmas, factors)
 verbose = True
+
+subject_processes = np.size(subjects)
+subject_processes = 10
+if max_processors < subject_processes:
+    subject_processes = max_processors
+# accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
+# "none" or None variable for neither and "both" for both of them
+
+function_processes = np.int(max_processors/subject_processes)
+
+register_save_path = []
 
 if subject_processes>1:
     if function_processes>1:
@@ -52,7 +66,7 @@ if subject_processes>1:
     """
     pool.close()
 else:
-    for subject in subj_list:
+    for subject in subjects:
         register_save_path.append(register_save(inputpath, target, subject, outputpath, figspath, registrationparams,
                                            registration_type, verbose))
         """

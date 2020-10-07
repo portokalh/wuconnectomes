@@ -19,15 +19,15 @@ trkpath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/TRK_RAS_40subj/N57442_small_fimb
 trkpath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/TRK_RAS_40subj/"
 
 l = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518', 'N57520','N57522','N57546','N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504','N57513','N57515','N57518','N57520','N57522','N57546','N57548', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
-l = ['N57442', 'N57446']
+l = ['N57700']
 
-max_processors = 2
+max_processors = 1
 subject_processes = np.size(l)
 if max_processors < subject_processes:
     subject_processes = max_processors
 function_processes = np.int(max_processors/subject_processes)
 
-str_identifier = "_small_fimbria_stepsize_2_pruned"
+str_identifier = "_wholebrain_all_stepsize_2_pruned"
 verbose = True
 
 
