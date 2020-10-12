@@ -27,8 +27,9 @@ print("Running on ", max_processors, " processors")
 inputpath = "/Users/alex/jacques/registration_test/"
 target = "/Volumes/Data/Badea/Lab/19abb14/N57437_nii4D.nii"
 toapply = "TRK"
-outputpath = inputpath + "/TRK/"
+outputpath = "/Users/alex/jacques/registration_test/registered/"
 figspath = inputpath + "/Figures/"
+applydirs = ["/Users/alex/jacques/registration_test/"]
 
 registration_type = ["AffineTransform3D"]
 nbins = 32
@@ -50,6 +51,7 @@ if max_processors < subject_processes:
 function_processes = np.int(max_processors/subject_processes)
 
 register_save_path = []
+registration_type = ["center_mass","RigidTransform3D"]
 
 if subject_processes>1:
     if function_processes>1:
@@ -57,8 +59,8 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    register_save_path = pool.starmap_async(register_save, [(inputpath, target, subject, outputpath, figspath,
-                                                        registrationparams, registration_type, verbose) for subject in
+    register_save_path = pool.starmap_async(register_save, [(inputpath, target, subject, outputpath, figspath, params,
+                                           registration_type, applydirs, verbose) for subject in
                                                            l]).get()
     """register_apply_path = pool.starmap_async(register_apply, [(inputpath, target, subject, outputpath, figspath,
                                                              registrationparams, registration_type, verbose) for subject
@@ -67,8 +69,8 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in subjects:
-        register_save_path.append(register_save(inputpath, target, subject, outputpath, figspath, registrationparams,
-                                           registration_type, verbose))
+        register_save_path.append(register_save(inputpath, target, subject, outputpath, figspath, params,
+                                           registration_type, applydirs, verbose))
         """
         register_apply_path.append(register_save(inputpath, target, subject, outputpath, figspath, registrationparams,
                                            registration_type, verbose))

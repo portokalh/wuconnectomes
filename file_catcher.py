@@ -28,9 +28,21 @@ def get_tract_params(mypath, subject, str_identifier, verbose):
 
 
 def get_anat(mypath, subject, verbose=None):
-    filepath =(mypath + '/' + subject + '*_nii4D.nii*')
+    filepath =(mypath + '/' + subject + '*_nii4D*.nii*')
     anatpath = glob.glob(filepath)[0]
     return(anatpath)
+
+
+def get_niftis(mypath, subject, verbose = None):
+    filepaths =(mypath + '/' + subject + '*.nii*')
+    filepaths = glob.glob(filepaths)
+    return filepaths
+
+
+def get_trks(mypath, subject, verbose = None):
+    filepaths = (mypath + '/' + subject + '*.trk*')
+    filepaths = glob.glob(filepaths)
+    return filepaths
 
 
 def gettrkpath(trkpath, subject, str_identifier, verbose=False):
@@ -45,6 +57,7 @@ def gettrkpath(trkpath, subject, str_identifier, verbose=False):
         print("Could not find "+filepath)
         return
     return trkfile
+
 
 def getfa(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
 

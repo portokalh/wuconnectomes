@@ -9,6 +9,7 @@ from dipy.align.imaffine import (transform_centers_of_mass,
 from dipy.align.transforms import (TranslationTransform3D,
                                    RigidTransform3D,
                                    AffineTransform3D)
+from dipy.io.image import load_nifti
 
 """
 fetch_stanford_hardi()
