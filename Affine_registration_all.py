@@ -25,13 +25,15 @@ if mp.cpu_count() < max_processors:
 print("Running on ", max_processors, " processors")
 
 inputpath = "/Users/alex/jacques/registration_test/"
-target = "/Volumes/Data/Badea/Lab/19abb14/N57437_nii4D.nii"
+target = "/Volumes/Data/Badea/Lab/mouse/C57_JS/DWI_RAS_40subj/N57437_nii4D_RAS.nii.gz"
 toapply = "TRK"
 outputpath = "/Users/alex/jacques/registration_test/registered/"
+outputpath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/registration_test/"
+figspath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/registration_test/"
 figspath = inputpath + "/Figures/"
+figspath = None
 applydirs = ["/Users/alex/jacques/registration_test/"]
 
-registration_type = ["AffineTransform3D"]
 nbins = 32
 sampling_prop = None
 metric = MutualInformationMetric(nbins, sampling_prop)
@@ -51,7 +53,7 @@ if max_processors < subject_processes:
 function_processes = np.int(max_processors/subject_processes)
 
 register_save_path = []
-registration_type = ["center_mass","RigidTransform3D"]
+registration_type = ["center_mass", "AffineRegistration", "RigidTransform3D", "AffineTransform3D"]
 
 if subject_processes>1:
     if function_processes>1:

@@ -22,6 +22,7 @@ from tract_save import save_trk_heavy_duty
 from dipy.io.utils import create_tractogram_header
 from dipy.io.streamline import load_trk
 import tract_save
+from tract_handler import get_trk_params, get_tract_params
 
 #from dipy.denoise.localpca import mppca
 #import dipy.tracking.life as life
@@ -115,9 +116,26 @@ def save_roisubset(trkfile, roislist, roisexcel, labelmask):
             tract_save.save_trk_heavy_duty(trkroipath, streamlines=roi_sl,
                                            affine=header[0], header=myheader)
 
-def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processes,outpathsubject,saved_streamlines,verbose=None,subject = 'NA'):
+
+def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processes,outpathdir,subject='NA',
+                   str_identifier='_', ratio=1, overwrite=False, get_params=False, verbose=None):
     # Compute odfs in Brain Mask
     t2 = time()
+
+    if ratio == 1:
+        saved_streamlines = "_all"
+    else:
+        saved_streamlines = "_ratio_" + str(ratio)
+
+    outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
+
+    if os.path.isfile(outpathtrk) and overwrite == "no":
+        print("subject " + subject + " already done")
+        if get_params:
+            get_tract_params(mypath, subject, str_identifier, verbose = False)
+            return outpathtrk, None, params
+        else:
+            return outpathtrk, None, None
 
     csa_model = CsaOdfModel(gtab, 6)
     if peak_processes < 2:
@@ -126,16 +144,9 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
         parallel = True
     if verbose:
         send_mail("Starting calculation of Constant solid angle model for subject " + subject,subject="CSA model start")
-        #print("Starting calculation of Constant solid angle model for subject " + subject)
-        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start the CSA model for subject %s!\r\n\r\n" % (useremail,useremail,subject)
-        #text="""The CSA model is about to be calculated""" % (warning_time,max_run_hours,os.getpid())  
-        #message=headers+text 
-        #mailServer=smtplib.SMTP(serverURL) 
-        #mailServer.sendmail(useremail,useremail,message) 
-        #mailServer.quit() 
+
     wholemask = np.where(mask == 0, False, True)
-    print(outpathsubject)
-    print(subject)
+
     parallel=False
     nbr_processes=1
     csa_peaks = peaks_from_model(model=csa_model,
@@ -160,12 +171,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
                   ',it has been ' + str(round(duration)) + 'seconds since the start of tractmaker',subject="Seed computation" )
 
         print('Computing classifier for local tracking for subject ' + subject)
-        #headers="From: %s\r\nTo: %s\r\nSubject:Seed computation\r\n\r\n" % (useremail,useremail)
-        #text="""About to start binary stopping criterion, duration of CSA was %.2f""" % (duration2)  
-        #message=headers+text 
-        #mailServer=smtplib.SMTP(serverURL) 
-        #mailServer.sendmail(useremail,useremail,message) 
-        #mailServer.quit() 
+
     classifier = BinaryStoppingCriterion(wholemask)
 
     # generates about 2 seeds per voxel
@@ -187,36 +193,18 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
         duration = time() - t2
         send_mail('Start of the local tracking ' + ',it has been ' + str(round(duration)) +
                   'seconds since the start of tractmaker', subject="Seed computation")
-        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start the local tracking!\r\n\r\n" % (useremail,useremail)
-        #text="""Seeds have been computed, about to start the local tracking"""
-        #message=headers+text 
-        #mailServer=smtplib.SMTP(serverURL) 
-        #mailServer.sendmail(useremail,useremail,message) 
-        #mailServer.quit() 
 
     stringstep = str(step_size)
     stringstep = stringstep.replace(".", "_")
     print("stringstep is "+stringstep)
-    # stringstep=""
     streamlines_generator = LocalTracking(csa_peaks, classifier,
                                           seeds, affine=np.eye(4), step_size=step_size)
 
-    # save everything - will generate a 20+ GBytes of data - hard to manipulate
 
-    # possibly add parameter in csv file or other to decide whether to save large tractogram file
-    # outpathfile=outpath+subject+"bmCSA_detr"+stringstep+".trk"
-    # myheader=create_tractogram_header(outpathfile,*get_reference_info(fdwi))
-
-    if saved_streamlines == "all":
-        ratio = 1
-    if saved_streamlines == "small":
-        ratio = 100
 
     sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-    outpathtrk = outpathsubject + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
 
     if verbose:
-        #headers="From: %s\r\nTo: %s\r\nSubject:Reached the point where we start saving the file!\r\n\r\n" % (useremail,useremail)
         duration = time() - t2
         txt = 'About to save streamlines at ' + outpathtrk + ',it has been ' + str(round(duration)) + \
               'seconds since the start of tractmaker',
@@ -233,52 +221,6 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
         print(txt)
         send_mail(txt,subject="Tract saving" )
 
-    """"
-    doprune=True
-    cutoff = 2
-    if doprune:
-        trkprunefile = trkpath + '/' + subject + '_stepsize_' + stringstep + '_pruned.trk'
-        if not os.path.exists(trkprunefile):
-            trkstreamlines = Streamlines(streamlines_generator)
-            trkstreamlines=prune_streamlines(list(trkstreamlines), data[:, :, :, 0], cutoff=cutoff, verbose=verbose)
-            myheader = create_tractogram_header(trkprunefile, *header)
-            prune_sl = lambda: (s for s in trkstreamlines)
-            save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
-                                               affine=affine, header=myheader)
-        else:
-            from dipy.io.streamline import load_trk
-            trkdata = load_trk(trkprunefile, 'same')
-            trkdata.to_vox()
-            if hasattr(trkdata, 'space_attribute'):
-                header = trkdata.space_attribute
-            elif hasattr(trkdata, 'space_attributes'):
-                header = trkdata.space_attributes
-    
-    """
-
-    labelslist= [59, 1059, 62, 1062]
-    labelmask=mask
-    roiname = "_hyptsept_"
-    strproperty = roiname
-    
-    ratios = [1]
-    roislist = [['fimbria'], ['corpus_callosum'], ['hypothalamus', 'septum'], ['primary_motor_cortex']]
-    print("reached this spot")
-    #save_roisubset(streamlines_generator, roislist, roisexcel, labelmask, stringstep, ratios, trkpath, subject, affine, header)
-
-    from dipy.tracking.utils import length
-    lengths = length(sg)
-    del trkdata
-    # lengths = list(length(trkstreamlines))
-    lengths = list(lengths)
-    numtracts = np.size(lengths)
-    minlength = np.min(lengths)
-    maxlength = np.max(lengths)
-    meanlength = np.mean(lengths)
-    stdlength = np.std(lengths)
-    print("Numtracts is "+ numtracts + ", minlength is "+minlength+", maxlength is "+maxlength+", meanlength is "+meanlength+", stdlength is"+stdlength)
-
-
     # save everything - will generate a 20+ GBytes of data - hard to manipulate
 
     # possibly add parameter in csv file or other to decide whether to save large tractogram file
@@ -291,5 +233,9 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
         send_mail("Finished file save at "+outpathtrk+" with tracking duration of " + str(duration3) + "seconds",
                   subject="file save update" )
 
-
-    return outpathtrk
+    if get_params:
+        numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(sg, verbose)
+        params = [numtracts, minlength, maxlength, meanlength, stdlength]
+    else:
+        params = None
+    return outpathtrk, sg, params

@@ -52,6 +52,9 @@ def _with_initialize(generator):
 
     return helper
 
+class tract_params:
+
+
 @_with_initialize
 def target(streamlines, affine, target_mask, include=True, strict=False):
     """Filters streamlines based on whether or not they pass through an ROI.
@@ -105,6 +108,51 @@ def target(streamlines, affine, target_mask, include=True, strict=False):
                 yield sl[longsl]
             else:
                 yield sl
+
+
+def get_trk_params(streamlines, verbose = False):
+    #trkdata = load_trk(trkpath, "same")
+    if verbose:
+        print("loaded ")
+    # trkdata.to_vox()
+    #header = trkdata.space_attribute
+    #affine = trkdata._affine
+    lengths = length(streamlines)
+    del streamlines
+    # lengths = list(length(trkstreamlines))
+    lengths = list(lengths)
+    numtracts = np.size(lengths)
+    minlength = np.min(lengths)
+    maxlength = np.max(lengths)
+    meanlength = np.mean(lengths)
+    stdlength = np.std(lengths)
+    if verbose:
+        print("For subject " + subject + " the number of tracts is " + numbtracts + ", the minimum length is " + minlength + ", the maximum length is " + maxlength + ", the mean length is " + meanlength + ", the std is " + stdlength)
+    return numtracts, minlength, maxlength, meanlength, stdlength
+
+
+def get_tract_params(mypath, subject, str_identifier, verbose = False):
+
+    trkpath = gettrkpath(mypath, subject, str_identifier, verbose)
+    trkdata = load_trk(trkpath, "same")
+    verbose = True
+    if verbose:
+        print("loaded ")
+    # trkdata.to_vox()
+    header = trkdata.space_attribute
+    affine = trkdata._affine
+    lengths = length(trkdata.streamlines)
+    #del trkdata
+    # lengths = list(length(trkstreamlines))
+    lengths = list(lengths)
+    numtracts = np.size(lengths)
+    minlength = np.min(lengths)
+    maxlength = np.max(lengths)
+    meanlength = np.mean(lengths)
+    stdlength = np.std(lengths)
+    if verbose:
+        print("For subject " + subject + " the number of tracts is " + numtracts + ", the minimum length is " + minlength + ", the maximum length is " + maxlength + ", the mean length is " + meanlength + ", the std is " + stdlength)
+    return subject, numtracts, minlength, maxlength, meanlength, stdlength, header, affine, trkdata
 
 
 def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
@@ -168,6 +216,7 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
     for idx in reversed(delstream):
         streamline.pop(idx)
     return streamline
+
 
 def save_roisubset(streamlines, roislist, roisexcel, labelmask, stringstep, ratios, trkpath, subject, affine, header):
     
@@ -250,4 +299,3 @@ def save_roisubset(streamlines, roislist, roisexcel, labelmask, stringstep, rati
                     elif hasattr(trkdata, 'space_attributes'):
                         header = trkdata.space_attributes
                     trkstreamlines = trkdata.streamlines
-

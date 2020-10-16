@@ -14,9 +14,11 @@ import os
 import multiprocessing as mp
 import pickle
 
-from tract_manager import create_tracts, evaluate_tracts, dwi_preprocessing, MyPool
-from bvec_handler import extractbvec_fromheader
+from tract_manager import create_tracts
 from BIAC_tools import send_mail
+from Daemonprocess import MyPool
+
+
 
 def orient_to_str(bvec_orient):
     mystr=""
@@ -41,6 +43,7 @@ def orient_to_str(bvec_orient):
 
 #l = ['N57433']
 l = ['N54717']
+l = ['H28029']
 
 max_processors = 1
 
@@ -54,15 +57,17 @@ print("Running on ", max_processors, " processors")
 # please set the parameter here
 
 BIGGUS_DISKUS = "/Volumes/Badea/Lab/mouse"
+BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
 #dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS/"
-dwipath = '/Users/alex/code/Wenlin/data/wenlin_data/'
+dwipath = BIGGUS_DISKUS
 #outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
 
 #outtrkpath = '/Users/alex/bass/testdata/lifetest/'
 #outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS/"
 outtrkpath = '/Users/alex/bass/testdata/' + 'btable_sanitycheck/'
+outtrkpath = '/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whistson_QA'
 #figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS/"
-#figspath = '/Users/alex/bass/testdata/lifetest/'
+figspath = outtrkpath
 
 #outpathpickle = BIGGUS_DISKUS + "/C57_JS/PicklesFig_RAS/"
 
@@ -91,9 +96,11 @@ savedenoise=True
 display=False
 savefig=False
 doprune=True
+get_params=True
 strproperty = "_pzmypx_fimbria"
 labelslist = [120,1120]#fimbria
 bvec_orient = [1, 2, 3]
+ratio = 100
 # ---------------------------------------------------------
 tall = time()
 tract_results = []
@@ -121,7 +128,7 @@ if subject_processes>1:
         pool = mp.Pool(subject_processes)
 
     tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-                                                            saved_streamlines, savefa, labelslist, bvec_orient, verbose) for subject in
+                                                            ratio, savefa, labelslist, bvec_orient, get_params, verbose) for subject in
                                                            l]).get()
 #    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
 #                                                         figspath, function_processes, doprune, display, verbose)
@@ -132,10 +139,7 @@ else:
         for bvec_orient in bvec_orient_list:
             strproperty = orient_to_str(bvec_orient)
             tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-                                              saved_streamlines, savefa, labelslist, bvec_orient, verbose))
-    #       tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines, labellist,
-#                                             outpathpickle, figspath, function_processes, doprune, display, verbose))
-
+                                              ratio, savefa, labelslist, bvec_orient, get_params, verbose))
 
 #dwip_results = pool.starmap_async(dwi_preprocessing[(dwipath,outpath,subject,denoise,savefa,function_processes, verbose) for subject in l]).get()
 

@@ -137,7 +137,6 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
         for apply_nifti in apply_niftis:
             fname = os.path.basename(apply_nifti).split(".")[0]
             fpath = outputpath + fname + "_centermass.nii"
-            """
             applynii = nib.load(apply_nifti)
             apply_data = applynii.get_data()
             apply_affine = applynii.affine
@@ -149,7 +148,7 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
             else:
                 transformed_all = c_of_mass.transform(apply_data)
                 transformed = transformed_all
-            save_nifti(fpath, transformed_all, anat_affine, hdr=anat_hdr)
+            save_nifti(fpath, transformed_all, apply_affine, hdr=apply_hdr)
             if figspath is not None:
                 regtools.overlay_slices(target_data, transformed, None, 0,
                                         "target_data", "Transformed", figspath + fname + "_centermass_1.png")
@@ -157,7 +156,8 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
                                         "target_data", "Transformed", figspath + fname + "_centermass_2.png")
                 regtools.overlay_slices(target_data, transformed, None, 2,
                                         "target_data", "Transformed", figspath + fname + "_centermass_3.png")
-            """
+            if verbose:
+                print("Saved the file at " + fpath)
         #mapping = sdr.optimize(target_data, anat_data, target_affine, anat_affine,
         #                       c_of_mass.affine)
         #warped_moving = mapping.transform(anat_data)
@@ -185,11 +185,13 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
             if has_fury:
 
                 show_template_bundles(mni_streamlines, anat_data, show=False,
-                                      fname= figspath + fname + '_streamlines_centermass.png')
+                                      fname = figspath + fname + '_streamlines_centermass.png')
 
             sft = StatefulTractogram(mni_streamlines, myanat, Space.RASMM)
 
             save_tractogram(sft, fpath, bbox_valid_check=False)
+            if verbose:
+                print("Saved the file at " + fpath)
 
     metric = MutualInformationMetric(params.nbins, params.sampling_prop)
 
@@ -223,7 +225,7 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
             apply_hdr = myanat.header
 
             if len(np.shape(apply_data)) == 4:
-                transformed_all = translation.transform(apply_data)
+                transformed_all = translation.transform(apply_data, apply4D=True)
                 transformed = transformed_all[:, :, :, 0]
             else:
                 transformed_all = translation.transform(apply_data)
@@ -236,6 +238,8 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
                                         "target_data", "Transformed", figspath + fname + "_affinereg_2.png")
                 regtools.overlay_slices(target_data, transformed, None, 2,
                                         "target_data", "Transformed", figspath + fname + "_affinereg_3.png")
+            if verbose:
+                print("Saved the file at " + fpath)
 
         for apply_trk in apply_trks:
 
@@ -266,6 +270,8 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
             sft = StatefulTractogram(mni_streamlines, myanat, Space.RASMM)
 
             save_tractogram(sft, fpath, bbox_valid_check=False)
+            if verbose:
+                print("Saved the file at " + fpath)
 
 
     if "RigidTransform3D" in registration_types:
@@ -295,7 +301,7 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
 
         for apply_nifti in apply_niftis:
             fname = os.path.basename(apply_nifti).split(".")[0]
-            fpath = outputpath + fname + "_rigidtransf.nii"
+            fpath = outputpath + fname + "_rigidtransf3d.nii"
 
             applynii = nib.load(apply_nifti)
             apply_data = applynii.get_data()
@@ -303,7 +309,7 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
             apply_hdr = myanat.header
 
             if len(np.shape(apply_data)) == 4:
-                transformed_all = rigid.transform(apply_data)
+                transformed_all = rigid.transform(apply_data, apply4D=True)
                 transformed = transformed_all[:, :, :, 0]
             else:
                 transformed_all = rigid.transform(apply_data)
@@ -311,16 +317,18 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
             save_nifti(fpath, transformed_all, anat_affine, hdr=anat_hdr)
             if figspath is not None:
                 regtools.overlay_slices(target_data, transformed, None, 0,
-                                        "target_data", "Transformed", figspath + fname + "_rigidtransf_1.png")
+                                        "target_data", "Transformed", figspath + fname + "_rigidtransf3d_1.png")
                 regtools.overlay_slices(target_data, transformed, None, 1,
-                                        "target_data", "Transformed", figspath + fname + "_rigidtransf_2.png")
+                                        "target_data", "Transformed", figspath + fname + "_rigidtransf3d_2.png")
                 regtools.overlay_slices(target_data, transformed, None, 2,
-                                        "target_data", "Transformed", figspath + fname + "_rigidtransf_3.png")
+                                        "target_data", "Transformed", figspath + fname + "_rigidtransf3d_3.png")
+            if verbose:
+                print("Saved the file at " + fpath)
 
         for apply_trk in apply_trks:
 
             fname = os.path.basename(apply_trk).split(".")[0]
-            fpath = outputpath + fname + "_affinereg.trk"
+            fpath = outputpath + fname + "_rigidtransf3d.trk"
 
             sft = load_tractogram(apply_trk, 'same')
             target_isocenter = np.diag(np.array([-vox_size, vox_size, vox_size, 1]))
@@ -341,11 +349,13 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
             if has_fury:
 
                 show_template_bundles(mni_streamlines, anat_data, show=False,
-                                      fname= figspath + fname + '_streamlines_affinereg.png')
+                                      fname= figspath + fname + '_rigidtransf3d.png')
 
             sft = StatefulTractogram(mni_streamlines, myanat, Space.RASMM)
 
             save_tractogram(sft, fpath, bbox_valid_check=False)
+            if verbose:
+                print("Saved the file at " + fpath)
 
     if "AffineTransform3D" in registration_types:
         transform = AffineTransform3D()
@@ -366,7 +376,7 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
 
         for apply_nifti in apply_niftis:
             fname = os.path.basename(apply_nifti).split(".")[0]
-            fpath = outputpath + fname + "_affinetransf.nii"
+            fpath = outputpath + fname + "_affinetransf3d.nii"
 
             applynii = nib.load(apply_nifti)
             apply_data = applynii.get_data()
@@ -374,24 +384,26 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
             apply_hdr = myanat.header
 
             if len(np.shape(apply_data)) == 4:
-                transformed_all = rigid.transform(apply_data)
+                transformed_all = affine.transform(apply_data, apply4D=True)
                 transformed = transformed_all[:, :, :, 0]
             else:
-                transformed_all = rigid.transform(apply_data)
+                transformed_all = affine.transform(apply_data)
                 transformed = transformed_all
             save_nifti(fpath, transformed_all, anat_affine, hdr=anat_hdr)
             if figspath is not None:
                 regtools.overlay_slices(target_data, transformed, None, 0,
-                                        "target_data", "Transformed", figspath + fname + "_affinetrans_1.png")
+                                        "target_data", "Transformed", figspath + fname + "_affinetransf3d_1.png")
                 regtools.overlay_slices(target_data, transformed, None, 1,
-                                        "target_data", "Transformed", figspath + fname + "_affinetrans_2.png")
+                                        "target_data", "Transformed", figspath + fname + "_affinetransf3d_2.png")
                 regtools.overlay_slices(target_data, transformed, None, 2,
-                                        "target_data", "Transformed", figspath + fname + "_affinetrans_3.png")
+                                        "target_data", "Transformed", figspath + fname + "_affinetransf3d_3.png")
+            if verbose:
+                print("Saved the file at " + fpath)
 
         for apply_trk in apply_trks:
 
             fname = os.path.basename(apply_trk).split(".")[0]
-            fpath = outputpath + fname + "_affinetransf.trk"
+            fpath = outputpath + fname + "_affinetransf3d.trk"
 
             sft = load_tractogram(apply_trk, 'same')
             target_isocenter = np.diag(np.array([-vox_size, vox_size, vox_size, 1]))
@@ -412,8 +424,10 @@ def register_save(inputpathdir, target_path, subject, outputpath, figspath, para
             if has_fury:
 
                 show_template_bundles(mni_streamlines, anat_data, show=False,
-                                      fname= figspath + fname + '_streamlines_affinereg.png')
+                                      fname= figspath + fname + '_streamlines_affinetransf3d.png')
 
             sft = StatefulTractogram(mni_streamlines, myanat, Space.RASMM)
 
             save_tractogram(sft, fpath, bbox_valid_check=False)
+            if verbose:
+                print("Saved the file at " + fpath)

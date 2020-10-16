@@ -12,8 +12,6 @@ Created on Wed Feb 19 15:48:38 2020
 
 import nibabel as nib
 import numpy as np
-from nibabel.streamlines import Field
-from nibabel.orientations import aff2axcodes
 from dipy.io.streamline import load_trk
 from os.path import splitext
 from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
@@ -31,15 +29,14 @@ from dipy.tracking.utils import unique_rows
 from time import time
 from dipy.io.image import load_nifti, save_nifti
 from dipy.io.gradients import read_bvals_bvecs
-from dipy.core.gradients import gradient_table
 from dipy.reconst.shm import CsaOdfModel
 from dipy.data import get_sphere
 from dipy.direction import peaks_from_model
+from tract_save import save_trk_heavy_duty
 from dipy.tracking.local_tracking import LocalTracking
 from dipy.direction import peaks
 from nibabel.streamlines import detect_format
-from dipy.io.utils import (create_tractogram_header,
-                           get_reference_info)
+from dipy.io.utils import (create_tractogram_header)
 from dipy.viz import window, actor
 
 from dipy.segment.mask import segment_from_cfa
@@ -68,20 +65,15 @@ from random import randint
 from mpl_toolkits.axes_grid1 import AxesGrid
 import matplotlib
 import matplotlib.pyplot as plt
-#import dipy.tracking.life as life
-import JSdipy.tracking.life as life
-from dipy.viz import window, actor, colormap as cmap
-import dipy.core.optimize as opt
-from functools import wraps
 import xlsxwriter
 from dipy.tracking.utils import length
 
-from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
-from figures_handler import denoise_fig, show_bundles, window_show_test, shore_scalarmaps
+from figures_handler import denoise_fig, shore_scalarmaps
 from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
-from BIAC_tools import send_mail, isempty, getsize
-from tract_handler import target, prune_streamlines
+from BIAC_tools import send_mail, isempty
+from tract_handler import target, prune_streamlines, get_trk_params, get_tract_params
+from nifti_handler import getfa, getdwidata
 import tract_save
 import xlrd
 
@@ -113,121 +105,6 @@ def strfile(string):
             return(string)
         except AttributeError:
             raise AttributeError("strfile error: not a usable number or string ")
-
-def get_tract_params(mypath, subject, str_identifier, verbose):
-
-    trkpath = gettrkpath(mypath, subject, str_identifier, verbose)
-    trkdata = load_trk(trkpath, "same")
-    verbose = True
-    if verbose:
-        print("loaded ")
-    # trkdata.to_vox()
-    header = trkdata.space_attribute
-    affine = trkdata._affine
-    lengths = length(trkdata.streamlines)
-    del trkdata
-    # lengths = list(length(trkstreamlines))
-    lengths = list(lengths)
-    numtracts = np.size(lengths)
-    minlength = np.min(lengths)
-    maxlength = np.max(lengths)
-    meanlength = np.mean(lengths)
-    stdlength = np.std(lengths)
-    if verbose:
-        print("For subject " + subject + " the number of tracts is " + numbtracts + ", the minimum length is " + minlength + ", the maximum length is " + maxlength + ", the mean length is " + meanlength + ", the std is " + stdlength)
-    return subject, numtracts, minlength, maxlength, meanlength, stdlength, header, affine
-
-
-def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
-
-    #fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
-    #fdwipath = mypath + '/nii4D_' + subject + '.nii'
-    if os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
-        fdwipath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
-    elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
-        fdwipath = mypath + '/nii4D_' + subject + '.nii'
-    elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
-        fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
-    elif os.path.exists(mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'):
-        fdwipath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
-    elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
-        fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
-    #fdwi_data, affine, vox_size = load_nifti(fdwipath, return_voxsize=True)
-
-    if verbose:
-        txt = "Extracting information from the dwi file located at " + fdwipath
-        print(txt)
-        send_mail(txt,subject="Begin data extraction")
-
-    if 'fdwipath' not in locals():
-        txt = "The subject " + subject + " was not detected, exit"
-        print(txt)
-        send_mail(txt,subject="Error")
-        return(0,0,0,0,0,0,0,0)
-
-    img = nib.load(fdwipath)
-    fdwi_data = img.get_data()
-    vox_size = img.header.get_zooms()[:3]
-    affine = img.affine
-    hdr = img.header
-    header = get_reference_info(fdwipath)
-    del(img)
-
-    #ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
-
-    if os.path.exists(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz'):
-        labels, affine_labels = load_nifti(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz')
-    elif os.path.exists(mypath+'/'+subject+'_chass_symmetric3_labels_RAS.nii.gz'):
-        labels, affine_labels = load_nifti(mypath+'/'+subject+'_chass_symmetric3_labels_RAS.nii.gz')
-    elif os.path.exists(mypath+'/'+subject+'_chass_symmetric3_labels_RAS_combined.nii.gz'):
-        labels, affine_labels = load_nifti(mypath+'/'+subject+'_chass_symmetric3_labels_RAS_combined.nii.gz')
-    elif os.path.exists(mypath + '/fa_labels_warp_' + subject +'_RAS.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz')
-    elif os.path.exists(mypath + '/labels/fa_labels_warp_' + subject +'_RAS.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz')
-    elif os.path.exists(mypath + '/mask.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/mask.nii.gz')
-    elif os.path.exists(mypath + '/mask.nii'):
-        labels, affine_labels = load_nifti(mypath + '/mask.nii')
-    else:
-        print('mask not found, taking all non null values in nii file instead (not recommended for complex operations)')
-        labels = np.ones(fdwi_data.shape[0:3])
-        affine_labels = affine
-        
-
-    #fbvals = mypath + '4Dnii/' + subject + '_RAS_ecc_bvals.txt'
-    #fbvecs = mypath + '4Dnii/' + subject + '_RAS_ecc_bvecs.txt'
-    #fbvals = glob.glob(mypath + '*/*' + subject + '*_bval*.txt')[0]
-    #fbvecs = glob.glob(mypath + '*/*' + subject + '*_bvec*.txt')[0]
-    try:
-        fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
-        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
-    except IndexError:
-        fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
-        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec.txt')[0]
-        fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
-    print(fbvecs)
-    bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
-
-    #bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]  # FOR RAS according to Alex
-    #bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]] #FOR RAS
-
-    #bvecs = np.c_[bvecs[:, -], bvecs[:, 0], -bvecs[:, 2]] #estimated for RAS based on headfile info
-    bvec_sign = bvec_orient/np.abs(bvec_orient)
-    bvecs = np.c_[bvec_sign[0]*bvecs[:, np.abs(bvec_orient[0])-1], bvec_sign[1]*bvecs[:, np.abs(bvec_orient[1])-1],
-                  bvec_sign[2]*bvecs[:, np.abs(bvec_orient[2])-1]]
-
-    #bvecs = np.c_[bvecs[:, 1], bvecs[:, 0], -bvecs[:, 2]]
-    #bvecs = np.c_[-bvecs[:, 1], bvecs[:, 0], bvecs[:, 2]]
-
-    gtab = gradient_table(bvals, bvecs)
-
-    # Build Brain Mask
-    #bm = np.where(labels == 0, False, True)
-    #mask = bm
-    
-    return fdwi_data,affine,gtab,labels,vox_size, fdwipath, hdr, header
-
 
 def almicedf_fix(df, verbose=None):
     # masterFile='/Users/alex/AlexBadea_MyPapers/FIGURES/mwm/mwm_master_organized.csv'
@@ -486,69 +363,6 @@ def gettrkpath(trkpath, subject, str_identifier, verbose=False):
         return
     return trkfile
 
-def getfa(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
-
-    # fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
-    fapath = mypath + '/' + subject + '_fa_RAS.nii.gz'
-    if os.path.exists(fapath):
-        fapath = mypath + '/' + subject + '_fa_RAS.nii.gz'
-    # fdwi_data, affine, vox_size = load_nifti(fdwipath, return_voxsize=True)
-
-    if os.path.exists(mypath + '/' + subject + '_fa_RAS.nii.gz'):
-        fapath = (mypath + '/' + subject + '_fa_RAS.nii.gz')
-    elif os.path.exists(mypath+'/'+'bmfa' + subject+'_wholebrain_.nii.gz'):
-        fapath = (mypath+'/'+'bmfa' + subject+'_wholebrain_.nii.gz')
-    else:
-        print("Could not find at either "+ (mypath + '/' + subject + '_fa_RAS.nii.gz') + " or " + (mypath+'/'+'bmfa' + subject+'_wholebrain.nii.gz'))
-
-    if verbose:
-        txt = "Extracting information from the fa file located at " + fapath
-        print(txt)
-        send_mail(txt, subject="Begin data extraction")
-
-    if 'fapath' not in locals():
-        txt = "The fa of subject " + subject + " was not detected at " + fapath + ", exit"
-        print(txt)
-        send_mail(txt, subject="Error")
-        return (0, 0, 0, 0, 0, 0, 0, 0)
-
-    img = nib.load(fapath)
-    fa_data = img.get_data()
-    vox_size = img.header.get_zooms()[:3]
-    affine = img.affine
-    hdr = img.header
-    header = get_reference_info(fapath)
-    del (img)
-
-    try:
-        fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
-        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
-    except IndexError:
-        fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
-        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec.txt')[0]
-        fbvals, fbvecs = fix_bvals_bvecs(fbvals, fbvecs)
-    print(fbvecs)
-    bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
-
-    # bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]  # FOR RAS according to Alex
-    # bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]] #FOR RAS
-
-    # bvecs = np.c_[bvecs[:, -], bvecs[:, 0], -bvecs[:, 2]] #estimated for RAS based on headfile info
-    bvec_sign = bvec_orient / np.abs(bvec_orient)
-    bvecs = np.c_[bvec_sign[0] * bvecs[:, np.abs(bvec_orient[0]) - 1], bvec_sign[1] * bvecs[:, np.abs(bvec_orient[1]) - 1],
-        bvec_sign[2] * bvecs[:, np.abs(bvec_orient[2]) - 1]]
-
-    # bvecs = np.c_[bvecs[:, 1], bvecs[:, 0], -bvecs[:, 2]]
-    # bvecs = np.c_[-bvecs[:, 1], bvecs[:, 0], bvecs[:, 2]]
-
-    gtab = gradient_table(bvals, bvecs)
-
-    # Build Brain Mask
-    # bm = np.where(labels == 0, False, True)
-    # mask = bm
-
-    return fa_data, affine, gtab, vox_size, hdr, header
-
 
 def getlabelmask(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
 
@@ -601,7 +415,7 @@ def connectomes_to_excel(connectome,ROI_excel,output_path):
 
     return
 
-def prunestreamline(trkorigpath, trkprunepath, cutoff = 4, forcestart = False)
+def prunestreamline(trkorigpath, trkprunepath, cutoff = 4, forcestart = False):
 
     #trkprunepath = trkpath + '/' + subject + str_identifier + '_pruned.trk'
     #trkpaths = glob.glob(trkpath + '/' + subject + '_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
@@ -938,38 +752,21 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
         print('FA was not calculated')
         outpathbmfa=None
 
-def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",saved_streamlines="all",save_fa="yes",
-                      labelslist = None, bvec_orient=[1,2,3], overwrite="no", verbose=None):
+def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",ratio=1,save_fa="yes",
+                      labelslist = None, bvec_orient=[1,2,3], doprune=False, overwrite="no", get_params = False,
+                  verbose=None):
 
     if verbose:
         print('Running the ' + subject + ' file')
 
-    outpathsubject = outpath + subject + strproperty
-    outpath_subject = outpathsubject + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
+    #outpath_subject = outpathsubject + saved_str + '_stepsize_' + str(step_size) + '.trk'
 
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata(dwipath, subject, bvec_orient)
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient)
     if np.mean(fdwi_data) == 0:
-        print("The subject " + subject + "could not be found at "+ dwipath)
+        print("The subject " + subject + "could not be found at " + dwipath)
         return
-    """
-    if isempty(labelslist):
-        mask = np.where(labelmask == 0, False, True)
-    else:
-        if isempty(labelslist):
-            raise ("File not found error: labels requested but labels file could not be found at " + dwipath + " for subject " + subject)
-        mask = np.zeros(np.shape(labelmask), dtype=int)
-        for label in labelslist:
-            mask = mask + (labelmask == label)
-        fdwi_data = fdwi_data * np.repeat(mask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
-    """
+
     mask=labelmask
-
-    #preprocessing section (still have to test denoising functions)
-    #data = denoise_pick(data, mask, 'macenko', display=None) #data = denoise_pick(data, mask, 'gibbs', display=None)
-    #fdwi_data = denoise_pick(fdwi_data, mask, 'all', display=None)
-    #fdwi_data = denoise_pick(fdwi_data, mask, denoise, verbose) #accepts mpca, gibbs, all, none
-    #testsnr => not yet fully implemented
-
 
     if save_fa == "yes" or save_fa == "y" or save_fa == 1 or save_fa is True or save_fa == "all" or save_fa == "only":
         outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=dwipath,strproperty=strproperty,verbose=verbose)
@@ -978,36 +775,66 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         print('FA was not calculated')
         outpathbmfa=None
 
-    #allowed_strings=["small","large","all","both","none"]
-    #string_inclusion(saved_tracts, allowed_strings, "saved_tracts")
-    outpathsubject = outpath + subject + strproperty
-
-    #trkheader = create_tractogram_header("place.trk", *get_reference_info(fdwipath))
-    #if multishell_split: #possible idea to creatr tracts from either one bval or another before doing it on all
     print(verbose)
     if verbose:
-        print("The QCSA Tractmake is ready to launch for subject " + subject)
-        send_mail("The QCSA Tractmake is ready to launch for subject " + subject,subject="QCSA main function start")
+        txt = ("The QCSA Tractmake is ready to launch for subject " + subject)
+        print(txt)
+        send_mail(txt,subject="QCSA main function start")
         print("email sent")
-        #headers="From: %s\r\nTo: %s\r\nSubject:QCSA start\r\n\r\n" % (useremail,useremail)
-        #text="""The QCSA Tractmake is ready to launch for subject %s""" % (subject)  
-        #message=headers+text 
-        #mailServer=smtplib.SMTP(serverURL) 
-        #mailServer.sendmail(useremail,useremail,message) 
-        #mailServer.quit()
-
-    if os.path.isfile(outpath_subject) and overwrite == "no":
-        print("subject " + subject + " already done")
-        return
 
     if save_fa != "only":
-        outpathtrk = QCSA_tractmake(fdwi_data,affine,vox_size,gtab,mask,header,step_size,peak_processes,outpathsubject,saved_streamlines,verbose=verbose,subject=subject)
+        outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, header, step_size, peak_processes,
+                                    outpath, subject, strproperty, ratio, overwrite, get_params, verbose=verbose)
     else:
         return
-    return subject, outpathbmfa, outpathtrk
+
+    cutoff = 2
+    if doprune:
+        trkprunefile = trkpath + '/' + subject + '_stepsize_' + stringstep + '_pruned.trk'
+        if not os.path.exists(trkprunefile):
+            if trkstreamlines is None:
+                trkdata = load_trk(outpathtrk, 'same')
+                trkdata.to_vox()
+                trkstreamlines = trkdata.streamlines
+                del trkdata
+            trkstreamlines=prune_streamlines(list(trkstreamlines), fdwi_data[:, :, :, 0], cutoff=cutoff, verbose=verbose)
+            myheader = create_tractogram_header(trkprunefile, *header)
+            prune_sl = lambda: (s for s in trkstreamlines)
+            save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
+                                               affine=affine, header=myheader)
+
+    if labelslist:
+        print('In process of implementing')
+        """
+        labelslist= [59, 1059, 62, 1062]
+        labelmask=mask
+        roiname = "_hyptsept_"
+        strproperty = roiname
+
+        ratios = [1]
+        roislist = [['fimbria'], ['corpus_callosum'], ['hypothalamus', 'septum'], ['primary_motor_cortex']]
+        print("reached this spot")
+        #save_roisubset(streamlines_generator, roislist, roisexcel, labelmask, stringstep, ratios, trkpath, subject, affine, header)
+
+        from dipy.tracking.utils import length
+        lengths = length(sg)
+        del trkdata
+        # lengths = list(length(trkstreamlines))
+        lengths = list(lengths)
+        numtracts = np.size(lengths)
+        minlength = np.min(lengths)
+        maxlength = np.max(lengths)
+        meanlength = np.mean(lengths)
+        stdlength = np.std(lengths)
+        print("Numtracts is "+ numtracts + ", minlength is "+minlength+", maxlength is "+maxlength+", meanlength is "+meanlength+", stdlength is"+stdlength)
+        """
+
+    return subject, outpathtrk, params
 
 
-def evaluate_coherence(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, allsave=False, display=True, strproperty = "", ratio = 1, verbose=None):
+def evaluate_coherence(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None,
+                       outpathfig=None, processes=1, allsave=False, display=True, strproperty="", ratio=1,
+                       verbose=None):
 
     _, affine, gtab, labelmask, vox_size, fdwipath, _, _ = getdwidata(dwipath, subject)
 
