@@ -52,10 +52,6 @@ def _with_initialize(generator):
 
     return helper
 
-class tract_params:
-
-
-@_with_initialize
 def target(streamlines, affine, target_mask, include=True, strict=False):
     """Filters streamlines based on whether or not they pass through an ROI.
 

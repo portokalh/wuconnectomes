@@ -228,7 +228,6 @@ def analysis_diffusion_figures(dwipath,outpath,subject, bvec_orient=[1,2,3], ver
     outpath_fig = outpath + subject + "SHORE_maps.png"
     shore_scalarmaps(fdwi_data, gtab, outpath_fig, verbose = verbose)
 
-
 def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetrois, labelslist, bvec_orient=[1,2,3], verbose=None):
 
     fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, header, hdr = getdwidata(dwipath, subject, bvec_orient, verbose)
@@ -752,6 +751,14 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
         print('FA was not calculated')
         outpathbmfa=None
 
+def create_tracts_test(dwipath,outpath,subject,step_size,peak_processes,strproperty="",ratio=1,save_fa="yes",
+                      labelslist = None, bvec_orient=[1,2,3], doprune=False, overwrite="no", get_params = False,
+                  verbose=None):
+    outpathtrk = outpath + subject + strproperty + "ratio" + str(ratio) + '_stepsize_' + str(step_size) + '.trk'
+    params = [10, 10, 10, 10, 10]
+    return subject, outpathtrk, params
+
+
 def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",ratio=1,save_fa="yes",
                       labelslist = None, bvec_orient=[1,2,3], doprune=False, overwrite="no", get_params = False,
                   verbose=None):
@@ -802,6 +809,11 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
             prune_sl = lambda: (s for s in trkstreamlines)
             save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
                                                affine=affine, header=myheader)
+
+    if get_params():
+        numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(trkstreamlines, verbose)
+        params = [numtracts, minlength, maxlength, meanlength, stdlength]
+
 
     if labelslist:
         print('In process of implementing')

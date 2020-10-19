@@ -14,7 +14,7 @@ import os
 import multiprocessing as mp
 import pickle
 
-from tract_manager import create_tracts
+from tract_manager import create_tracts, create_tracts_test
 from BIAC_tools import send_mail
 from Daemonprocess import MyPool
 
@@ -65,7 +65,7 @@ dwipath = BIGGUS_DISKUS
 #outtrkpath = '/Users/alex/bass/testdata/lifetest/'
 #outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS/"
 outtrkpath = '/Users/alex/bass/testdata/' + 'btable_sanitycheck/'
-outtrkpath = '/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whistson_QA'
+outtrkpath = '/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
 #figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS/"
 figspath = outtrkpath
 
@@ -120,6 +120,9 @@ if verbose:
     send_mail(txt, subject="Main process start msg ")
 
 duration1 = time()
+txtfile = "/Users/alex/bass/testdata/"
+
+get_params = True
 
 if subject_processes>1:
     if function_processes>1:
@@ -136,10 +139,16 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in l:
+        tract_results = []
+        txtfile = dwipath + subject + "params.txt"
         for bvec_orient in bvec_orient_list:
             strproperty = orient_to_str(bvec_orient)
-            tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+            tract_results.append(create_tracts_test(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
                                               ratio, savefa, labelslist, bvec_orient, get_params, verbose))
+            with open(txtfile, 'a') as f:
+                for item in tract_results:
+                    f.write("Subject %s\n" % (tracts_results))
+
 
 #dwip_results = pool.starmap_async(dwi_preprocessing[(dwipath,outpath,subject,denoise,savefa,function_processes, verbose) for subject in l]).get()
 
