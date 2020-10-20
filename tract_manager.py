@@ -755,7 +755,7 @@ def create_tracts_test(dwipath,outpath,subject,step_size,peak_processes,strprope
                       labelslist = None, bvec_orient=[1,2,3], doprune=False, overwrite="no", get_params = False,
                   verbose=None):
     outpathtrk = outpath + subject + strproperty + "ratio" + str(ratio) + '_stepsize_' + str(step_size) + '.trk'
-    params = [10, 10, 10, 10, 10]
+    params = [10, 20, bvec_orient[0], bvec_orient[1], bvec_orient[2]]
     return subject, outpathtrk, params
 
 

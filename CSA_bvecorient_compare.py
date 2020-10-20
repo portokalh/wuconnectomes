@@ -58,6 +58,7 @@ print("Running on ", max_processors, " processors")
 
 BIGGUS_DISKUS = "/Volumes/Badea/Lab/mouse"
 BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
+BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
 #dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS/"
 dwipath = BIGGUS_DISKUS
 #outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
@@ -65,7 +66,7 @@ dwipath = BIGGUS_DISKUS
 #outtrkpath = '/Users/alex/bass/testdata/lifetest/'
 #outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS/"
 outtrkpath = '/Users/alex/bass/testdata/' + 'btable_sanitycheck/'
-outtrkpath = '/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
+outtrkpath = '/mnt/munin6/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
 #figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS/"
 figspath = outtrkpath
 
@@ -123,6 +124,7 @@ duration1 = time()
 txtfile = "/Users/alex/bass/testdata/"
 
 get_params = True
+print(bvec_orient_list)
 
 if subject_processes>1:
     if function_processes>1:
@@ -139,16 +141,22 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in l:
-        tract_results = []
-        txtfile = dwipath + subject + "params.txt"
+        txtfile = dwipath + subject + "/params.txt"
         for bvec_orient in bvec_orient_list:
+            tract_results = []
+            print(bvec_orient)
             strproperty = orient_to_str(bvec_orient)
-            tract_results.append(create_tracts_test(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
+            tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
                                               ratio, savefa, labelslist, bvec_orient, get_params, verbose))
+            print(tract_results)
             with open(txtfile, 'a') as f:
                 for item in tract_results:
-                    f.write("Subject %s\n" % (tracts_results))
-
+                    f.write("Subject %s with %s %s %s \n" % (item[0],str(bvec_orient[0]),str(bvec_orient[1]),str(bvec_orient[2])))
+                    f.write("Num tracts: %s \n" % item[2][0])
+                    f.write("Min tract length: %s \n" % item[2][1])
+                    f.write("Max tract length: %s \n" % item[2][2])
+                    f.write("Average tract length: %s \n" % item[2][3])
+                    f.write("Standard deviancy tract length: %s \n" % item[2][4])
 
 #dwip_results = pool.starmap_async(dwi_preprocessing[(dwipath,outpath,subject,denoise,savefa,function_processes, verbose) for subject in l]).get()
 
