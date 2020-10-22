@@ -66,7 +66,6 @@ from mpl_toolkits.axes_grid1 import AxesGrid
 import matplotlib
 import matplotlib.pyplot as plt
 import xlsxwriter
-from dipy.tracking.utils import length
 
 from figures_handler import denoise_fig, shore_scalarmaps
 from tract_eval import bundle_coherence, LiFEvaluation
@@ -76,6 +75,7 @@ from tract_handler import target, prune_streamlines, get_trk_params, get_tract_p
 from nifti_handler import getfa, getdwidata
 import tract_save
 import xlrd
+
 
 def string_inclusion(string_option,allowed_strings,option_name):
     "checks if option string is part of the allowed list of strings for that option"
@@ -227,7 +227,6 @@ def analysis_diffusion_figures(dwipath,outpath,subject, bvec_orient=[1,2,3], ver
     fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata(dwipath, subject, bvec_orient)
     outpath_fig = outpath + subject + "SHORE_maps.png"
     shore_scalarmaps(fdwi_data, gtab, outpath_fig, verbose = verbose)
-
 
 def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetrois, labelslist, bvec_orient=[1,2,3], verbose=None):
 
@@ -752,6 +751,14 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
         print('FA was not calculated')
         outpathbmfa=None
 
+def create_tracts_test(dwipath,outpath,subject,step_size,peak_processes,strproperty="",ratio=1,save_fa="yes",
+                      labelslist = None, bvec_orient=[1,2,3], doprune=False, overwrite="no", get_params = False,
+                  verbose=None):
+    outpathtrk = outpath + subject + strproperty + "ratio" + str(ratio) + '_stepsize_' + str(step_size) + '.trk'
+    params = [10, 20, bvec_orient[0], bvec_orient[1], bvec_orient[2]]
+    return subject, outpathtrk, params
+
+
 def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",ratio=1,save_fa="yes",
                       labelslist = None, bvec_orient=[1,2,3], doprune=False, overwrite="no", get_params = False,
                   verbose=None):
@@ -782,15 +789,12 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         send_mail(txt,subject="QCSA main function start")
         print("email sent")
 
-    if save_fa != "only":
-        outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, header, step_size, peak_processes,
-                                    outpath, subject, strproperty, ratio, overwrite, get_params, verbose=verbose)
-    else:
-        return
+    outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, header, step_size, peak_processes,
+                                outpath, subject, strproperty, ratio, overwrite, get_params, verbose=verbose)
 
     cutoff = 2
     if doprune:
-        trkprunefile = trkpath + '/' + subject + '_stepsize_' + stringstep + '_pruned.trk'
+        trkprunefile = outpath + '/' + subject + '_stepsize_' + strproperty + '_pruned.trk'
         if not os.path.exists(trkprunefile):
             if trkstreamlines is None:
                 trkdata = load_trk(outpathtrk, 'same')
@@ -802,6 +806,11 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
             prune_sl = lambda: (s for s in trkstreamlines)
             save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
                                                affine=affine, header=myheader)
+
+    if get_params():
+        numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(trkstreamlines, verbose)
+        params = [numtracts, minlength, maxlength, meanlength, stdlength]
+
 
     if labelslist:
         print('In process of implementing')

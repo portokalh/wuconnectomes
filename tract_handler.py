@@ -18,6 +18,7 @@ from dipy.tracking.streamline import Streamlines
 from dipy.io.utils import create_tractogram_header
 from tract_save import save_trk_heavy_duty
 from dipy.io.streamline import load_trk
+from dipy.tracking.utils import length
 import os
 
 def longstring(string,margin=0):
@@ -52,10 +53,6 @@ def _with_initialize(generator):
 
     return helper
 
-class tract_params:
-
-
-@_with_initialize
 def target(streamlines, affine, target_mask, include=True, strict=False):
     """Filters streamlines based on whether or not they pass through an ROI.
 

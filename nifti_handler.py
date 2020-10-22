@@ -5,7 +5,9 @@ import os, glob
 from dipy.io.gradients import read_bvals_bvecs
 from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
 import pathlib
+from BIAC_tools import send_mail
 from dipy.core.gradients import gradient_table
+
 
 def getfa(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
 

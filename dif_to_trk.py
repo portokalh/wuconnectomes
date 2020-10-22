@@ -200,8 +200,6 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
     streamlines_generator = LocalTracking(csa_peaks, classifier,
                                           seeds, affine=np.eye(4), step_size=step_size)
 
-
-
     sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
 
     if verbose:
@@ -238,4 +236,4 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
         params = [numtracts, minlength, maxlength, meanlength, stdlength]
     else:
         params = None
-    return outpathtrk, sg, params
+    return outpathtrk, streamlines_generator, params
