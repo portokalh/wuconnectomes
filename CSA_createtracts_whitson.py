@@ -24,41 +24,24 @@ from pandas import ExcelWriter
 from pandas import ExcelFile
 from BIAC_tools import isempty
 
-l = []
+l = ["H21593", "H21729"]
 
-max_processors = 3
+max_processors = 2
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 
 print("Running on ", max_processors, " processors")
 
-#pool = mp.Pool(mp.cpu_count())
-
-# please set the parameter here
-
-# mypath = '/Users/alex/brain_data/E3E4/wenlin/'
-#dwipath = '/Users/alex/brain_data/19abb14/C57_RAS/'
-#BIGGUS_DISKUS = os.environ.get('BIGGUS_DISKUS')
 BIGGUS_DISKUS = "/Volumes/Badea/Lab/mouse"
-BIGGUS_DISKUS = "/Volumes/dusom_dibs_ad_decode/all_staff/munin3badea/mouse"
-dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS_40subj/"
-#dwipath = "/Users/alex/jacques/tempDWI/"
-#outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
+BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
+#BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
+dwipath = BIGGUS_DISKUS
 
-#outtrkpath = '/Users/alex/bass/testdata/lifetest/'
-outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS_40subj/"
-outtrkpath = "/Volumes/dusom_dibs_ad_decode/all_staff/munin3badea/mouse/C57_JS/TRK_RAS_40subj/"
-figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS/"
-#figspath = '/Users/alex/bass/testdata/lifetest/'
+#outtrkpath = '/mnt/munin6/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
+outtrkpath = '/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
 
-outpathpickle = BIGGUS_DISKUS + "/C57_JS/PicklesFig_RAS/"
-
-atlas_legends = BIGGUS_DISKUS + "/atlases/CHASSSYMM3AtlasLegends.xlsx"
-
-df = pd.read_excel(atlas_legends, sheet_name='Sheet1')
-df['Structure'] = df['Structure'].str.lower()
-
+#outpathpickle = BIGGUS_DISKUS + "/C57_JS/PicklesFig_RAS/"
 
 stepsize = 2
 subject_processes = np.size(l)
@@ -92,7 +75,8 @@ elif len(rois)>1:
 #labellist=[163,1163,120,1120]
 #labelslist=[121,1121]#corpuscallosum
 
-if rois:
+labelslist = []
+if rois and (rois[0]!="wholebrain" or len(rois) > 1):
     atlas_legends = BIGGUS_DISKUS + "/atlases/CHASSSYMM3AtlasLegends.xlsx"
     df = pd.read_excel(atlas_legends, sheet_name='Sheet1')
     df['Structure'] = df['Structure'].str.lower()
