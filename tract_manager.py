@@ -807,7 +807,7 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
             save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
                                                affine=affine, header=myheader)
 
-    if get_params():
+    if get_params is True and params is None:
         numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(trkstreamlines, verbose)
         params = [numtracts, minlength, maxlength, meanlength, stdlength]
 

@@ -123,8 +123,6 @@ def get_trk_params(streamlines, verbose = False):
     maxlength = np.max(lengths)
     meanlength = np.mean(lengths)
     stdlength = np.std(lengths)
-    if verbose:
-        print("For subject " + subject + " the number of tracts is " + numbtracts + ", the minimum length is " + minlength + ", the maximum length is " + maxlength + ", the mean length is " + meanlength + ", the std is " + stdlength)
     return numtracts, minlength, maxlength, meanlength, stdlength
 
 

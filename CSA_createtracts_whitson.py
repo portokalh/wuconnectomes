@@ -92,23 +92,25 @@ elif len(rois)>1:
 #labellist=[163,1163,120,1120]
 #labelslist=[121,1121]#corpuscallosum
 
-labelslist=[]
-for roi in rois:
-    rslt_df = df.loc[df['Structure'] == roi.lower()]
-    if roi.lower() == "wholebrain" or roi.lower() == "brain":
-        labelslist=None
-    else:
-        labelslist=np.concatenate((labelslist,np.array(rslt_df.index2)))
-print(labelslist)
-if isempty(labelslist) and roi.lower() != "wholebrain" and roi.lower() != "brain":
-    txt = "Warning: Unrecognized roi, will take whole brain as ROI. The roi specified was: " + roi
-    print(txt)
+if rois:
+    atlas_legends = BIGGUS_DISKUS + "/atlases/CHASSSYMM3AtlasLegends.xlsx"
+    df = pd.read_excel(atlas_legends, sheet_name='Sheet1')
+    df['Structure'] = df['Structure'].str.lower()
+    for roi in rois:
+        rslt_df = df.loc[df['Structure'] == roi.lower()]
+        if roi.lower() == "wholebrain" or roi.lower() == "brain":
+            labelslist=None
+        else:
+            labelslist=np.concatenate((labelslist,np.array(rslt_df.index2)))
+    print(labelslist)
+    if isempty(labelslist) and roi.lower() != "wholebrain" and roi.lower() != "brain":
+        txt = "Warning: Unrecognized roi, will take whole brain as ROI. The roi specified was: " + roi
+        print(txt)
 
-#labelslist=None
 bvec_orient=[-2,1,3]
 # ---------------------------------------------------------
 tall = time()
-tract_results=[]
+tract_results = []
 
 
 if verbose:
@@ -118,6 +120,8 @@ if verbose:
     send_mail(txt,subject="Main process start msg ")
 
 duration1=time()
+overwrite = False
+get_params = False
 
 
 if subject_processes>1:
@@ -126,25 +130,17 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-                                                            saved_streamlines, savefa, labelslist, bvec_orient, verbose) for subject in
-                                                           l]).get()
-#    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
-#                                                          labelslist, outpathpickle, figspath, function_processes,
-#                                                          allsave, display, strproperty, ratio, verbose) for subject in l]).get()
-#    pool.close()
+    tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes,
+                                                        strproperty, ratio, savefa, labelslist, bvec_orient, doprune,
+                                                        overwrite, get_params, verbose) for subject in l]).get()
+
+    pool.close()
 else:
     for subject in l:
         tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-                                         saved_streamlines, savefa, labelslist, bvec_orient, verbose))
-#        tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines, labelslist,
-#                                             outpathpickle, figspath, function_processes, allsave, display, strproperty,
-#                                             ratio, verbose))
+                                              ratio, savefa, labelslist, bvec_orient, doprune, overwrite, get_params,
+                                           verbose))
 
-#dwip_results = pool.starmap_async(dwi_preprocessing[(dwipath,outpath,subject,denoise,savefa,function_processes, verbose) for subject in l]).get()
-
-#tract_results = pool.starmap_async(create_tracts,[(dwipath, outpath, subject, stepsize, function_processes,
-#                                            saved_streamlines, denoise, savefa, verbose) for subject in l]).get()
 
 subject=l[0]
 #dwip_results = dwi_preprocessing(dwipath,dwipath,subject,denoise,savedenoise=savedenoise, savefa=savefa, processes=function_processes, verbose=verbose)
@@ -154,6 +150,18 @@ subject=l[0]
 
 #tracteval_results = evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines, outpathfig=figspath,
 #                                    processes=function_processes, doprune=True, display=display, verbose=verbose)
+
+#        tract_results.append(evaluate_tracts(dwipath, outtrkpath, subject, stepsize, saved_streamlines, labelslist,
+#                                             outpathpickle, figspath, function_processes, allsave, display, strproperty,
+#                                             ratio, verbose))
+
+#dwip_results = pool.starmap_async(dwi_preprocessing[(dwipath,outpath,subject,denoise,savefa,function_processes, verbose) for subject in l]).get()
+
+#tract_results = pool.starmap_async(create_tracts,[(dwipath, outpath, subject, stepsize, function_processes,
+#                                            saved_streamlines, denoise, savefa, verbose) for subject in l]).get()
+#    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
+#                                                          labelslist, outpathpickle, figspath, function_processes,
+#                                                          allsave, display, strproperty, ratio, verbose) for subject in l]).get()
 """
 tall = time() - tall
 if verbose:

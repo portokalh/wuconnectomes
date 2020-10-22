@@ -58,23 +58,17 @@ print("Running on ", max_processors, " processors")
 
 BIGGUS_DISKUS = "/Volumes/Badea/Lab/mouse"
 BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
-<<<<<<< HEAD
 #BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
-=======
-BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
->>>>>>> cbfc74f1f6e02fc97411f2f27e4a789e0ec69f34
+#BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
 #dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS/"
 dwipath = BIGGUS_DISKUS
 #outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
 
 #outtrkpath = '/Users/alex/bass/testdata/lifetest/'
 #outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS/"
-outtrkpath = '/Users/alex/bass/testdata/' + 'btable_sanitycheck/'
-<<<<<<< HEAD
+#outtrkpath = '/Users/alex/bass/testdata/' + 'btable_sanitycheck/'
 #outtrkpath = '/mnt/munin6/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
-=======
-outtrkpath = '/mnt/munin6/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
->>>>>>> cbfc74f1f6e02fc97411f2f27e4a789e0ec69f34
+outtrkpath = '/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
 #figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS/"
 figspath = outtrkpath
 
@@ -105,9 +99,11 @@ savedenoise=True
 display=False
 savefig=False
 doprune=False
-get_params=True
+get_params=False
+overwrite = False
 strproperty = "_pzmypx_fimbria"
-labelslist = [120,1120]#fimbria
+#labelslist = [120,1120]#fimbria
+labelslist = []
 bvec_orient = [1, 2, 3]
 ratio = 100
 # ---------------------------------------------------------
@@ -155,7 +151,7 @@ else:
             print(bvec_orient)
             strproperty = orient_to_str(bvec_orient)
             tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-                                              ratio, savefa, labelslist, bvec_orient, get_params, verbose))
+                                              ratio, savefa, labelslist, bvec_orient, doprune, overwrite, get_params, verbose))
             print(tract_results)
             with open(txtfile, 'a') as f:
                 for item in tract_results:
@@ -198,36 +194,3 @@ if verbose:
 
 duration_all = time() -  tall
 print('All animals tracking finished, running time is {}'.format(duration_all))
-
-
-"""
-example to use parallel in parallel
-def sleepawhile(t):
-    print("Sleeping %i seconds..." % t)
-    time.sleep(t)
-    return t
-
-def work(num_procs):
-    print("Creating %i (daemon) workers and jobs in child." % num_procs)
-    pool = multiprocessing.Pool(num_procs)
-
-    result = pool.map(sleepawhile,
-        [randint(1, 5) for x in range(num_procs)])
-
-    # The following is not really needed, since the (daemon) workers of the
-    # child's pool are killed when the child is terminated, but it's good
-    # practice to cleanup after ourselves anyway.
-    pool.close()
-    pool.join()
-    return result
-
-def test():
-    print("Creating 5 (non-daemon) workers and jobs in main process.")
-    pool = MyPool(5)
-
-    result = pool.map(work, [randint(1, 5) for x in range(5)])
-
-    pool.close()
-    pool.join()
-    print(result)
-"""
