@@ -64,7 +64,7 @@ extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57436/co_reg_N57436_m00.
 extractbvec_fromheader('/Users/alex/brain_data/19abb14/N57437/co_reg_N57437_m00.headfile','/Users/alex/brain_data/19abb14/4DNifti/N57437',"all")
 """
 
-saved_streamlines = "all"
+saved_streamlines = 1
 savefa="no"
 verbose=True
 denoise='mpca'
@@ -97,10 +97,9 @@ if subject_processes>1:
         pool = MyPool(subject_processes)
     else:
         pool = mp.Pool(subject_processes)
-
-    tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-                                                            saved_streamlines, savefa, labelslist, bvec_orient, verbose) for subject in
-                                                           l]).get()
+    tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes,
+                                                        strproperty, ratio, savefa, labelslist, bvec_orient,
+                                                        get_params, verbose) for subject in l]).get()
 #    tract_results = pool.starmap_async(evaluate_tracts, [(dwipath, outtrkpath, subject, stepsize, saved_streamlines,
 #                                                          labelslist, outpathpickle, figspath, function_processes,
 #                                                          doprune, display, verbose) for subject in l]).get()
