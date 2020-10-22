@@ -58,7 +58,11 @@ print("Running on ", max_processors, " processors")
 
 BIGGUS_DISKUS = "/Volumes/Badea/Lab/mouse"
 BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
+<<<<<<< HEAD
 #BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
+=======
+BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
+>>>>>>> cbfc74f1f6e02fc97411f2f27e4a789e0ec69f34
 #dwipath = BIGGUS_DISKUS + "/C57_JS/DWI_RAS/"
 dwipath = BIGGUS_DISKUS
 #outtrkpath = '/Users/alex/bass/testdata/' + 'braindata_results/'
@@ -66,7 +70,11 @@ dwipath = BIGGUS_DISKUS
 #outtrkpath = '/Users/alex/bass/testdata/lifetest/'
 #outtrkpath = BIGGUS_DISKUS + "/C57_JS/TRK_RAS/"
 outtrkpath = '/Users/alex/bass/testdata/' + 'btable_sanitycheck/'
+<<<<<<< HEAD
 #outtrkpath = '/mnt/munin6/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
+=======
+outtrkpath = '/mnt/munin6/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
+>>>>>>> cbfc74f1f6e02fc97411f2f27e4a789e0ec69f34
 #figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS/"
 figspath = outtrkpath
 
