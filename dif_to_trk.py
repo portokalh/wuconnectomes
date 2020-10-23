@@ -235,9 +235,9 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
         numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(streamlines_generator, verbose)
         params = [numtracts, minlength, maxlength, meanlength, stdlength]
         if verbose:
-            print("For subject " + subject + " the number of tracts is " + numtracts + ", the minimum length is " +
-                  minlength + ", the maximum length is " + maxlength + ", the mean length is " +
-                  meanlength + ", the std is " + stdlength)
+            print("For subject " + str(subject) + " the number of tracts is " + str(numtracts) + ", the minimum length is " +
+                  str(minlength) + ", the maximum length is " + str(maxlength) + ", the mean length is " +
+                  str(meanlength) + ", the std is " + str(stdlength))
     else:
         params = None
     return outpathtrk, streamlines_generator, params
