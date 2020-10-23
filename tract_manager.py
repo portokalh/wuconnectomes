@@ -768,12 +768,10 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
 
     #outpath_subject = outpathsubject + saved_str + '_stepsize_' + str(step_size) + '.trk'
 
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient)
+    fdwi_data, affine, gtab, mask, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient)
     if np.mean(fdwi_data) == 0:
         print("The subject " + subject + "could not be found at " + dwipath)
         return
-
-    mask=labelmask
 
     if save_fa == "yes" or save_fa == "y" or save_fa == 1 or save_fa is True or save_fa == "all" or save_fa == "only":
         outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=dwipath,strproperty=strproperty,verbose=verbose)

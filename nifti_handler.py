@@ -221,7 +221,7 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
         labels, affine_labels = load_nifti(mypath + '/mask.nii')
     else:
         print('mask not found, taking all non null values in nii file instead (not recommended for complex operations)')
-        labels = np.ones(fdwi_data.shape[0:3])
+        labels = (fdwi_data[:, :, :, 0] > 0).astype(int)
         affine_labels = affine
 
     #bvecs = np.c_[bvecs[:, 1], bvecs[:, 0], -bvecs[:, 2]]
