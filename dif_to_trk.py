@@ -35,8 +35,10 @@ def make_tensorfit(data,mask,gtab,affine,subject,outpath,strproperty, overwrite=
 
 
     from dipy.reconst.dti import TensorModel
-
-    outpathbmfa = outpath + 'bmfa' + subject + strproperty + '.nii.gz'
+    if os.path.isdir(outpath):
+        outpathbmfa = outpath + '/bmfa' + subject + strproperty + '.nii.gz'
+    elif os.path.isfile(outpath):
+        outpathbmfa = os.path.dirname(outpath) + '/bmfa' + subject + '.nii.gz'
     if os.path.isfile(outpathbmfa) and overwrite == 'no':
         print("FA has already been saved at " + outpathbmfa + ", no overwrite")
         return

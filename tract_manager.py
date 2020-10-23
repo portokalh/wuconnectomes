@@ -763,6 +763,7 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
                       labelslist = None, bvec_orient=[1,2,3], doprune=False, overwrite="no", get_params = False,
                   verbose=None):
 
+    print("Do prune is "+str(doprune))
     if verbose:
         print('Running the ' + subject + ' file')
 
@@ -792,7 +793,11 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
 
     cutoff = 2
     if doprune:
-        trkprunefile = outpath + '/' + subject + '_stepsize_' + strproperty + '_pruned.trk'
+        if ratio == 1:
+            saved_streamlines = "_all"
+        else:
+            saved_streamlines = "_ratio_" + str(ratio)
+        trkprunefile = outpath + '/' + subject + strproperty + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
         if not os.path.exists(trkprunefile):
             if trkstreamlines is None:
                 trkdata = load_trk(outpathtrk, 'same')
