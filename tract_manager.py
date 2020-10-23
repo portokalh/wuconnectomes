@@ -788,27 +788,9 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         send_mail(txt,subject="QCSA main function start")
         print("email sent")
 
-    outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, header, step_size, peak_processes,
-                                outpath, subject, strproperty, ratio, overwrite, get_params, verbose=verbose)
-
-    cutoff = 2
-    if doprune:
-        if ratio == 1:
-            saved_streamlines = "_all"
-        else:
-            saved_streamlines = "_ratio_" + str(ratio)
-        trkprunefile = outpath + '/' + subject + strproperty + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
-        if not os.path.exists(trkprunefile):
-            if trkstreamlines is None:
-                trkdata = load_trk(outpathtrk, 'same')
-                trkdata.to_vox()
-                trkstreamlines = trkdata.streamlines
-                del trkdata
-            trkstreamlines=prune_streamlines(list(trkstreamlines), fdwi_data[:, :, :, 0], cutoff=cutoff, verbose=verbose)
-            myheader = create_tractogram_header(trkprunefile, *header)
-            prune_sl = lambda: (s for s in trkstreamlines)
-            save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
-                                               affine=affine, header=myheader)
+    outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, header, step_size,
+                                                        peak_processes, outpath, subject, strproperty, ratio,
+                                                        overwrite, get_params, doprune, verbose=verbose)
 
     if get_params is True and params is None:
         numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(trkstreamlines, verbose)

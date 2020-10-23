@@ -120,7 +120,7 @@ def save_roisubset(trkfile, roislist, roisexcel, labelmask):
 
 
 def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processes,outpathdir,subject='NA',
-                   str_identifier='_', ratio=1, overwrite=False, get_params=False, verbose=None):
+                   str_identifier='_', ratio=1, overwrite=False, get_params=False, doprune = False, verbose=None):
     # Compute odfs in Brain Mask
     t2 = time()
 
@@ -129,16 +129,22 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
     else:
         saved_streamlines = "_ratio_" + str(ratio)
 
-    outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
+    if doprune:
+        outpathtrk = outpathdir + '/' + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + \
+                     '_pruned.trk'
+    else:
+        outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
 
     if os.path.isfile(outpathtrk) and overwrite == "no":
         print("subject " + subject + " already done")
+        """
         if get_params:
-            get_tract_params(mypath, subject, str_identifier, verbose = False)
+            get_tract_params(outpathtrk, subject, str_identifier, verbose = False)
             return outpathtrk, None, params
         else:
             return outpathtrk, None, None
-
+        """
+        return outpathtrk, None, None
     csa_model = CsaOdfModel(gtab, 6)
     if peak_processes < 2:
         parallel = False
@@ -149,8 +155,6 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
 
     wholemask = np.where(mask == 0, False, True)
 
-    parallel=False
-    nbr_processes=1
     csa_peaks = peaks_from_model(model=csa_model,
                                  data=data,
                                  sphere=peaks.default_sphere,  # issue with complete sphere
@@ -183,7 +187,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
     # generates about 2 million streamlines
     # seeds = utils.seeds_from_mask(fa > .2, density=1,
     #                              affine=np.eye(4))
-    # why are those not binary?
+
     if verbose:
         print('Computing seeds')
     seeds = utils.seeds_from_mask(wholemask, density=1,
@@ -202,18 +206,26 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
     streamlines_generator = LocalTracking(csa_peaks, classifier,
                                           seeds, affine=np.eye(4), step_size=step_size)
 
-    sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-
     if verbose:
         duration = time() - t2
         txt = 'About to save streamlines at ' + outpathtrk + ',it has been ' + str(round(duration)) + \
               'seconds since the start of tractmaker',
         send_mail(txt,subject="Tract saving" )
 
-    myheader = create_tractogram_header(outpathtrk, *header)
-    save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                        affine=affine, header=myheader,
-                        shape=mask.shape, vox_size=vox_size)
+    cutoff = 2
+    if doprune:
+        streamlines_generator = prune_streamlines(list(streamlines_generator), data[:, :, :, 0], cutoff=cutoff,
+                                                  verbose=verbose)
+        myheader = create_tractogram_header(outpathtrk, *header)
+        sg = lambda: (s for i, s in enumerate(streamlines) if i % ratio == 0)
+        save_trk_heavy_duty(outpathtrk, streamlines=sg,
+                            affine=affine, header=myheader)
+    else:
+        sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
+        myheader = create_tractogram_header(outpathtrk, *header)
+        save_trk_heavy_duty(outpathtrk, streamlines=sg,
+                            affine=affine, header=myheader,
+                            shape=mask.shape, vox_size=vox_size)
     if verbose:
         duration = time() - t2
         txt = "Tract files were saved at "+outpathtrk + ',it has been ' + str(round(duration)) + \
