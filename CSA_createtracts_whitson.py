@@ -45,7 +45,7 @@ outtrkpath = '/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
 
 stepsize = 2
 subject_processes = np.size(l)
-subject_processes = 10
+subject_processes = 1
 if max_processors < subject_processes:
     subject_processes = max_processors
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,

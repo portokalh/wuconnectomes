@@ -23,6 +23,7 @@ from dipy.io.utils import create_tractogram_header
 from dipy.io.streamline import load_trk
 import tract_save
 from tract_handler import get_trk_params, get_tract_params
+import glob
 
 #from dipy.denoise.localpca import mppca
 #import dipy.tracking.life as life
@@ -125,7 +126,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
     t2 = time()
 
     if ratio == 1:
-        saved_streamlines = "_all"
+        saved_streamlines = "_all_"
     else:
         saved_streamlines = "_ratio_" + str(ratio)
 
@@ -217,7 +218,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
         streamlines_generator = prune_streamlines(list(streamlines_generator), data[:, :, :, 0], cutoff=cutoff,
                                                   verbose=verbose)
         myheader = create_tractogram_header(outpathtrk, *header)
-        sg = lambda: (s for i, s in enumerate(streamlines) if i % ratio == 0)
+        sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
         save_trk_heavy_duty(outpathtrk, streamlines=sg,
                             affine=affine, header=myheader)
     else:

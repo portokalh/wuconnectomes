@@ -7,9 +7,9 @@ from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
 import pathlib
 from BIAC_tools import send_mail
 from dipy.core.gradients import gradient_table
+from dif_to_trk import make_tensorfit
 
-
-def getfa(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
+def getfa(mypath, subject, bvec_orient, verbose=None):
 
     # fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
     fapath = mypath + '/' + subject + '_fa_RAS.nii.gz'
@@ -21,9 +21,13 @@ def getfa(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
         fapath = (mypath + '/' + subject + '_fa_RAS.nii.gz')
     elif os.path.exists(mypath+'/'+'bmfa' + subject+'_wholebrain_.nii.gz'):
         fapath = (mypath+'/'+'bmfa' + subject+'_wholebrain_.nii.gz')
+    elif os.path.exists(mypath + '/' + subject + '/' + 'bmfa' + subject + '.nii.gz'):
+        fapath = (mypath + '/' + subject + '/' + 'bmfa' + subject + '.nii.gz')
     else:
-        print("Could not find at either "+ (mypath + '/' + subject + '_fa_RAS.nii.gz') + " or " + (mypath+'/'+'bmfa' + subject+'_wholebrain.nii.gz'))
-
+        print("Could not find the fa file anywhere")
+        print("Will attempt to create new fa file")
+        fdwi_data, affine, gtab, mask, vox_size, fdwipath, hdr, header = getdwidata(mypath, subject, bvec_orient)
+        fapath = make_tensorfit(fdwi_data, mask, gtab, affine, subject, outpath=os.path.dirname(fdwipath), strproperty="", verbose=verbose)
     if verbose:
         txt = "Extracting information from the fa file located at " + fapath
         print(txt)
@@ -43,6 +47,7 @@ def getfa(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
     header = get_reference_info(fapath)
     del (img)
 
+    """
     try:
         fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
         fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
@@ -71,6 +76,8 @@ def getfa(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
     # mask = bm
 
     return fa_data, affine, gtab, vox_size, hdr, header
+    """
+    return fa_data, affine, vox_size, hdr, header
 
 
 

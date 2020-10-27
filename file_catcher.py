@@ -26,6 +26,9 @@ def get_tract_params(mypath, subject, str_identifier, verbose):
             ("For subject " + subject + " the number of tracts is " + numbtracts + ", the minimum length is " + minlength + ", the maximum length is " + maxlength + ", the mean length is " + meanlength + ", the std is " + stdlength)
     return subject, numtracts, minlength, maxlength, meanlength, stdlength, header, affine
 
+def getlistdirs(mypath):
+
+
 
 def get_anat(mypath, subject, verbose=None):
     filepath =(mypath + '/' + subject + '*_nii4D*.nii*')

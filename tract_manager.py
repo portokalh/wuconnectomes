@@ -75,6 +75,7 @@ from tract_handler import target, prune_streamlines, get_trk_params, get_tract_p
 from nifti_handler import getfa, getdwidata
 import tract_save
 import xlrd
+import warnings
 
 
 def string_inclusion(string_option,allowed_strings,option_name):
@@ -350,8 +351,7 @@ def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetro
 
 #def gettrkpath(trkpath, subject, tractsize, strproperty, stepsize, verbose=False):
 def gettrkpath(trkpath, subject, str_identifier, verbose=False):
-    #filepath=(trkpath + '/' + subject + '_wholebrain_' + tractsize + strproperty + 'stepsize_' + str(stepsize) + '.trk')
-    filepath=(trkpath + '/' + subject + str_identifier + '.trk')
+    filepath=(trkpath + '/' + subject + "*" + str_identifier + '.trk')
     trkpaths = glob.glob(filepath)
     if trkpaths:
         trkfile = trkpaths[0]
@@ -362,33 +362,38 @@ def gettrkpath(trkpath, subject, str_identifier, verbose=False):
         return
     return trkfile
 
+def deprecation(message):
+    warnings.warn(message, DeprecationWarning, stacklevel=2)
 
-def getlabelmask(mypath, subject, bvec_orient=[1, 2, 3], verbose=None):
+def getlabelmask(mypath, subject,verbose=None):
 
-    # ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
 
-    if os.path.exists(mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz')
+    labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
+    if np.size(labelsoption)>0:
+        labelspath = labelsoption[0]
+    elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'):
+        labelspath = mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'
     elif os.path.exists(mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz')
+        labelspath = mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'
     elif os.path.exists(mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz')
+        labelspath = mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz'
     elif os.path.exists(mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz')
+        labelspath = mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz'
     elif os.path.exists(mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz')
+        labelspath = mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz'
     elif os.path.exists(mypath + '/mask.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/mask.nii.gz')
+        labelspath = mypath + '/mask.nii.gz'
     elif os.path.exists(mypath + '/mask.nii'):
-        labels, affine_labels = load_nifti(mypath + '/mask.nii')
-    else:
-        print('mask not found, taking all non null values in nii file instead (not recommended for complex operations)')
-        labels = np.ones(fdwi_data.shape[0:3])
-        affine_labels = affine
+        labelspath = mypath + '/mask.nii'
 
-    # Build Brain Mask
-    # bm = np.where(labels == 0, False, True)
-    # mask = bm
+    if 'labelspath' in locals():
+        labels, affine_labels = load_nifti(labelspath)
+        if verbose:
+            print("Label mask taken from " + labelspath)
+    else:
+        print('mask not found')
+        txt = ("Label mask taken from " + labelspath)
+        deprecation(txt)
 
     return labels, affine_labels
 
@@ -456,19 +461,75 @@ def excel_extract(roi_path):
             data[row_idx-1,col_idx-1]=cell_obj
     return data
 
-def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, whitematter_labels, targetrois, labelslist, ROI_excel, bvec_orient=[1,2,3], verbose=None):
+
+def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, verbose=None):
+
+    trkfile = gettrkpath(trkpath, subject, str_identifier, verbose)
+    trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
+    labelmask, _ = getlabelmask(dwipath, subject, verbose)
+    fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
+
+    import numpy as np
+    prunesave = True
+    pruneforcestart = False
+    if (trkfile is not None and trkprunepath is None) or pruneforcestart:
+
+        trkdata = load_trk(trkfile, "same")
+        print(trkfile)
+        affine = trkdata._affine
+        trkdata.to_vox()
+        trkstreamlines = trkdata.streamlines
+
+        cutoff=4
+        pruned_streamlines = prune_streamlines(list(trkstreamlines), labelmask, cutoff=cutoff, verbose=verbose)
+        pruned_streamlines_SL = Streamlines(pruned_streamlines)
+        if hasattr(trkdata,'space_attribute'):
+            header = trkdata.space_attribute
+        elif hasattr(trkdata,'space_attributes'):
+            header = trkdata.space_attributes
+        myheader = create_tractogram_header(trkprunepath, *header)
+        prune_sl = lambda: (s for s in pruned_streamlines)
+        if prunesave:
+            tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
+        del(prune_sl,pruned_streamlines,trkdata)
+    elif trkprunepath is not None:
+        trkprunedata = load_trk(trkprunepath, "same")
+        trkprunedata.to_vox()
+        pruned_streamlines_SL = trkprunedata.streamlines
+        del(trkprunedata)
+
+    affine_streams = np.eye(4)
+
+    M, grouping = utils.connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask,
+                                            return_mapping=True,
+                                            mapping_as_streamlines=True)
+
+    print("The nunmber of tracts associated with the label 0 for subject " + subject+" is " + str(np.sum(M[0,:])))
+    M = np.delete(M, 0, 0)
+    M = np.delete(M, 0, 1)
+
+    picklepath_connect = outpath + subject + "_" + str_identifier + '_connectomes.p'
+    picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
+    pickle.dump(M, open(picklepath_connect,"wb"))
+
+    if verbose:
+        txt= ("The connectomes were saved at "+picklepath_connect)
+        send_mail(txt, subject="Pickle save")
+        print(txt)
+
+    excel_path = outpath + subject + "_" + str_identifier + "_connectomes.xlsx"
+    connectomes_to_excel(M, ROI_excel, excel_path)
+    if verbose:
+        txt= ("The excelfile was saved at "+excel_path)
+        send_mail(txt, subject="Excel save")
+        print(txt)
+
+def tract_connectome_analysis_old(dwipath, trkpath, str_identifier, outpath, subject, whitematter_labels, targetrois, labelslist, ROI_excel, bvec_orient=[1,2,3], verbose=None):
 
     #str_identifier = roistring + tractsize + '_stepsize_' + str(stepsize)
     trkfile = gettrkpath(trkpath, subject, str_identifier, verbose)
     fa_data, _, gtab, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
     labelmask, _ = getlabelmask(dwipath, subject, bvec_orient, verbose)
-    #from dipy.data import read_stanford_labels, read_stanford_t1
-    #hardi_img, gtab_hardi, labels_hardi = read_stanford_labels()
-    #data = hardi_img.get_data()
-    #labels = labels_img.get_data()
-
-    #t1 = read_stanford_t1()
-    #t1_data = t1.get_data()
 
     import numpy as np
     whitemask = np.zeros(np.shape(labelmask),dtype=int)
@@ -751,14 +812,6 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
         print('FA was not calculated')
         outpathbmfa=None
 
-def create_tracts_test(dwipath,outpath,subject,step_size,peak_processes,strproperty="",ratio=1,save_fa="yes",
-                      labelslist = None, bvec_orient=[1,2,3], doprune=False, overwrite="no", get_params = False,
-                  verbose=None):
-    outpathtrk = outpath + subject + strproperty + "ratio" + str(ratio) + '_stepsize_' + str(step_size) + '.trk'
-    params = [10, 20, bvec_orient[0], bvec_orient[1], bvec_orient[2]]
-    return subject, outpathtrk, params
-
-
 def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",ratio=1,save_fa="yes",
                       labelslist = None, bvec_orient=[1,2,3], doprune=False, overwrite="no", get_params = False,
                   verbose=None):
@@ -775,11 +828,11 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         return
 
     if save_fa == "yes" or save_fa == "y" or save_fa == 1 or save_fa is True or save_fa == "all" or save_fa == "only":
-        outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=dwipath,strproperty=strproperty,verbose=verbose)
+        make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=dwipath,strproperty=strproperty,verbose=verbose)
 
     else:
         print('FA was not calculated')
-        outpathbmfa=None
+        outpathbmfa = None
 
     print(verbose)
     if verbose:
