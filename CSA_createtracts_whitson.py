@@ -13,7 +13,6 @@ import os
 
 import multiprocessing as mp
 import pickle
-from tract_manager import create_tracts, create_tracts_test
 from tract_manager import create_tracts, evaluate_tracts, dwi_preprocessing
 from bvec_handler import extractbvec_fromheader
 from BIAC_tools import send_mail
@@ -26,7 +25,7 @@ from BIAC_tools import isempty
 
 l = ["H21593", "H21729"]
 
-max_processors = 2
+max_processors = 1
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()

@@ -493,6 +493,9 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
             tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
         del(prune_sl,pruned_streamlines,trkdata)
     elif trkprunepath is not None:
+        #prunetest = "/Volumes/Data/Badea/Lab/mouse/C57_JS/TRK_RAS_40subj/N57446_wholebrain_small_stepsize_2.trk"
+        #trktest = load_trk(prunetest, "same")
+        #fdwi_data, affine, gtab, mask, vox_size, fdwipath, hdr, header = getdwidata(mypath, subject, bvec_orient)
         trkprunedata = load_trk(trkprunepath, "same")
         trkprunedata.to_vox()
         pruned_streamlines_SL = trkprunedata.streamlines
