@@ -80,7 +80,7 @@ denoise='mpca'
 savedenoise=True
 display=False
 savefig=False
-doprune=True
+doprune = False
 #strproperty = "_pypxmz_wholebrain"
 allsave=True
 

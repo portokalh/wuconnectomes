@@ -472,6 +472,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     import numpy as np
     prunesave = True
     pruneforcestart = False
+    trkprunepath = None
 
     if (trkfile is not None and trkprunepath is None and prunesave) or pruneforcestart:
 
@@ -488,7 +489,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
             header = trkdata.space_attribute
         elif hasattr(trkdata,'space_attributes'):
             header = trkdata.space_attributes
-        trkprunepath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_QA/H21729_wholebrain__ratio_10__stepsize_prunetest.trk"
+        trkprunepath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_QA/H29056_stepsize_2_all_wholebrain_prunetest.trk"
         myheader = create_tractogram_header(trkprunepath, *header)
         prune_sl = lambda: (s for s in pruned_streamlines)
         if prunesave:
