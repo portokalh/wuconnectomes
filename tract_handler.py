@@ -166,7 +166,8 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
     if verbose:
         print("Starting the pruning")
     duration = time()
-    voxel_counter=0
+    voxel_counter = 0
+    outmask_counter = 0
     if mask is not None:
         num_voxel=0
         for idx,s in enumerate(streamline): #iterate through all streams
@@ -177,10 +178,17 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
             for vox in range(np.shape(s_vox)[0]):
                 #if np.array_equal(s_vox[vox], [38, 149, 167]):
                 #    print(mask[tuple(s_vox[vox])])
-                if not mask[tuple(s_vox[vox])]:
+                try:
+                    if not mask[tuple(s_vox[vox])]:
+                        cutlist.append(vox)  # if local mask is 0, add voxel to list of voxels to cut
+                        j += 1
+                        num_voxel += 1
+                except IndexError:
                     cutlist.append(vox)         #if local mask is 0, add voxel to list of voxels to cut
                     j += 1
                     num_voxel += 1
+                    outmask_counter += 1
+                    print("Out of bounds streamline")
             if harshcut:                        #if harshcut, destroy all voxels folloxing the out of mask voxel in streamline
                 startcut = np.min(cutlist)
                 cutlist = range(startcut, len(np.shape(s_vox)[0]))
@@ -208,6 +216,8 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
                 len(streamline)) + " due to size constraints (tiny streamlines)")
         if num_voxel > 0:
             print("Dropped " + str(num_voxel) + " voxels for being out of mask")
+    if outmask_counter > 0:
+        print("Found " + str(outmask_counter) + " voxels out of mask")
     for idx in reversed(delstream):
         streamline.pop(idx)
     return streamline

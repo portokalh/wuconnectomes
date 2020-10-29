@@ -511,7 +511,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     M = np.delete(M, 0, 0)
     M = np.delete(M, 0, 1)
 
-    picklepath_connect = outpath + subject + "_" + str_identifier + '_connectomes.p'
+    picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
     picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
     pickle.dump(M, open(picklepath_connect,"wb"))
 
@@ -520,7 +520,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         send_mail(txt, subject="Pickle save")
         print(txt)
 
-    excel_path = outpath + subject + "_" + str_identifier + "_connectomes.xlsx"
+    excel_path = outpath + subject + str_identifier + "_connectomes.xlsx"
     connectomes_to_excel(M, ROI_excel, excel_path)
     if verbose:
         txt= ("The excelfile was saved at "+excel_path)
