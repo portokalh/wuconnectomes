@@ -126,15 +126,17 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
     t2 = time()
 
     if ratio == 1:
-        saved_streamlines = "all"
+        saved_streamlines = "_all"
     else:
-        saved_streamlines = "ratio_" + str(ratio)
+        saved_streamlines = "_ratio_" + str(ratio)
 
     if doprune:
-        outpathtrk = outpathdir + '/' + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + \
-                     '_pruned.trk'
+        #outpathtrk = outpathdir + '/' + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + \
+        #             '_pruned.trk'
+        outpathtrk = outpathdir + '/' + subject + str_identifier + '_pruned.trk'
     else:
-        outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
+        #outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
+        outpathtrk = outpathdir + '/' + subject + str_identifier + '.trk'
 
     if os.path.isfile(outpathtrk) and overwrite == "no":
         print("subject " + subject + " already done")

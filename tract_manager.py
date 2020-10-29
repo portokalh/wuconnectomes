@@ -472,7 +472,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     import numpy as np
     prunesave = True
     pruneforcestart = False
-    trkfile = "/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_QA//H21729_wholebrain_all_stepsize_2_pruned.trk"
 
     if (trkfile is not None and trkprunepath is None and prunesave) or pruneforcestart:
 

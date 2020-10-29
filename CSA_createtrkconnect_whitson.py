@@ -34,6 +34,7 @@ l = ['H29056', 'H26578', 'H29060', 'H26637', 'H29264', 'H26765', 'H29225', 'H266
      'H28869', 'H29044', 'H29089', 'H29127', 'H29242', 'H29254', 'H26745', 'H26850', 'H26880', 'H26958', 'H26974',
      'H27017', 'H27610', 'H27640', 'H27680', 'H27778', 'H27982', 'H28338', 'H28437', 'H28463', 'H28532', 'H28809',
      'H28857', 'H29013', 'H29025']
+l = ["H29056"]
 
 max_processors = 10
 
@@ -43,7 +44,7 @@ if mp.cpu_count() < max_processors:
 print("Running on ", max_processors, " processors")
 
 BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse"
-BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse"
+#BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse"
 #BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
 #BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
 dwipath = BIGGUS_DISKUS + "/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
@@ -69,7 +70,10 @@ function_processes = np.int(max_processors/subject_processes)
 
 targetrois = ["Cerebellum"]
 ratio = 1
-saved_streamlines = "all"
+if ratio == 1:
+    saved_streamlines = "_all"
+else:
+    saved_streamlines = "_ratio_" + str(ratio)
 savefa="no"
 verbose=True
 denoise='mpca'
@@ -80,24 +84,16 @@ doprune=True
 #strproperty = "_pypxmz_wholebrain"
 allsave=True
 
-
 trkroi = ["wholebrain"]
 if len(trkroi)==1:
-    roistring = "_" + trkroi[0] + "_"
+    roistring = "_" + trkroi[0] #+ "_"
 elif len(trkroi)>1:
     roistring="_"
     for roi in trkroi:
         roistring = roistring + roi[0:4]
-    roistring = roistring + "_"
-str_identifier = roistring + saved_streamlines + '_stepsize_' + str(stepsize)
-
-if len(targetrois)==1:
-    targetroistring = "_" + targetrois[0] + "_"
-elif len(targetrois)>1:
-    roistring="_"
-    for roi in rois:
-        targetoistring = roistring + roi[0:4]
-    targetroistring = roistring + "_"
+    roistring = roistring #+ "_"
+#str_identifier = '_stepsize_' + str(stepsize) + saved_streamlines+ roistring
+str_identifier = '_stepsize_' + str(stepsize) + saved_streamlines + roistring
 
 labelslist=[]
 if targetrois and (targetrois[0]!="wholebrain" or len(targetrois) > 1):
