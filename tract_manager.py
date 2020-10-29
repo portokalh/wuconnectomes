@@ -464,7 +464,7 @@ def excel_extract(roi_path):
 
 def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, verbose=None):
 
-    trkfile = gettrkpath(trkpath, subject, str_identifier, verbose)
+    trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
     trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
     labelmask, _ = getlabelmask(dwipath, subject, verbose)
     fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
@@ -472,16 +472,15 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     import numpy as np
     prunesave = True
     pruneforcestart = False
-    trkprunepath = None
 
-    if (trkfile is not None and trkprunepath is None and prunesave) or pruneforcestart:
+    if (trkfilepath is not None and trkprunepath is None and prunesave) or pruneforcestart:
 
-        trkdata = load_trk(trkfile, "same")
-        print(trkfile)
+        trkdata = load_trk(trkfilepath, "same")
+        print(trkfilepath)
         affine = trkdata._affine
         trkdata.to_vox()
         trkstreamlines = trkdata.streamlines
-
+        trkprunepath = os.path.dirname(trkfilepath) + '/' + subject + str_identifier + '_pruned.trk'
         cutoff=4
         pruned_streamlines = prune_streamlines(list(trkstreamlines), labelmask, cutoff=cutoff, verbose=verbose)
         pruned_streamlines_SL = Streamlines(pruned_streamlines)
@@ -489,7 +488,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
             header = trkdata.space_attribute
         elif hasattr(trkdata,'space_attributes'):
             header = trkdata.space_attributes
-        trkprunepath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_QA/H29056_stepsize_2_all_wholebrain_prunetest.trk"
         myheader = create_tractogram_header(trkprunepath, *header)
         prune_sl = lambda: (s for s in pruned_streamlines)
         if prunesave:
