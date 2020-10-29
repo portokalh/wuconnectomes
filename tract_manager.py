@@ -472,7 +472,9 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     import numpy as np
     prunesave = True
     pruneforcestart = False
-    if (trkfile is not None and trkprunepath is None) or pruneforcestart:
+    trkfile = "/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_QA//H21729_wholebrain_all_stepsize_2_pruned.trk"
+
+    if (trkfile is not None and trkprunepath is None and prunesave) or pruneforcestart:
 
         trkdata = load_trk(trkfile, "same")
         print(trkfile)
@@ -487,15 +489,13 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
             header = trkdata.space_attribute
         elif hasattr(trkdata,'space_attributes'):
             header = trkdata.space_attributes
+        trkprunepath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_QA/H21729_wholebrain__ratio_10__stepsize_prunetest.trk"
         myheader = create_tractogram_header(trkprunepath, *header)
         prune_sl = lambda: (s for s in pruned_streamlines)
         if prunesave:
             tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
         del(prune_sl,pruned_streamlines,trkdata)
     elif trkprunepath is not None:
-        #prunetest = "/Volumes/Data/Badea/Lab/mouse/C57_JS/TRK_RAS_40subj/N57446_wholebrain_small_stepsize_2.trk"
-        #trktest = load_trk(prunetest, "same")
-        #fdwi_data, affine, gtab, mask, vox_size, fdwipath, hdr, header = getdwidata(mypath, subject, bvec_orient)
         trkprunedata = load_trk(trkprunepath, "same")
         trkprunedata.to_vox()
         pruned_streamlines_SL = trkprunedata.streamlines

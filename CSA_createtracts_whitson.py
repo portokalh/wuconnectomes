@@ -22,8 +22,8 @@ import pandas as pd
 from pandas import ExcelWriter
 from pandas import ExcelFile
 from BIAC_tools import isempty
-
 l = ["H21593", "H21729"]
+l = ["H21729"]
 
 max_processors = 1
 
@@ -38,7 +38,7 @@ BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_wi
 dwipath = BIGGUS_DISKUS
 
 #outtrkpath = '/mnt/munin6/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
-outtrkpath = '/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
+outtrkpath = '/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_QA/'
 
 #outpathpickle = BIGGUS_DISKUS + "/C57_JS/PicklesFig_RAS/"
 
@@ -53,7 +53,7 @@ if max_processors < subject_processes:
 function_processes = np.int(max_processors/subject_processes)
 
 rois = ["wholebrain"]
-ratio = 10
+ratio = 1
 saved_streamlines = "all"
 savefa="no"
 verbose=True

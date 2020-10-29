@@ -8,6 +8,7 @@ import pathlib
 from BIAC_tools import send_mail
 from dipy.core.gradients import gradient_table
 from dif_to_trk import make_tensorfit
+from dipy.io.image import load_nifti
 
 def getfa(mypath, subject, bvec_orient, verbose=None):
 
