@@ -34,9 +34,9 @@ l = ['H29056', 'H26578', 'H29060', 'H26637', 'H29264', 'H26765', 'H29225', 'H266
      'H28869', 'H29044', 'H29089', 'H29127', 'H29242', 'H29254', 'H26745', 'H26850', 'H26880', 'H26958', 'H26974',
      'H27017', 'H27610', 'H27640', 'H27680', 'H27778', 'H27982', 'H28338', 'H28437', 'H28463', 'H28532', 'H28809',
      'H28857', 'H29013', 'H29025']
-l = ["H29056"]
+#l = ["H29056"]
 
-max_processors = 10
+max_processors = 1
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -60,7 +60,7 @@ atlas_legends = BIGGUS_DISKUS + "/../atlases/IITmean_RPI/IITmean_RPI_lookup.xlsx
 
 stepsize = 2
 subject_processes = np.size(l)
-subject_processes = 1
+subject_processes = 10
 if max_processors < subject_processes:
     subject_processes = max_processors
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
@@ -80,7 +80,7 @@ denoise='mpca'
 savedenoise=True
 display=False
 savefig=False
-doprune = False
+doprune = True
 #strproperty = "_pypxmz_wholebrain"
 allsave=True
 
@@ -142,9 +142,9 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in l:
-        #tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, str_identifier,
-        #                                      ratio, savefa, labelslist, bvec_orient, doprune, overwrite, get_params,
-        #                                   verbose))
+        tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, str_identifier,
+                                              ratio, savefa, labelslist, bvec_orient, False, overwrite, get_params,
+                                           verbose))
         tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject,
                                                        atlas_legends, bvec_orient, verbose))
 

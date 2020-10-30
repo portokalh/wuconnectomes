@@ -183,7 +183,7 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
                         cutlist.append(vox)  # if local mask is 0, add voxel to list of voxels to cut
                         j += 1
                         num_voxel += 1
-                except IndexError:
+                except:
                     cutlist.append(vox)         #if local mask is 0, add voxel to list of voxels to cut
                     j += 1
                     num_voxel += 1
