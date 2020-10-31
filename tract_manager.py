@@ -419,6 +419,7 @@ def connectomes_to_excel(connectome,ROI_excel,output_path):
 
     return
 
+"""
 def prunestreamline(trkorigpath, trkprunepath, cutoff = 4, forcestart = False):
 
     #trkprunepath = trkpath + '/' + subject + str_identifier + '_pruned.trk'
@@ -444,6 +445,7 @@ def prunestreamline(trkorigpath, trkprunepath, cutoff = 4, forcestart = False):
         if prunesave:
             tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
         return(pruned_streamlines)
+"""
 
 def excel_extract(roi_path):
 
@@ -464,7 +466,7 @@ def excel_extract(roi_path):
 
 def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, verbose=None):
 
-    trkfile = gettrkpath(trkpath, subject, str_identifier, verbose)
+    trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
     trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
     labelmask, _ = getlabelmask(dwipath, subject, verbose)
     fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
@@ -472,14 +474,15 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     import numpy as np
     prunesave = True
     pruneforcestart = False
-    if (trkfile is not None and trkprunepath is None) or pruneforcestart:
 
-        trkdata = load_trk(trkfile, "same")
-        print(trkfile)
+    if (trkfilepath is not None and trkprunepath is None and prunesave) or pruneforcestart:
+
+        trkdata = load_trk(trkfilepath, "same")
+        print(trkfilepath)
         affine = trkdata._affine
         trkdata.to_vox()
         trkstreamlines = trkdata.streamlines
-
+        trkprunepath = os.path.dirname(trkfilepath) + '/' + subject + str_identifier + '_pruned.trk'
         cutoff=4
         pruned_streamlines = prune_streamlines(list(trkstreamlines), labelmask, cutoff=cutoff, verbose=verbose)
         pruned_streamlines_SL = Streamlines(pruned_streamlines)
@@ -493,9 +496,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
             tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
         del(prune_sl,pruned_streamlines,trkdata)
     elif trkprunepath is not None:
-        #prunetest = "/Volumes/Data/Badea/Lab/mouse/C57_JS/TRK_RAS_40subj/N57446_wholebrain_small_stepsize_2.trk"
-        #trktest = load_trk(prunetest, "same")
-        #fdwi_data, affine, gtab, mask, vox_size, fdwipath, hdr, header = getdwidata(mypath, subject, bvec_orient)
         trkprunedata = load_trk(trkprunepath, "same")
         trkprunedata.to_vox()
         pruned_streamlines_SL = trkprunedata.streamlines
@@ -511,7 +511,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     M = np.delete(M, 0, 0)
     M = np.delete(M, 0, 1)
 
-    picklepath_connect = outpath + subject + "_" + str_identifier + '_connectomes.p'
+    picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
     picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
     pickle.dump(M, open(picklepath_connect,"wb"))
 
@@ -520,7 +520,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         send_mail(txt, subject="Pickle save")
         print(txt)
 
-    excel_path = outpath + subject + "_" + str_identifier + "_connectomes.xlsx"
+    excel_path = outpath + subject + str_identifier + "_connectomes.xlsx"
     connectomes_to_excel(M, ROI_excel, excel_path)
     if verbose:
         txt= ("The excelfile was saved at "+excel_path)

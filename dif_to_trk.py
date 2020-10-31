@@ -126,15 +126,17 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
     t2 = time()
 
     if ratio == 1:
-        saved_streamlines = "_all_"
+        saved_streamlines = "_all"
     else:
         saved_streamlines = "_ratio_" + str(ratio)
 
     if doprune:
-        outpathtrk = outpathdir + '/' + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + \
-                     '_pruned.trk'
+        #outpathtrk = outpathdir + '/' + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + \
+        #             '_pruned.trk'
+        outpathtrk = outpathdir + '/' + subject + str_identifier + '_pruned.trk'
     else:
-        outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
+        #outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
+        outpathtrk = outpathdir + '/' + subject + str_identifier + '.trk'
 
     if os.path.isfile(outpathtrk) and overwrite == "no":
         print("subject " + subject + " already done")
@@ -206,7 +208,10 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
     print("stringstep is "+stringstep)
     streamlines_generator = LocalTracking(csa_peaks, classifier,
                                           seeds, affine=np.eye(4), step_size=step_size)
-
+    #list = []
+    #for s in streamlines_generator:
+    #    list.append(np.min(s))
+    #print(np.min(list))
     if verbose:
         duration = time() - t2
         txt = 'About to save streamlines at ' + outpathtrk + ',it has been ' + str(round(duration)) + \
@@ -220,7 +225,8 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
         myheader = create_tractogram_header(outpathtrk, *header)
         sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
         save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                            affine=affine, header=myheader)
+                            affine=affine, header=myheader,
+                            shape=mask.shape, vox_size=vox_size)
     else:
         sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
         myheader = create_tractogram_header(outpathtrk, *header)
