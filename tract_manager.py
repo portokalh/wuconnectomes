@@ -475,6 +475,13 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     prunesave = True
     pruneforcestart = False
 
+    if np.size(np.shape(labelmask)) == 1:
+        labelmask = labelmask[0]
+    if np.size(np.shape(labelmask)) == 4:
+        mask = labelmask[:, :, :, 0]
+    print("Mask shape is " + str(np.shape(labelmask)))
+
+
     if (trkfilepath is not None and trkprunepath is None and prunesave) or pruneforcestart:
 
         trkdata = load_trk(trkfilepath, "same")
@@ -484,6 +491,14 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         trkstreamlines = trkdata.streamlines
         trkprunepath = os.path.dirname(trkfilepath) + '/' + subject + str_identifier + '_pruned.trk'
         cutoff=4
+
+        fdwi_data = getdwidata(dwipath, subject, bvec_orient)
+        if np.size(np.shape(fdwi_data)) == 1:
+            fdwi_data = fdwi_data[0]
+        if np.size(np.shape(fdwi_data)) == 4:
+            fdwi_data = fdwi_data[:, :, :, 0]
+        print("Mask shape is " + str(np.shape(fdwi_data)))
+
         pruned_streamlines = prune_streamlines(list(trkstreamlines), labelmask, cutoff=cutoff, verbose=verbose)
         pruned_streamlines_SL = Streamlines(pruned_streamlines)
         if hasattr(trkdata,'space_attribute'):
@@ -826,6 +841,11 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
     #outpath_subject = outpathsubject + saved_str + '_stepsize_' + str(step_size) + '.trk'
 
     fdwi_data, affine, gtab, mask, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient)
+    if np.size(np.shape(mask)) == 1:
+        mask = mask[0]
+    if np.size(np.shape(mask)) == 4:
+        mask = mask[:, :, :, 0]
+    print("Mask shape is " + str(np.shape(mask)))
     if np.mean(fdwi_data) == 0:
         print("The subject " + subject + "could not be found at " + dwipath)
         return

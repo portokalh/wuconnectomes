@@ -34,7 +34,7 @@ l = ['H29056', 'H26578', 'H29060', 'H26637', 'H29264', 'H26765', 'H29225', 'H266
      'H28869', 'H29044', 'H29089', 'H29127', 'H29242', 'H29254', 'H26745', 'H26850', 'H26880', 'H26958', 'H26974',
      'H27017', 'H27610', 'H27640', 'H27680', 'H27778', 'H27982', 'H28338', 'H28437', 'H28463', 'H28532', 'H28809',
      'H28857', 'H29013', 'H29025']
-#l = ["H29056"]
+l = ["H22276"]
 
 max_processors = 1
 
@@ -69,7 +69,7 @@ if max_processors < subject_processes:
 function_processes = np.int(max_processors/subject_processes)
 
 targetrois = ["Cerebellum"]
-ratio = 1
+ratio = 100
 if ratio == 1:
     saved_streamlines = "_all"
 else:
@@ -143,7 +143,7 @@ if subject_processes>1:
 else:
     for subject in l:
         tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, str_identifier,
-                                              ratio, savefa, labelslist, bvec_orient, False, overwrite, get_params,
+                                              ratio, savefa, labelslist, bvec_orient, doprune, overwrite, get_params,
                                            verbose))
         tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject,
                                                        atlas_legends, bvec_orient, verbose))
