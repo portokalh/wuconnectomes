@@ -469,7 +469,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
 
     picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
     excel_path = outpath + subject + str_identifier + "_connectomes.xlsx"
-
+    forcestart = True
     if os.path.exists(picklepath_connect) and os.path.exists(excel_path) and not forcestart:
         print("The writing of pickle and excel of " + str(subject) + " is already done")
         return
@@ -477,7 +477,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
     trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
     labelmask, _ = getlabelmask(dwipath, subject, verbose)
-    fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
+    #fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
 
     import numpy as np
     prunesave = True
@@ -485,10 +485,12 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     if np.size(np.shape(labelmask)) == 1:
         labelmask = labelmask[0]
     if np.size(np.shape(labelmask)) == 4:
-        mask = labelmask[:, :, :, 0]
+        labelmask = labelmask[:, :, :, 0]
     print("Mask shape is " + str(np.shape(labelmask)))
 
-    if (trkfilepath is not None and trkprunepath is None and prunesave) or forcestart:
+    labelmask = convert_labelmask(ROI_excel, labelmask)
+
+    if (trkfilepath is not None and trkprunepath is None and prunesave):
 
         trkdata = load_trk(trkfilepath, "same")
         print(trkfilepath)
@@ -544,9 +546,24 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
 
     connectomes_to_excel(M, ROI_excel, excel_path)
     if verbose:
-        txt= ("The excelfile was saved at "+excel_path)
+        txt = ("The excelfile was saved at "+excel_path)
         send_mail(txt, subject="Excel save")
         print(txt)
+
+def convert_labelmask(ROI_excel, labelmask):
+    df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
+    index1 = df['index']
+    index2 = df['Index2']
+    maskdic = {}
+    labelmask2 = np.zeros(np.shape(labelmask))
+    maskdic[0] = 0
+    for i in np.arange(np.size(index1)):
+        maskdic[index2[i]] = index1[i]
+    for i in np.arange(np.shape(labelmask)[0]):
+        for j in np.arange(np.shape(labelmask)[1]):
+            for k in np.arange(np.shape(labelmask)[2]):
+                labelmask2[i, j, k] = maskdic[labelmask[i, j, k]]
+    return labelmask2.astype('int')
 
 def tract_connectome_analysis_old(dwipath, trkpath, str_identifier, outpath, subject, whitematter_labels, targetrois, labelslist, ROI_excel, bvec_orient=[1,2,3], verbose=None):
 
