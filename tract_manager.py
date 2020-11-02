@@ -468,10 +468,10 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
                               forcestart = False, verbose = None):
 
     picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
-    #picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
-    #if os.path.exists(picklepath_connect) and not forcestart and os.path.exists(picklepath_grouping)
-    if os.path.exists(picklepath_connect) and not forcestart:
-        print("The subject " + str(subject) + "is already done")
+    excel_path = outpath + subject + str_identifier + "_connectomes.xlsx"
+
+    if os.path.exists(picklepath_connect) and os.path.exists(excel_path) and not forcestart:
+        print("The writing of pickle and excel of " + str(subject) + " is already done")
         return
 
     trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
@@ -542,7 +542,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         send_mail(txt, subject="Pickle save")
         print(txt)
 
-    excel_path = outpath + subject + str_identifier + "_connectomes.xlsx"
     connectomes_to_excel(M, ROI_excel, excel_path)
     if verbose:
         txt= ("The excelfile was saved at "+excel_path)
@@ -837,13 +836,33 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
         print('FA was not calculated')
         outpathbmfa=None
 
-def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",ratio=1,save_fa="yes",
-                      labelslist = None, bvec_orient=[1,2,3], doprune=False, overwrite="no", get_params = False,
+def create_tracts(dwipath, outpath, subject, step_size, peak_processes, strproperty = "", ratio = 1, save_fa=True,
+                      labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False, get_params=False,
                   verbose=None):
 
-    print("Do prune is "+str(doprune))
+    if doprune:
+        outpathtrk = outpath + '/' + subject + strproperty + '_pruned.trk'
+    else:
+        #outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
+        outpathtrk = outpath + '/' + subject + strproperty + '.trk'
+
+    if os.path.isfile(outpathtrk) and overwrite is False:
+        print("The tract creation of subject " + subject + " is already done")
+        if get_params:
+            numtracts, minlength, maxlength, meanlength, stdlength = get_tract_params(outpathtrk, subject, strproperty,
+                                                                                      verbose)
+            params = [numtracts, minlength, maxlength, meanlength, stdlength]
+            return outpathtrk, None, params
+        else:
+            return outpathtrk, None, None
+
     if verbose:
         print('Running the ' + subject + ' file')
+
+
+    if get_params is True and params is None:
+        numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(trkstreamlines, verbose)
+        params = [numtracts, minlength, maxlength, meanlength, stdlength]
 
     #outpath_subject = outpathsubject + saved_str + '_stepsize_' + str(step_size) + '.trk'
 
@@ -872,13 +891,8 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         print("email sent")
 
     outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, header, step_size,
-                                                        peak_processes, outpath, subject, strproperty, ratio,
+                                                        peak_processes, outpathtrk, subject, ratio,
                                                         overwrite, get_params, doprune, verbose=verbose)
-
-    if get_params is True and params is None:
-        numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(trkstreamlines, verbose)
-        params = [numtracts, minlength, maxlength, meanlength, stdlength]
-
 
     if labelslist:
         print('In process of implementing')
