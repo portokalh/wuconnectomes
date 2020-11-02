@@ -464,7 +464,15 @@ def excel_extract(roi_path):
     return data
 
 
-def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, verbose=None):
+def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient,
+                              forcestart = False, verbose = None):
+
+    picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
+    #picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
+    #if os.path.exists(picklepath_connect) and not forcestart and os.path.exists(picklepath_grouping)
+    if os.path.exists(picklepath_connect) and not forcestart:
+        print("The subject " + str(subject) + "is already done")
+        return
 
     trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
     trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
@@ -473,7 +481,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
 
     import numpy as np
     prunesave = True
-    pruneforcestart = False
 
     if np.size(np.shape(labelmask)) == 1:
         labelmask = labelmask[0]
@@ -481,8 +488,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         mask = labelmask[:, :, :, 0]
     print("Mask shape is " + str(np.shape(labelmask)))
 
-
-    if (trkfilepath is not None and trkprunepath is None and prunesave) or pruneforcestart:
+    if (trkfilepath is not None and trkprunepath is None and prunesave) or forcestart:
 
         trkdata = load_trk(trkfilepath, "same")
         print(trkfilepath)
@@ -490,9 +496,10 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         trkdata.to_vox()
         trkstreamlines = trkdata.streamlines
         trkprunepath = os.path.dirname(trkfilepath) + '/' + subject + str_identifier + '_pruned.trk'
-        cutoff=4
+        cutoff = 4
 
         fdwi_data = getdwidata(dwipath, subject, bvec_orient)
+
         if np.size(np.shape(fdwi_data)) == 1:
             fdwi_data = fdwi_data[0]
         if np.size(np.shape(fdwi_data)) == 4:
@@ -527,7 +534,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     M = np.delete(M, 0, 1)
 
     picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
-    picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
+    #picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
     pickle.dump(M, open(picklepath_connect,"wb"))
 
     if verbose:

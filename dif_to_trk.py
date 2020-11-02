@@ -138,7 +138,7 @@ def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processe
         #outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
         outpathtrk = outpathdir + '/' + subject + str_identifier + '.trk'
 
-    if os.path.isfile(outpathtrk) and overwrite == "no":
+    if os.path.isfile(outpathtrk) and overwrite is False:
         print("subject " + subject + " already done")
         """
         if get_params:
