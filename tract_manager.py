@@ -470,7 +470,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
 
     picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
     excel_path = outpath + subject + str_identifier + "_connectomes.xlsx"
-    forcestart = True
     if os.path.exists(picklepath_connect) and os.path.exists(excel_path) and not forcestart:
         print("The writing of pickle and excel of " + str(subject) + " is already done")
         return
