@@ -521,18 +521,19 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         del(prune_sl,pruned_streamlines,trkdata)
     elif trkprunepath is not None:
         trkprunedata = load_trk(trkprunepath, "same")
+        affine = trkprunedata.affine
         trkprunedata.to_vox()
         pruned_streamlines_SL = trkprunedata.streamlines
 
         streamlines_test = list(pruned_streamlines_SL)
         endpoints = [sl[0::len(sl) - 1] for sl in streamlines_test]
-        lin_T, offset = _mapping_to_voxel(trkprunedata.affine)
+        lin_T, offset = _mapping_to_voxel(affine)
         endpoints = _to_voxel_coordinates(endpoints, lin_T, offset)
         i, j, k = endpoints.T
         try:
             labelmask[i, j, k]
         except:
-            pruned_streamlines = prune_streamlines(list(pruned_streamlines_SL), label_volume, cutoff=cutoff,
+            pruned_streamlines = prune_streamlines(list(pruned_streamlines_SL), labelmask, cutoff=cutoff,
                                                    verbose=False)
             pruned_streamlines_SL = Streamlines(pruned_streamlines)
         del(trkprunedata)
