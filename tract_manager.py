@@ -77,6 +77,7 @@ import tract_save
 import xlrd
 import warnings
 
+from connectivity_own import connectivity_matrix_special
 
 def string_inclusion(string_option,allowed_strings,option_name):
     "checks if option string is part of the allowed list of strings for that option"
@@ -487,6 +488,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     if np.size(np.shape(labelmask)) == 4:
         labelmask = labelmask[:, :, :, 0]
     print("Mask shape is " + str(np.shape(labelmask)))
+    cutoff = 4
 
     labelmask = convert_labelmask(ROI_excel, labelmask)
 
@@ -498,7 +500,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         trkdata.to_vox()
         trkstreamlines = trkdata.streamlines
         trkprunepath = os.path.dirname(trkfilepath) + '/' + subject + str_identifier + '_pruned.trk'
-        cutoff = 4
 
         fdwi_data = getdwidata(dwipath, subject, bvec_orient)
 
@@ -523,13 +524,32 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         trkprunedata = load_trk(trkprunepath, "same")
         trkprunedata.to_vox()
         pruned_streamlines_SL = trkprunedata.streamlines
+
+        streamlines_test = list(pruned_streamlines_SL)
+        endpoints = [sl[0::len(sl) - 1] for sl in streamlines_test]
+        lin_T, offset = _mapping_to_voxel(trkprunedata.affine)
+        endpoints = _to_voxel_coordinates(endpoints, lin_T, offset)
+        i, j, k = endpoints.T
+        try:
+            labelmask[i, j, k]
+        except:
+            pruned_streamlines = prune_streamlines(list(pruned_streamlines_SL), label_volume, cutoff=cutoff,
+                                                   verbose=False)
+            pruned_streamlines_SL = Streamlines(pruned_streamlines)
         del(trkprunedata)
+
+    cutoff = 4
+    #pruned_streamlines = prune_streamlines(list(pruned_streamlines_SL), labelmask, cutoff=cutoff, verbose=verbose)
+    #pruned_streamlines_SL = Streamlines(pruned_streamlines)
 
     affine_streams = np.eye(4)
 
-    M, grouping = utils.connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask,
+    M, grouping = connectivity_matrix_special(pruned_streamlines_SL, affine_streams, labelmask,
                                             return_mapping=True,
-                                            mapping_as_streamlines=True)
+                                            mapping_as_streamlines=True, cutoff=cutoff)
+    #M, grouping = utils.connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask,
+    #                                        return_mapping=True,
+    #                                        mapping_as_streamlines=True)
 
     print("The nunmber of tracts associated with the label 0 for subject " + subject+" is " + str(np.sum(M[0,:])))
     M = np.delete(M, 0, 0)
