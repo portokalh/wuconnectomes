@@ -178,6 +178,8 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
             for vox in range(np.shape(s_vox)[0]):
                 #if np.array_equal(s_vox[vox], [38, 149, 167]):
                 #    print(mask[tuple(s_vox[vox])])
+                if s_vox[vox][2] > 135:
+                    print("hi")
                 try:
                     if not mask[tuple(s_vox[vox])]:
                         cutlist.append(vox)  # if local mask is 0, add voxel to list of voxels to cut

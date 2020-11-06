@@ -120,34 +120,11 @@ def save_roisubset(trkfile, roislist, roisexcel, labelmask):
                                            affine=header[0], header=myheader)
 
 
-def QCSA_tractmake(data,affine,vox_size,gtab,mask,header,step_size,peak_processes,outpathdir,subject='NA',
-                   str_identifier='_', ratio=1, overwrite=False, get_params=False, doprune = False, verbose=None):
+def QCSA_tractmake(data, affine, vox_size, gtab, mask, header, step_size, peak_processes, outpathtrk, subject='NA',
+                   ratio=1, overwrite=False, get_params=False, doprune = False, verbose=None):
     # Compute odfs in Brain Mask
     t2 = time()
 
-    if ratio == 1:
-        saved_streamlines = "_all"
-    else:
-        saved_streamlines = "_ratio_" + str(ratio)
-
-    if doprune:
-        #outpathtrk = outpathdir + '/' + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + \
-        #             '_pruned.trk'
-        outpathtrk = outpathdir + '/' + subject + str_identifier + '_pruned.trk'
-    else:
-        #outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
-        outpathtrk = outpathdir + '/' + subject + str_identifier + '.trk'
-
-    if os.path.isfile(outpathtrk) and overwrite == "no":
-        print("subject " + subject + " already done")
-        """
-        if get_params:
-            get_tract_params(outpathtrk, subject, str_identifier, verbose = False)
-            return outpathtrk, None, params
-        else:
-            return outpathtrk, None, None
-        """
-        return outpathtrk, None, None
     csa_model = CsaOdfModel(gtab, 6)
     if peak_processes < 2:
         parallel = False

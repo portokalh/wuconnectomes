@@ -34,7 +34,14 @@ l = ['H29056', 'H26578', 'H29060', 'H26637', 'H29264', 'H26765', 'H29225', 'H266
      'H28869', 'H29044', 'H29089', 'H29127', 'H29242', 'H29254', 'H26745', 'H26850', 'H26880', 'H26958', 'H26974',
      'H27017', 'H27610', 'H27640', 'H27680', 'H27778', 'H27982', 'H28338', 'H28437', 'H28463', 'H28532', 'H28809',
      'H28857', 'H29013', 'H29025']
-#l = ["H29056"]
+l = ["H29056"]
+l = ["H23157", "H28377", "H29013"]
+l = ['H26578', 'H29060', 'H29264', 'H26765', 'H26862', 'H29410', 'H26966', 'H29403', 'H29618', 'H27111', 'H29627',
+     'H27391', 'H21850', 'H27495', 'H21729', 'H21915', 'H27682', 'H21956', 'H27686', 'H22331', 'H21990', 'H28955',
+     'H27841', 'H22101', 'H27842', 'H22228', 'H28029', 'H22140', 'H27999', 'H28377', 'H28325', 'H22320', 'H22864',
+     'H23157', 'H28820', 'H23028', 'H29002', 'H27163', 'H27246', 'H27869', 'H28262', 'H28856', 'H28869', 'H29044',
+     'H29089', 'H26974', 'H27017', 'H27680', 'H27982', 'H28338', 'H29013', 'H29025']
+l = ["H29056"]
 
 max_processors = 1
 
@@ -57,6 +64,7 @@ figspath = BIGGUS_DISKUS + '/C57_JS/VBM_whiston_Figs/'
 outpathpickle = figspath
 
 atlas_legends = BIGGUS_DISKUS + "/../atlases/IITmean_RPI/IITmean_RPI_lookup.xlsx"
+atlas_legends = BIGGUS_DISKUS + "/../atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 
 stepsize = 2
 subject_processes = np.size(l)
@@ -69,7 +77,7 @@ if max_processors < subject_processes:
 function_processes = np.int(max_processors/subject_processes)
 
 targetrois = ["Cerebellum"]
-ratio = 1
+ratio = 100
 if ratio == 1:
     saved_streamlines = "_all"
 else:
@@ -125,7 +133,20 @@ if verbose:
 duration1=time()
 overwrite = False
 get_params = False
+forcestart = False
 
+donelist = []
+notdonelist = []
+for subject in l:
+    picklepath_connect = figspath + subject + str_identifier + '_connectomes.p'
+    excel_path = figspath + subject + str_identifier + "_connectomes.xlsx"
+    if os.path.exists(picklepath_connect) and os.path.exists(excel_path):
+        print("The writing of pickle and excel of " + str(subject) + " is already done")
+        donelist.append(subject)
+    else:
+        notdonelist.append(subject)
+
+l = notdonelist
 
 if subject_processes>1:
     if function_processes>1:
@@ -137,16 +158,17 @@ if subject_processes>1:
                                                         str_identifier, ratio, savefa, labelslist, bvec_orient, doprune,
                                                         overwrite, get_params, verbose) for subject in l]).get()
     tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath, outtrkpath, str_identifier, figspath,
-                                                                    subject, atlas_legends, bvec_orient, verbose)
+                                                                    subject, atlas_legends, bvec_orient, forcestart,
+                                                                    verbose)
                                                                    for subject in l]).get()
     pool.close()
 else:
     for subject in l:
         tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, str_identifier,
-                                              ratio, savefa, labelslist, bvec_orient, False, overwrite, get_params,
+                                              ratio, savefa, labelslist, bvec_orient, doprune, overwrite, get_params,
                                            verbose))
         tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject,
-                                                       atlas_legends, bvec_orient, verbose))
+                                                       atlas_legends, bvec_orient, forcestart, verbose))
 
 
 

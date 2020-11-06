@@ -77,6 +77,7 @@ import tract_save
 import xlrd
 import warnings
 
+from connectivity_own import connectivity_matrix_special
 
 def string_inclusion(string_option,allowed_strings,option_name):
     "checks if option string is part of the allowed list of strings for that option"
@@ -464,18 +465,33 @@ def excel_extract(roi_path):
     return data
 
 
-def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, verbose=None):
+def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient,
+                              forcestart = False, verbose = None):
+
+    picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
+    excel_path = outpath + subject + str_identifier + "_connectomes.xlsx"
+    if os.path.exists(picklepath_connect) and os.path.exists(excel_path) and not forcestart:
+        print("The writing of pickle and excel of " + str(subject) + " is already done")
+        return
 
     trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
     trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
     labelmask, _ = getlabelmask(dwipath, subject, verbose)
-    fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
+    #fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
 
     import numpy as np
     prunesave = True
-    pruneforcestart = False
 
-    if (trkfilepath is not None and trkprunepath is None and prunesave) or pruneforcestart:
+    if np.size(np.shape(labelmask)) == 1:
+        labelmask = labelmask[0]
+    if np.size(np.shape(labelmask)) == 4:
+        labelmask = labelmask[:, :, :, 0]
+    print("Mask shape is " + str(np.shape(labelmask)))
+    cutoff = 4
+
+    labelmask = convert_labelmask(ROI_excel, labelmask)
+
+    if (trkfilepath is not None and trkprunepath is None and prunesave):
 
         trkdata = load_trk(trkfilepath, "same")
         print(trkfilepath)
@@ -483,7 +499,15 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         trkdata.to_vox()
         trkstreamlines = trkdata.streamlines
         trkprunepath = os.path.dirname(trkfilepath) + '/' + subject + str_identifier + '_pruned.trk'
-        cutoff=4
+
+        fdwi_data = getdwidata(dwipath, subject, bvec_orient)
+
+        if np.size(np.shape(fdwi_data)) == 1:
+            fdwi_data = fdwi_data[0]
+        if np.size(np.shape(fdwi_data)) == 4:
+            fdwi_data = fdwi_data[:, :, :, 0]
+        print("Mask shape is " + str(np.shape(fdwi_data)))
+
         pruned_streamlines = prune_streamlines(list(trkstreamlines), labelmask, cutoff=cutoff, verbose=verbose)
         pruned_streamlines_SL = Streamlines(pruned_streamlines)
         if hasattr(trkdata,'space_attribute'):
@@ -497,22 +521,42 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         del(prune_sl,pruned_streamlines,trkdata)
     elif trkprunepath is not None:
         trkprunedata = load_trk(trkprunepath, "same")
+        affine = trkprunedata._affine
         trkprunedata.to_vox()
         pruned_streamlines_SL = trkprunedata.streamlines
+
+        streamlines_test = list(pruned_streamlines_SL)
+        endpoints = [sl[0::len(sl) - 1] for sl in streamlines_test]
+        lin_T, offset = _mapping_to_voxel(affine)
+        endpoints = _to_voxel_coordinates(endpoints, lin_T, offset)
+        i, j, k = endpoints.T
+        try:
+            labelmask[i, j, k]
+        except:
+            pruned_streamlines = prune_streamlines(list(pruned_streamlines_SL), labelmask, cutoff=cutoff,
+                                                   verbose=False)
+            pruned_streamlines_SL = Streamlines(pruned_streamlines)
         del(trkprunedata)
+
+    cutoff = 4
+    #pruned_streamlines = prune_streamlines(list(pruned_streamlines_SL), labelmask, cutoff=cutoff, verbose=verbose)
+    #pruned_streamlines_SL = Streamlines(pruned_streamlines)
 
     affine_streams = np.eye(4)
 
-    M, grouping = utils.connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask,
+    M, grouping = connectivity_matrix_special(pruned_streamlines_SL, affine_streams, labelmask,
                                             return_mapping=True,
-                                            mapping_as_streamlines=True)
+                                            mapping_as_streamlines=True, cutoff=cutoff)
+    #M, grouping = utils.connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask,
+    #                                        return_mapping=True,
+    #                                        mapping_as_streamlines=True)
 
     print("The nunmber of tracts associated with the label 0 for subject " + subject+" is " + str(np.sum(M[0,:])))
     M = np.delete(M, 0, 0)
     M = np.delete(M, 0, 1)
 
     picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
-    picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
+    #picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
     pickle.dump(M, open(picklepath_connect,"wb"))
 
     if verbose:
@@ -520,12 +564,26 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         send_mail(txt, subject="Pickle save")
         print(txt)
 
-    excel_path = outpath + subject + str_identifier + "_connectomes.xlsx"
     connectomes_to_excel(M, ROI_excel, excel_path)
     if verbose:
-        txt= ("The excelfile was saved at "+excel_path)
+        txt = ("The excelfile was saved at "+excel_path)
         send_mail(txt, subject="Excel save")
         print(txt)
+
+def convert_labelmask(ROI_excel, labelmask):
+    df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
+    index1 = df['index']
+    index2 = df['Index2']
+    maskdic = {}
+    labelmask2 = np.zeros(np.shape(labelmask))
+    maskdic[0] = 0
+    for i in np.arange(np.size(index1)):
+        maskdic[index2[i]] = index1[i]
+    for i in np.arange(np.shape(labelmask)[0]):
+        for j in np.arange(np.shape(labelmask)[1]):
+            for k in np.arange(np.shape(labelmask)[2]):
+                labelmask2[i, j, k] = maskdic[labelmask[i, j, k]]
+    return labelmask2.astype('int')
 
 def tract_connectome_analysis_old(dwipath, trkpath, str_identifier, outpath, subject, whitematter_labels, targetrois, labelslist, ROI_excel, bvec_orient=[1,2,3], verbose=None):
 
@@ -815,17 +873,42 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
         print('FA was not calculated')
         outpathbmfa=None
 
-def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="",ratio=1,save_fa="yes",
-                      labelslist = None, bvec_orient=[1,2,3], doprune=False, overwrite="no", get_params = False,
+def create_tracts(dwipath, outpath, subject, step_size, peak_processes, strproperty = "", ratio = 1, save_fa=True,
+                      labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False, get_params=False,
                   verbose=None):
 
-    print("Do prune is "+str(doprune))
+    if doprune:
+        outpathtrk = outpath + '/' + subject + strproperty + '_pruned.trk'
+    else:
+        #outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
+        outpathtrk = outpath + '/' + subject + strproperty + '.trk'
+
+    if os.path.isfile(outpathtrk) and overwrite is False:
+        print("The tract creation of subject " + subject + " is already done")
+        if get_params:
+            numtracts, minlength, maxlength, meanlength, stdlength = get_tract_params(outpathtrk, subject, strproperty,
+                                                                                      verbose)
+            params = [numtracts, minlength, maxlength, meanlength, stdlength]
+            return outpathtrk, None, params
+        else:
+            return outpathtrk, None, None
+
     if verbose:
         print('Running the ' + subject + ' file')
+
+
+    if get_params is True and params is None:
+        numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(trkstreamlines, verbose)
+        params = [numtracts, minlength, maxlength, meanlength, stdlength]
 
     #outpath_subject = outpathsubject + saved_str + '_stepsize_' + str(step_size) + '.trk'
 
     fdwi_data, affine, gtab, mask, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient)
+    if np.size(np.shape(mask)) == 1:
+        mask = mask[0]
+    if np.size(np.shape(mask)) == 4:
+        mask = mask[:, :, :, 0]
+    print("Mask shape is " + str(np.shape(mask)))
     if np.mean(fdwi_data) == 0:
         print("The subject " + subject + "could not be found at " + dwipath)
         return
@@ -845,13 +928,8 @@ def create_tracts(dwipath,outpath,subject,step_size,peak_processes,strproperty="
         print("email sent")
 
     outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, header, step_size,
-                                                        peak_processes, outpath, subject, strproperty, ratio,
+                                                        peak_processes, outpathtrk, subject, ratio,
                                                         overwrite, get_params, doprune, verbose=verbose)
-
-    if get_params is True and params is None:
-        numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(trkstreamlines, verbose)
-        params = [numtracts, minlength, maxlength, meanlength, stdlength]
-
 
     if labelslist:
         print('In process of implementing')
