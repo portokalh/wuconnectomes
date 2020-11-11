@@ -468,15 +468,15 @@ def excel_extract(roi_path):
 def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient,
                               forcestart = False, verbose = None):
 
-    picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
-    excel_path = outpath + subject + str_identifier + "_connectomes.xlsx"
+    picklepath_connect = outpath + subject + str_identifier + '_connectomes_int16.p'
+    excel_path = outpath + subject + str_identifier + "_connectomes_int16.xlsx"
     if os.path.exists(picklepath_connect) and os.path.exists(excel_path) and not forcestart:
         print("The writing of pickle and excel of " + str(subject) + " is already done")
-        return
+        #return
 
     trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
     trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
-    labelmask, _ = getlabelmask(dwipath, subject, verbose)
+    labelmask, affine = getlabelmask(dwipath, subject, verbose)
     #fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
 
     import numpy as np
@@ -488,8 +488,9 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         labelmask = labelmask[:, :, :, 0]
     print("Mask shape is " + str(np.shape(labelmask)))
     cutoff = 4
-
+                    
     labelmask = convert_labelmask(ROI_excel, labelmask)
+    #save_nifti("/Users/alex/jacques/atlast_"+subject+"_after.nii", labelmask, affine)
 
     if (trkfilepath is not None and trkprunepath is None and prunesave):
 
@@ -555,12 +556,10 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     M = np.delete(M, 0, 0)
     M = np.delete(M, 0, 1)
 
-    picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
-    #picklepath_grouping = outpath + subject + str_identifier + '_grouping.p'
-    pickle.dump(M, open(picklepath_connect,"wb"))
+    pickle.dump(M, open(picklepath_connect, "wb"))
 
     if verbose:
-        txt= ("The connectomes were saved at "+picklepath_connect)
+        txt = ("The connectomes were saved at "+picklepath_connect)
         send_mail(txt, subject="Pickle save")
         print(txt)
 
@@ -583,7 +582,8 @@ def convert_labelmask(ROI_excel, labelmask):
         for j in np.arange(np.shape(labelmask)[1]):
             for k in np.arange(np.shape(labelmask)[2]):
                 labelmask2[i, j, k] = maskdic[labelmask[i, j, k]]
-    return labelmask2.astype('int')
+
+    return labelmask2.astype('int16')
 
 def tract_connectome_analysis_old(dwipath, trkpath, str_identifier, outpath, subject, whitematter_labels, targetrois, labelslist, ROI_excel, bvec_orient=[1,2,3], verbose=None):
 

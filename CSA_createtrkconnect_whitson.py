@@ -42,6 +42,9 @@ l = ['H26578', 'H29060', 'H29264', 'H26765', 'H26862', 'H29410', 'H26966', 'H294
      'H23157', 'H28820', 'H23028', 'H29002', 'H27163', 'H27246', 'H27869', 'H28262', 'H28856', 'H28869', 'H29044',
      'H29089', 'H26974', 'H27017', 'H27680', 'H27982', 'H28338', 'H29013', 'H29025']
 l = ["H29056"]
+l = ["H21956"]
+l = ["H21836"]
+l = ["H21915"]
 
 max_processors = 1
 
@@ -77,7 +80,7 @@ if max_processors < subject_processes:
 function_processes = np.int(max_processors/subject_processes)
 
 targetrois = ["Cerebellum"]
-ratio = 100
+ratio = 1
 if ratio == 1:
     saved_streamlines = "_all"
 else:
@@ -146,7 +149,7 @@ for subject in l:
     else:
         notdonelist.append(subject)
 
-l = notdonelist
+#l = notdonelist
 
 if subject_processes>1:
     if function_processes>1:
