@@ -134,13 +134,16 @@ def almicedf_fix(df, verbose=None):
     # df = mice_day2.groupby('runno')['Acq Number'].nunique()
 
 
-def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, verbose=False):
+def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, return_affine= False, verbose=False):
 
     trkdata = load_trk(oldtrkfile, "same")
     if verbose:
         print("laoaded ")
     trkdata.to_vox()
-    header = trkdata.space_attribute
+    if hasattr(trkdata, 'space_attribute'):
+        header = trkdata.space_attribute
+    elif hasattr(trkdata, 'space_attributes'):
+        header = trkdata.space_attributes
     affine = trkdata._affine
     trkstreamlines = trkdata.streamlines
 
@@ -157,9 +160,15 @@ def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, verbos
         print("The file " + oldtrkfile + "was reduced to one "+str(ratio)+"th of its size and saved to "+newtrkfilepath)
 
     if getdata:
-        return(ministream)
+        if return_affine:
+            return(ministream,affine)
+        else:
+            return(ministream)
     else:
-        return
+        if return_affine:
+            return(affine)
+        else:
+            return
 
 
 def testsnr():
@@ -366,7 +375,7 @@ def gettrkpath(trkpath, subject, str_identifier, verbose=False):
 def deprecation(message):
     warnings.warn(message, DeprecationWarning, stacklevel=2)
 
-def getlabelmask(mypath, subject,verbose=None):
+def getlabelmask(mypath, subject, verbose=None):
 
 
     labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
@@ -478,6 +487,8 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
     labelmask, affine = getlabelmask(dwipath, subject, verbose)
     #fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
+    mypath = dwipath
+    labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
 
     import numpy as np
     prunesave = True

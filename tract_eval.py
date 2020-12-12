@@ -16,6 +16,7 @@ from dipy.io.utils import create_tractogram_header
 # multiprocessing module.
 from dipy.tracking import utils
 import matplotlib.pyplot as plt
+from numpy import ravel_multi_index
 
 #import dipy.tracking.life as life
 import JSdipy.tracking.life as life
@@ -24,10 +25,190 @@ import dipy.core.optimize as opt
 from BIAC_tools import send_mail, getsize
 from tract_save import save_trk_heavy_duty
 from figures_handler import LifEcreate_fig
+from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
+from collections import defaultdict, OrderedDict
 
 from dipy.denoise.enhancement_kernel import EnhancementKernel
 from dipy.tracking.fbcmeasures import FBCMeasures
 from dipy.viz import window, actor
+from dipy.segment.clustering import QuickBundles
+from dipy.segment.bundles import RecoBundles
+from itertools import combinations, groupby
+
+
+def ndbincount(x, weights=None, shape=None):
+    """Like bincount, but for nd-indices.
+
+    Parameters
+    ----------
+    x : array_like (N, M)
+        M indices to a an Nd-array
+    weights : array_like (M,), optional
+        Weights associated with indices
+    shape : optional
+        the shape of the output
+    """
+    x = np.asarray(x)
+    if shape is None:
+        shape = x.max(1) + 1
+
+    x = ravel_multi_index(x, shape)
+    out = np.bincount(x, weights, minlength=np.prod(shape))
+    out.shape = shape
+
+    return out
+
+def connectivity_selection(streamlines, affine, label_volume, label_vals,
+                            symmetric=True, return_mapping=True,
+                        mapping_as_streamlines=False):
+    """Counts the streamlines that start and end at each label pair.
+
+    Parameters
+    ----------
+    streamlines : sequence
+        A sequence of streamlines.
+    affine : array_like (4, 4)
+        The mapping from voxel coordinates to streamline coordinates.
+        The voxel_to_rasmm matrix, typically from a NIFTI file.
+    label_volume : ndarray
+        An image volume with an integer data type, where the intensities in the
+        volume map to anatomical structures.
+    labels : tuple (2,1)
+        The labels that are to be isolated
+    inclusive: bool
+        Whether to analyze the entire streamline, as opposed to just the
+        endpoints. Allowing this will increase calculation time and mapping
+        size, especially if mapping_as_streamlines is True. False by default.
+    symmetric : bool, True by default
+        Symmetric means we don't distinguish between start and end points. If
+        symmetric is True, ``matrix[i, j] == matrix[j, i]``.
+    return_mapping : bool, False by default
+        If True, a mapping is returned which maps matrix indices to
+        streamlines.
+    mapping_as_streamlines : bool, False by default
+        If True voxel indices map to lists of streamline objects. Otherwise
+        voxel indices map to lists of integers.
+
+    Returns
+    -------
+    matrix : ndarray
+        The number of connection between each pair of regions in
+        `label_volume`.
+    mapping : defaultdict(list)
+        ``mapping[i, j]`` returns all the streamlines that connect region `i`
+        to region `j`. If `symmetric` is True mapping will only have one key
+        for each start end pair such that if ``i < j`` mapping will have key
+        ``(i, j)`` but not key ``(j, i)``.
+
+    """
+    # Error checking on label_volume
+    kind = label_volume.dtype.kind
+    labels_positive = ((kind == 'u') or
+                       ((kind == 'i') and (label_volume.min() >= 0)))
+    valid_label_volume = (labels_positive and label_volume.ndim == 3)
+    if not valid_label_volume:
+        raise ValueError("label_volume must be a 3d integer array with"
+                         "non-negative label values")
+
+    # If streamlines is an iterator
+    if return_mapping and mapping_as_streamlines:
+        streamlines = list(streamlines)
+
+    label_dict = {}
+    singlecase = np.size(np.shape(label_vals)) == 1
+
+    if singlecase:
+        label_dict[tuple(label_vals)] = []
+    else:
+        for label in label_vals:
+            label_dict[label] = []
+
+    if inclusive:
+        # Create ndarray to store streamline connections
+        edges = np.ndarray(shape=(3, 0), dtype=int)
+        lin_T, offset = _mapping_to_voxel(affine)
+        for sl, _ in enumerate(streamlines):
+            # Convert streamline to voxel coordinates
+            entire = _to_voxel_coordinates(streamlines[sl], lin_T, offset)
+            i, j, k = entire.T
+            if symmetric:
+                # Create list of all labels streamline passes through
+                entirelabels = list(OrderedDict.fromkeys(label_volume[i, j, k]))
+                # Append all connection combinations with streamline number
+                for comb in combinations(entirelabels, 2):
+                    if singlecase:
+                        if (comb == label_vals).all():
+                            label_dict[tuple(label_vals)].append(sl)
+                    else:
+                        for label in label_vals:
+                            if (comb == label).all():
+                                label_dict[tuple(label)].append(sl)
+                    edges = np.append(edges, [[comb[0]], [comb[1]], [sl]],
+                                      axis=1)
+            else:
+                # Create list of all labels streamline passes through, keeping
+                # order and whether a label was entered multiple times
+                entirelabels = list(groupby(label_volume[i, j, k]))
+                # Append connection combinations along with streamline number,
+                # removing duplicates and connections from a label to itself
+                combs = set(combinations([z[0] for z in entirelabels], 2))
+                for comb in combs:
+                    if comb[0] == comb[1]:
+                        pass
+                    else:
+                        edges = np.append(edges, [[comb[0]], [comb[1]], [sl]],
+                                          axis=1)
+        if symmetric:
+            edges[0:2].sort(0)
+        mx = label_volume.max() + 1
+        matrix = ndbincount(edges[0:2], shape=(mx, mx))
+
+        if symmetric:
+            matrix = np.maximum(matrix, matrix.T)
+        if return_mapping:
+            mapping = defaultdict(list)
+            for i, (a, b, c) in enumerate(edges.T):
+                mapping[a, b].append(c)
+            # Replace each list of indices with the streamlines they index
+            if mapping_as_streamlines:
+                for key in mapping:
+                    mapping[key] = [streamlines[i] for i in mapping[key]]
+
+            return matrix, mapping
+
+        return matrix
+    else:
+        # take the first and last point of each streamline
+        endpoints = [sl[0::len(sl)-1] for sl in streamlines]
+
+        # Map the streamlines coordinates to voxel coordinates
+        lin_T, offset = _mapping_to_voxel(affine)
+        endpoints = _to_voxel_coordinates(endpoints, lin_T, offset)
+
+        # get labels for label_volume
+        i, j, k = endpoints.T
+        endlabels = label_volume[i, j, k]
+        if symmetric:
+            endlabels.sort(0)
+        mx = label_volume.max() + 1
+        matrix = ndbincount(endlabels, shape=(mx, mx))
+        if symmetric:
+            matrix = np.maximum(matrix, matrix.T)
+
+        if return_mapping:
+            mapping = defaultdict(list)
+            for i, (a, b) in enumerate(endlabels.T):
+                mapping[a, b].append(i)
+
+            # Replace each list of indices with the streamlines they index
+            if mapping_as_streamlines:
+                for key in mapping:
+                    mapping[key] = [streamlines[i] for i in mapping[key]]
+
+            # Return the mapping matrix and the mapping
+            return matrix, mapping
+
+        return matrix
 
 
 def bundle_coherence(streamlines, affine, k, t1_data=None,interactive=False):
@@ -271,3 +452,76 @@ def LiFEvaluation(dwidata, trk_streamlines, gtab, subject="lifesubj", header=Non
         except:
             print("Coult not launch life create fig, possibly qsub location (this is a template warning, to be improved upon")
     return model_error, mean_error
+
+
+
+def launch_quickbundles(streamlines, outpath, ROIname="all", threshold = 10., labelmask = None, affine = np.eye(4), interactive = False):
+
+    #qb = QuickBundles(threshold=10.)
+    qb = QuickBundles(threshold=threshold)
+    clusters = qb.cluster(streamlines)
+
+    print("Nb. clusters:", len(clusters))
+    print("Cluster sizes:", map(len, clusters))
+    print("Small clusters:", clusters < 10)
+    print("Streamlines indices of the first cluster:\n", clusters[0].indices)
+    print("Centroid of the last cluster:\n", clusters[-1].centroid)
+
+    # Cluster sizes: [64, 191, 47, 1]
+
+    # Small clusters: array([False, False, False, True], dtype=bool)
+
+    scene = window.Scene()
+    scene.SetBackground(1, 1, 1)
+    scene.add(actor.streamtube(streamlines, window.colors.misty_rose))
+    if labelmask is not None:
+        shape = labelmask.shape
+        image_actor_z = actor.slicer(labelmask, affine)
+        slicer_opacity = 0.6
+        image_actor_z.opacity(slicer_opacity)
+
+        image_actor_x = image_actor_z.copy()
+        x_midpoint = int(np.round(shape[0] / 2))
+        image_actor_x.display_extent(x_midpoint,
+                                     x_midpoint, 0,
+                                     shape[1] - 1,
+                                     0,
+                                     shape[2] - 1)
+
+        image_actor_y = image_actor_z.copy()
+        y_midpoint = int(np.round(shape[1] / 2))
+        image_actor_y.display_extent(0, shape[0] - 1,
+                                     y_midpoint,
+                                     y_midpoint,
+                                     0,
+                                     shape[2] - 1)
+        scene.add(image_actor_z)
+        scene.add(image_actor_x)
+        scene.add(image_actor_y)
+
+    window.record(scene, out_path=outpath + ROIname + '_initial.png', size=(600, 600))
+    if interactive:
+        window.show(scene)
+
+    colormap = actor.create_colormap(np.arange(len(clusters)))
+
+    scene.clear()
+    scene.SetBackground(1, 1, 1)
+    scene.add(actor.streamtube(streamlines, window.colors.white, opacity=0.05))
+    scene.add(actor.streamtube(clusters.centroids, colormap, linewidth=0.4))
+    if labelmask is not None:
+        image_actor_z = actor.slicer(labelmask, affine)
+    window.record(scene, out_path=outpath + ROIname + '_centroids.png', size=(600, 600))
+    if interactive:
+        window.show(scene)
+
+    colormap_full = np.ones((len(streamlines), 3))
+    for cluster, color in zip(clusters, colormap):
+        colormap_full[cluster.indices] = color
+
+    scene.clear()
+    scene.SetBackground(1, 1, 1)
+    scene.add(actor.streamtube(streamlines, colormap_full))
+    window.record(scene, out_path=outpath + ROIname + '_clusters.png', size=(600, 600))
+    if interactive:
+        window.show(scene)
