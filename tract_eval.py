@@ -58,6 +58,161 @@ def ndbincount(x, weights=None, shape=None):
 
     return out
 
+def connectivity_selection_getsl(streamlines, affine, label_volume,
+                            symmetric=True, return_mapping=True,
+                        mapping_as_streamlines=False):
+    """Counts the streamlines that start and end at each label pair.
+
+    Parameters
+    ----------
+    streamlines : sequence
+        A sequence of streamlines.
+    affine : array_like (4, 4)
+        The mapping from voxel coordinates to streamline coordinates.
+        The voxel_to_rasmm matrix, typically from a NIFTI file.
+    label_volume : ndarray
+        An image volume with an integer data type, where the intensities in the
+        volume map to anatomical structures.
+    labels : tuple (2,1)
+        The labels that are to be isolated
+    inclusive: bool
+        Whether to analyze the entire streamline, as opposed to just the
+        endpoints. Allowing this will increase calculation time and mapping
+        size, especially if mapping_as_streamlines is True. False by default.
+    symmetric : bool, True by default
+        Symmetric means we don't distinguish between start and end points. If
+        symmetric is True, ``matrix[i, j] == matrix[j, i]``.
+    return_mapping : bool, False by default
+        If True, a mapping is returned which maps matrix indices to
+        streamlines.
+    mapping_as_streamlines : bool, False by default
+        If True voxel indices map to lists of streamline objects. Otherwise
+        voxel indices map to lists of integers.
+
+    Returns
+    -------
+    matrix : ndarray
+        The number of connection between each pair of regions in
+        `label_volume`.
+    mapping : defaultdict(list)
+        ``mapping[i, j]`` returns all the streamlines that connect region `i`
+        to region `j`. If `symmetric` is True mapping will only have one key
+        for each start end pair such that if ``i < j`` mapping will have key
+        ``(i, j)`` but not key ``(j, i)``.
+
+    """
+    # Error checking on label_volume
+    kind = label_volume.dtype.kind
+    labels_positive = ((kind == 'u') or
+                       ((kind == 'i') and (label_volume.min() >= 0)))
+    valid_label_volume = (labels_positive and label_volume.ndim == 3)
+    if not valid_label_volume:
+        raise ValueError("label_volume must be a 3d integer array with"
+                         "non-negative label values")
+
+    # If streamlines is an iterator
+    if return_mapping and mapping_as_streamlines:
+        streamlines = list(streamlines)
+
+    label_dict = {}
+    #singlecase = np.size(np.shape(label_vals)) == 1
+
+    matrix_sl = np.empty((3,), dtype=object)
+    for i, v in enumerate(matrix_sl):
+        matrix_sl[i] = [v, i]
+    for v in matrix_sl:
+        v.append(34)
+
+    if inclusive:
+        # Create ndarray to store streamline connections
+        edges = np.ndarray(shape=(3, 0), dtype=int)
+        lin_T, offset = _mapping_to_voxel(affine)
+        for sl, _ in enumerate(streamlines):
+            # Convert streamline to voxel coordinates
+            entire = _to_voxel_coordinates(streamlines[sl], lin_T, offset)
+            i, j, k = entire.T
+            if symmetric:
+                # Create list of all labels streamline passes through
+                entirelabels = list(OrderedDict.fromkeys(label_volume[i, j, k]))
+                # Append all connection combinations with streamline number
+                for comb in combinations(entirelabels, 2):
+                    if singlecase:
+                        if (comb == label_vals).all():
+                            label_dict[tuple(label_vals)].append(sl)
+                    else:
+                        for label in label_vals:
+                            if (comb == label).all():
+                                label_dict[tuple(label)].append(sl)
+                    edges = np.append(edges, [[comb[0]], [comb[1]], [sl]],
+                                      axis=1)
+            else:
+                # Create list of all labels streamline passes through, keeping
+                # order and whether a label was entered multiple times
+                entirelabels = list(groupby(label_volume[i, j, k]))
+                # Append connection combinations along with streamline number,
+                # removing duplicates and connections from a label to itself
+                combs = set(combinations([z[0] for z in entirelabels], 2))
+                for comb in combs:
+                    if comb[0] == comb[1]:
+                        pass
+                    else:
+                        edges = np.append(edges, [[comb[0]], [comb[1]], [sl]],
+                                          axis=1)
+        if symmetric:
+            edges[0:2].sort(0)
+        mx = label_volume.max() + 1
+        matrix = ndbincount(edges[0:2], shape=(mx, mx))
+
+        if symmetric:
+            matrix = np.maximum(matrix, matrix.T)
+        if return_mapping:
+            mapping = defaultdict(list)
+            for i, (a, b, c) in enumerate(edges.T):
+                mapping[a, b].append(c)
+            # Replace each list of indices with the streamlines they index
+            if mapping_as_streamlines:
+                for key in mapping:
+                    mapping[key] = [streamlines[i] for i in mapping[key]]
+
+            return matrix, mapping
+
+        return matrix
+    else:
+        # take the first and last point of each streamline
+        endpoints = [sl[0::len(sl)-1] for sl in streamlines]
+
+        # Map the streamlines coordinates to voxel coordinates
+        lin_T, offset = _mapping_to_voxel(affine)
+        endpoints = _to_voxel_coordinates(endpoints, lin_T, offset)
+
+        # get labels for label_volume
+        i, j, k = endpoints.T
+        endlabels = label_volume[i, j, k]
+        if symmetric:
+            endlabels.sort(0)
+        mx = label_volume.max() + 1
+        matrix = ndbincount(endlabels, shape=(mx, mx))
+        if symmetric:
+            matrix = np.maximum(matrix, matrix.T)
+
+        if return_mapping:
+            mapping = defaultdict(list)
+            for i, (a, b) in enumerate(endlabels.T):
+                mapping[a, b].append(i)
+
+            # Replace each list of indices with the streamlines they index
+            if mapping_as_streamlines:
+                for key in mapping:
+                    mapping[key] = [streamlines[i] for i in mapping[key]]
+
+            # Return the mapping matrix and the mapping
+            return matrix, mapping
+
+        return matrix
+
+
+
+
 def connectivity_selection(streamlines, affine, label_volume, label_vals,
                             symmetric=True, return_mapping=True,
                         mapping_as_streamlines=False):

@@ -34,19 +34,8 @@ l = ['H29056', 'H26578', 'H29060', 'H26637', 'H29264', 'H26765', 'H29225', 'H266
      'H28869', 'H29044', 'H29089', 'H29127', 'H29242', 'H29254', 'H26745', 'H26850', 'H26880', 'H26958', 'H26974',
      'H27017', 'H27610', 'H27640', 'H27680', 'H27778', 'H27982', 'H28338', 'H28437', 'H28463', 'H28532', 'H28809',
      'H28857', 'H29013', 'H29025']
-l = ["H29056"]
-l = ["H23157", "H28377", "H29013"]
-l = ['H26578', 'H29060', 'H29264', 'H26765', 'H26862', 'H29410', 'H26966', 'H29403', 'H29618', 'H27111', 'H29627',
-     'H27391', 'H21850', 'H27495', 'H21729', 'H21915', 'H27682', 'H21956', 'H27686', 'H22331', 'H21990', 'H28955',
-     'H27841', 'H22101', 'H27842', 'H22228', 'H28029', 'H22140', 'H27999', 'H28377', 'H28325', 'H22320', 'H22864',
-     'H23157', 'H28820', 'H23028', 'H29002', 'H27163', 'H27246', 'H27869', 'H28262', 'H28856', 'H28869', 'H29044',
-     'H29089', 'H26974', 'H27017', 'H27680', 'H27982', 'H28338', 'H29013', 'H29025']
-l = ["H29056"]
-l = ["H21956"]
-l = ["H21836"]
-l = ["H21915"]
 
-max_processors = 1
+max_processors = 10
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -61,8 +50,9 @@ dwipath = BIGGUS_DISKUS + "/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/conn
 
 #outtrkpath = '/mnt/munin6/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
 outtrkpath = BIGGUS_DISKUS + '/C57_JS/VBM_whiston_QA/'
+outtrkpath = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/"
 
-figspath = BIGGUS_DISKUS + '/C57_JS/VBM_whiston_Figs/'
+figspath = BIGGUS_DISKUS + '/C57_JS/VBM_whiston_Figs_inclusive/'
 
 outpathpickle = figspath
 
@@ -71,7 +61,7 @@ atlas_legends = BIGGUS_DISKUS + "/../atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 
 stepsize = 2
 subject_processes = np.size(l)
-subject_processes = 10
+subject_processes = 1
 if max_processors < subject_processes:
     subject_processes = max_processors
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
@@ -80,7 +70,7 @@ if max_processors < subject_processes:
 function_processes = np.int(max_processors/subject_processes)
 
 targetrois = ["Cerebellum"]
-ratio = 1
+ratio = 1000
 if ratio == 1:
     saved_streamlines = "_all"
 else:
@@ -92,7 +82,7 @@ savedenoise=True
 display=False
 savefig=False
 doprune = True
-#strproperty = "_pypxmz_wholebrain"
+inclusive=True
 allsave=True
 
 trkroi = ["wholebrain"]
@@ -137,6 +127,7 @@ duration1=time()
 overwrite = False
 get_params = False
 forcestart = False
+picklesave = True
 
 donelist = []
 notdonelist = []
@@ -157,21 +148,22 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes,
-                                                        str_identifier, ratio, savefa, labelslist, bvec_orient, doprune,
-                                                        overwrite, get_params, verbose) for subject in l]).get()
+    #tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, stepsize, function_processes,
+    #                                                    str_identifier, ratio, savefa, labelslist, bvec_orient, doprune,
+    #                                                    overwrite, get_params, verbose) for subject in l]).get()
     tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath, outtrkpath, str_identifier, figspath,
-                                                                    subject, atlas_legends, bvec_orient, forcestart,
-                                                                    verbose)
+                                                                    subject, atlas_legends, bvec_orient, inclusive,
+                                                                    function_processes, forcestart, picklesave, verbose)
                                                                    for subject in l]).get()
     pool.close()
 else:
     for subject in l:
-        tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, str_identifier,
-                                              ratio, savefa, labelslist, bvec_orient, doprune, overwrite, get_params,
-                                           verbose))
+        #tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, str_identifier,
+        #                                      ratio, savefa, labelslist, bvec_orient, doprune, overwrite, get_params,
+        #                                   verbose))
         tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject,
-                                                       atlas_legends, bvec_orient, forcestart, verbose))
+                                                       atlas_legends, bvec_orient, inclusive, function_processes,
+                                                       forcestart, picklesave, verbose))
 
 
 

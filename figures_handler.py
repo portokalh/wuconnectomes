@@ -22,6 +22,13 @@ import matplotlib
 from dipy.viz import colormap as cmap
 from BIAC_tools import send_mail
 from dipy.reconst.shore import ShoreModel
+from dipy.io.image import load_nifti, save_nifti
+
+from dipy.segment.clustering import QuickBundles
+from dipy.segment.bundles import RecoBundles
+from itertools import combinations, groupby
+from dipy.data.fetcher import fetch_bundles_2_subjects, read_bundles_2_subjects
+from dipy.tracking.streamline import Streamlines
 
 
 def denoise_fig(data,denoised_arr,type='macenko',savefigpath='none'):
@@ -68,6 +75,77 @@ def denoise_fig(data,denoised_arr,type='macenko',savefigpath='none'):
             pass
         else:
             fig1.savefig(savefigpath)
+
+
+def connective_streamlines_figuremaker(allstreamlines, ROI_streamlines, ROI_names, anat_path, threshold=10., verbose=False):
+
+    #streamlines = Streamlines(res['af.left'])
+    #streamlines.extend(res['cst.right'])
+    #streamlines.extend(res['cc_1'])
+    world_coords = True
+
+
+    # Cluster sizes: [64, 191, 47, 1]
+
+    # Small clusters: array([False, False, False, True], dtype=bool)
+
+    scene = window.Scene()
+    scene.SetBackground(1, 1, 1)
+
+    colors = ['misty_rose', 'slate_grey_dark', 'ivory_black', 'cadmium_red_deep', 'chartreuse']
+    i = 0
+    for ROI in ROI_streamlines:
+        ROI_streamline = allstreamlines[ROI]
+        qb = QuickBundles(threshold=threshold)
+        clusters = qb.cluster(ROI_streamline)
+        if verbose:
+            print("Nb. clusters:", len(clusters))
+            print("Cluster sizes:", map(len, clusters))
+            print("Small clusters:", clusters < 10)
+            print("Streamlines indices of the first cluster:\n", clusters[0].indices)
+            print("Centroid of the last cluster:\n", clusters[-1].centroid)
+        #if not world_coords:
+        #    from dipy.tracking.streamline import transform_streamlines
+        #    streamlines = transform_streamlines(ROI_streamline, np.linalg.inv(affine))
+        scene = window.Scene()
+        #stream_actor = actor.line(ROI_streamline)
+        #scene.add(actor.streamtube(ROI_streamline, window.colors.misty_rose))
+        scene.add(actor.streamtube(ROI_streamline, colors[i]))
+
+        #if not world_coords:
+        #    image_actor_z = actor.slicer(data, affine=np.eye(4))
+        #else:
+        #    image_actor_z = actor.slicer(data, affine)
+
+        slicer_opacity = 0.6
+
+    anat_nifti = load_nifti(anat_path)
+    data = anat_nifti.data
+    shape = anat_nifti.shape
+    affine = anat_nifti.affine
+    image_actor_z = actor.slicer(data, affine)
+    image_actor_z.opacity(slicer_opacity)
+
+    image_actor_x = image_actor_z.copy()
+    x_midpoint = int(np.round(shape[0] / 2))
+    image_actor_x.display_extent(x_midpoint,
+                                 x_midpoint, 0,
+                                 shape[1] - 1,
+                                 0,
+                                 shape[2] - 1)
+
+    image_actor_y = image_actor_z.copy()
+    y_midpoint = int(np.round(shape[1] / 2))
+    image_actor_y.display_extent(0, shape[0] - 1,
+                                 y_midpoint,
+                                 y_midpoint,
+                                 0,
+                                 shape[2] - 1)
+
+    scene.add(image_actor_z)
+    scene.add(image_actor_x)
+    scene.add(image_actor_y)
+
 
 
 def shore_scalarmaps(data, gtab, outpath_fig, verbose = None):

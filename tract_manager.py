@@ -38,7 +38,7 @@ from dipy.direction import peaks
 from nibabel.streamlines import detect_format
 from dipy.io.utils import (create_tractogram_header)
 from dipy.viz import window, actor
-
+from dipy.tracking.utils import connectivity_matrix
 from dipy.segment.mask import segment_from_cfa
 from dipy.segment.mask import bounding_box
 
@@ -77,6 +77,8 @@ import tract_save
 import xlrd
 import warnings
 
+from multiprocessing import Pool
+
 from connectivity_own import connectivity_matrix_special
 
 def string_inclusion(string_option,allowed_strings,option_name):
@@ -108,6 +110,11 @@ def strfile(string):
         except AttributeError:
             raise AttributeError("strfile error: not a usable number or string ")
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
 def almicedf_fix(df, verbose=None):
     # masterFile='/Users/alex/AlexBadea_MyPapers/FIGURES/mwm/mwm_master_organized.csv'
 
@@ -133,12 +140,11 @@ def almicedf_fix(df, verbose=None):
     # df_withna=df[df.isnull().any(axis=1)][:].head()
     # df = mice_day2.groupby('runno')['Acq Number'].nunique()
 
-
 def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, return_affine= False, verbose=False):
 
     trkdata = load_trk(oldtrkfile, "same")
     if verbose:
-        print("laoaded ")
+        print("loaded ")
     trkdata.to_vox()
     if hasattr(trkdata, 'space_attribute'):
         header = trkdata.space_attribute
@@ -170,6 +176,18 @@ def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, return
         else:
             return
 
+def reducetractnumber_all(trkpath, str_identifier1, str_identifier2,  subject, ratio, verbose):
+
+        trkoldpath = gettrkpath(trkpath, subject, str_identifier1 + "_pruned", verbose)
+        trknewpath = gettrkpath(trkpath, subject, str_identifier2 + "_pruned", verbose)
+        if trknewpath is None:
+            trknewpath = (trkpath + '/' + subject + "" + str_identifier2 + '.trk')
+            reducetractnumber(trkoldpath,trknewpath, getdata=False, ratio=ratio, return_affine=False, verbose=True)
+        else:
+            if verbose:
+                txt = ("Subject "+ subject +" is already done")
+                send_mail(txt, subject="reduce code in process")
+                print(txt)
 
 def testsnr():
 
@@ -429,6 +447,31 @@ def connectomes_to_excel(connectome,ROI_excel,output_path):
 
     return
 
+
+def grouping_to_excel(grouping,ROI_excel,output_path):
+
+    df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
+    structure = df['Structure']
+
+    workbook = xlsxwriter.Workbook(output_path)
+    worksheet = workbook.add_worksheet()
+
+    num = 1
+    for struct in structure:
+        worksheet.write(0, num, struct)
+        worksheet.write(num, 0, struct)
+        num += 1
+
+    row=0
+
+    for i in np.arange(np.shape(grouping)[0]):
+        for j in np.arange(np.shape(grouping)[1]):
+            worksheet.write(i+1,j+1,str(grouping[i,j]))
+
+    workbook.close()
+
+    return
+
 """
 def prunestreamline(trkorigpath, trkprunepath, cutoff = 4, forcestart = False):
 
@@ -475,11 +518,14 @@ def excel_extract(roi_path):
 
 
 def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient,
-                              forcestart = False, verbose = None):
+                              inclusive = False, function_processes = 1, forcestart = False, picklesave = True,
+                              verbose = None):
 
-    picklepath_connect = outpath + subject + str_identifier + '_connectomes_int16.p'
-    excel_path = outpath + subject + str_identifier + "_connectomes_int16.xlsx"
-    if os.path.exists(picklepath_connect) and os.path.exists(excel_path) and not forcestart:
+    picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
+    connectome_xlsxpath = outpath + subject + str_identifier + "_connectomes.xlsx"
+    grouping_xlsxpath = outpath + subject + str_identifier + "_grouping.xlsx"
+
+    if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and not forcestart:
         print("The writing of pickle and excel of " + str(subject) + " is already done")
         #return
 
@@ -488,7 +534,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     labelmask, affine = getlabelmask(dwipath, subject, verbose)
     #fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
     mypath = dwipath
-    labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
+    #labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
 
     import numpy as np
     prunesave = True
@@ -555,28 +601,70 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     #pruned_streamlines_SL = Streamlines(pruned_streamlines)
 
     affine_streams = np.eye(4)
+    #function_processes = 2
+    t = time()
+    if function_processes > 1:
+        listcut = []
+        n = function_processes
+        size_SL = np.size(pruned_streamlines_SL)
+        listcut.append(0)
+        for i in np.arange(n - 1):
+            listcut.append(np.int(((i + 1) * size_SL) / n))
+            print(size_SL, i + 1, n)
+        listcut.append(size_SL)
+        print(listcut)
+        pruned_cut = []
+        for i in np.arange(n):
+            pruned_cut.append(pruned_streamlines[listcut[i]:listcut[i+1]])
 
-    M, grouping = connectivity_matrix_special(pruned_streamlines_SL, affine_streams, labelmask,
+        pool = Pool()
+        symmetric = True
+        return_mapping = True
+        mapping_as_streamlines = False
+
+        connectomic_results = []
+
+        connectomic_results = pool.starmap_async(connectivity_matrix, [(Streamlines(pruned_bit), affine_streams, labelmask,
+                                                                              inclusive, symmetric, return_mapping,
+                                                                              mapping_as_streamlines) for pruned_bit in pruned_cut]).get()
+        M = np.zeros(np.shape(connectomic_results[0][0]))
+        grouping = {}
+        for connectome_results in connectomic_results:
+            M += connectome_results[0]
+            grouping.update(connectome_results[1])
+
+        if verbose:
+            print("Time taken for the accelerated calculation with " + str(n) + " processes " + str(- t + time()))
+    else:
+        M, grouping = connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask, inclusive=True, symmetric=True,
                                             return_mapping=True,
-                                            mapping_as_streamlines=True, cutoff=cutoff)
-    #M, grouping = utils.connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask,
-    #                                        return_mapping=True,
-    #                                        mapping_as_streamlines=True)
+                                            mapping_as_streamlines=False)
 
-    print("The nunmber of tracts associated with the label 0 for subject " + subject+" is " + str(np.sum(M[0,:])))
+    matrix_sl = np.empty(np.shape(M), dtype=object)
+    for i in np.arange(np.shape(matrix_sl)[0]):
+        for j in np.arange(np.shape(matrix_sl)[1]):
+            matrix_sl[i, j] = []
+    for key in grouping.keys():
+        matrix_sl[key] = grouping[key]
+        matrix_sl[tuple(np.flip(key))] = grouping[key]
+
     M = np.delete(M, 0, 0)
     M = np.delete(M, 0, 1)
+    #grouping[(24, 30)]
+    matrix_sl = np.delete(matrix_sl, 0, 0)
+    matrix_sl = np.delete(matrix_sl, 0, 1)
 
-    pickle.dump(M, open(picklepath_connect, "wb"))
+    if picklesave:
+        pickle.dump(M, open(picklepath_connect, "wb"))
+        if verbose:
+            txt = ("The connectomes were saved at "+picklepath_connect)
+            send_mail(txt, subject="Pickle save")
+            print(txt)
 
+    connectomes_to_excel(M, ROI_excel, connectome_xlsxpath)
+    grouping_to_excel(matrix_sl, ROI_excel, grouping_xlsxpath)
     if verbose:
-        txt = ("The connectomes were saved at "+picklepath_connect)
-        send_mail(txt, subject="Pickle save")
-        print(txt)
-
-    connectomes_to_excel(M, ROI_excel, excel_path)
-    if verbose:
-        txt = ("The excelfile was saved at "+excel_path)
+        txt = ("The excelfile was saved at "+grouping_xlsxpath)
         send_mail(txt, subject="Excel save")
         print(txt)
 
@@ -833,7 +921,7 @@ def denoise_pick(data,affine,hdr,outpath,mask,type_denoise='macenko', processes 
         outpath_gibbs = outpath + '_gibbs.nii.gz'
         save_nifti(outpath_gibbs, denoised_arr, affine, hdr=hdr)
         if verbose:
-            print("Time taken for the gibbs removal " - t + time())
+            print("Time taken for the gibbs removal ", - t + time())
         if display:
             denoise_fig(data,data_corrected,type='gibbs')
 
@@ -893,7 +981,7 @@ def create_tracts(dwipath, outpath, subject, step_size, peak_processes, strprope
     else:
         #outpathtrk = outpathdir + subject + str_identifier + saved_streamlines + '_stepsize_' + str(step_size) + '.trk'
         outpathtrk = outpath + '/' + subject + strproperty + '.trk'
-
+    overwrite = True
     if os.path.isfile(outpathtrk) and overwrite is False:
         print("The tract creation of subject " + subject + " is already done")
         if get_params:
