@@ -524,10 +524,9 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
     connectome_xlsxpath = outpath + subject + str_identifier + "_connectomes.xlsx"
     grouping_xlsxpath = outpath + subject + str_identifier + "_grouping.xlsx"
-
     if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and not forcestart:
         print("The writing of pickle and excel of " + str(subject) + " is already done")
-        #return
+        return
 
     trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
     trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
@@ -593,7 +592,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         except:
             pruned_streamlines = prune_streamlines(list(pruned_streamlines_SL), labelmask, cutoff=cutoff,
                                                    verbose=False)
-            pruned_streamlines_SL = Streamlines(pruned_streamlines)
         del(trkprunedata)
 
     cutoff = 4
@@ -623,23 +621,26 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         mapping_as_streamlines = False
 
         connectomic_results = []
-
-        connectomic_results = pool.starmap_async(connectivity_matrix, [(Streamlines(pruned_bit), affine_streams, labelmask,
+        connectomic_results = pool.starmap_async(connectivity_matrix, [(Streamlines(pruned_streamlines[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
                                                                               inclusive, symmetric, return_mapping,
-                                                                              mapping_as_streamlines) for pruned_bit in pruned_cut]).get()
+                                                                              mapping_as_streamlines) for i in np.arange(n)]).get()
+        del(pruned_streamlines)
         M = np.zeros(np.shape(connectomic_results[0][0]))
         grouping = {}
         for connectome_results in connectomic_results:
             M += connectome_results[0]
-            grouping.update(connectome_results[1])
-
+            for key, val in connectome_results[1].items():
+                if key in grouping:
+                    grouping[key].extend(val)
+                else:
+                    grouping[key] = val
         if verbose:
             print("Time taken for the accelerated calculation with " + str(n) + " processes " + str(- t + time()))
     else:
-        M, grouping = connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask, inclusive=True, symmetric=True,
+        M, grouping = connectivity_matrix(Streamlines(pruned_streamlines), affine_streams, labelmask, inclusive=True, symmetric=True,
                                             return_mapping=True,
                                             mapping_as_streamlines=False)
-
+        del(pruned_streamlines)
     matrix_sl = np.empty(np.shape(M), dtype=object)
     for i in np.arange(np.shape(matrix_sl)[0]):
         for j in np.arange(np.shape(matrix_sl)[1]):
@@ -667,6 +668,8 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         txt = ("The excelfile was saved at "+grouping_xlsxpath)
         send_mail(txt, subject="Excel save")
         print(txt)
+    del(M, matrix_sl)
+    return
 
 def convert_labelmask(ROI_excel, labelmask):
     df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
