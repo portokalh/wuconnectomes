@@ -527,6 +527,10 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and not forcestart:
         print("The writing of pickle and excel of " + str(subject) + " is already done")
         return
+    elif verbose:
+        txt = ("Start of process for subject "+subject)
+        send_mail(txt, subject="Start subject")
+        print(txt)
 
     trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
     trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
