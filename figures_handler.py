@@ -31,6 +31,15 @@ from dipy.data.fetcher import fetch_bundles_2_subjects, read_bundles_2_subjects
 from dipy.tracking.streamline import Streamlines
 
 
+def win_callback(obj, event):
+    global size
+    if size != obj.GetSize():
+        size_old = size
+        size = obj.GetSize()
+        size_change = [size[0] - size_old[0], 0]
+        panel.re_align(size_change)
+
+
 def denoise_fig(data,denoised_arr,type='macenko',savefigpath='none'):
     """ Sets up figure that shows differences between two data arrays
     with assumption that one is standard and other is after denoising
@@ -92,7 +101,8 @@ def connective_streamlines_figuremaker(allstreamlines, ROI_streamlines, ROI_name
     scene = window.Scene()
     scene.SetBackground(1, 1, 1)
 
-    colors = ['misty_rose', 'slate_grey_dark', 'ivory_black', 'cadmium_red_deep', 'chartreuse']
+    colors = ['white', 'cadmium_red_deep', 'misty_rose', 'slate_grey_dark', 'ivory_black', 'chartreuse']
+    colors = [window.colors.white, window.colors.cadmium_red_deep]
     i = 0
     for ROI in ROI_streamlines:
         ROI_streamline = allstreamlines[ROI]
@@ -118,12 +128,19 @@ def connective_streamlines_figuremaker(allstreamlines, ROI_streamlines, ROI_name
         #    image_actor_z = actor.slicer(data, affine)
 
         slicer_opacity = 0.6
+        i = i + 1
 
     anat_nifti = load_nifti(anat_path)
-    data = anat_nifti.data
-    shape = anat_nifti.shape
-    affine = anat_nifti.affine
-    image_actor_z = actor.slicer(data, affine)
+    try:
+        data = anat_nifti.data
+    except AttributeError:
+        data = anat_nifti[0]
+    try:
+        affine = anat_nifti.affine
+    except AttributeError:
+        affine = anat_nifti[1]
+    shape = np.shape(data)
+    image_actor_z = actor.slicer(data[:,:,:,0], affine)
     image_actor_z.opacity(slicer_opacity)
 
     image_actor_x = image_actor_z.copy()
@@ -145,7 +162,21 @@ def connective_streamlines_figuremaker(allstreamlines, ROI_streamlines, ROI_name
     scene.add(image_actor_z)
     scene.add(image_actor_x)
     scene.add(image_actor_y)
+    global size
+    size = scene.GetSize()
+    show_m = window.ShowManager(scene, size=(1200, 900))
+    show_m.initialize()
 
+    interactive = True
+
+    if interactive:
+
+        show_m.add_window_callback(win_callback)
+        show_m.render()
+        show_m.start()
+    else:
+        window.record(scene, out_path='bundles_and_3_slices.png', size=(1200, 900),
+                      reset_camera=False)
 
 
 def shore_scalarmaps(data, gtab, outpath_fig, verbose = None):
