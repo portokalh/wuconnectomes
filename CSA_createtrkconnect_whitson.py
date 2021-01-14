@@ -52,6 +52,7 @@ for opt, arg in opts:
         start = arg
     elif opt in ("-e", "--last"):
         end = arg
+"""
 l = ["H21593", "H21729"]
 l = ["H21729"]
 l = ['H22102', 'H27841', 'H22101',
@@ -62,7 +63,7 @@ l = ['H22102', 'H27841', 'H22101',
  'H28869', 'H29044', 'H29089', 'H29127', 'H29242', 'H29254', 'H26745', 'H26850', 'H26880', 'H26958', 'H26974',
  'H27017', 'H27610', 'H27640', 'H27680', 'H27778', 'H27982', 'H28338', 'H28437', 'H28463', 'H28532', 'H28809',
  'H28857', 'H29013', 'H29025']
-
+"""
 if 'start' in locals():
     start = int(start)
     if 'end' in locals():
@@ -74,8 +75,8 @@ if 'start' not in locals():
         l = l
     else:
         l = l[0:end]
-
-max_processors = 48
+print("Will go from subject "+ l[0] + " to subject "+l[-1])
+max_processors = 1
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()

@@ -635,9 +635,10 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
             M += connectome_results[0]
             for key, val in connectome_results[1].items():
                 if key in grouping:
-                    grouping[key].extend(val)
+                    grouping[key].extend([j+listcut[i] for j in val])
                 else:
                     grouping[key] = val
+            i = i + 1
         if verbose:
             print("Time taken for the accelerated calculation with " + str(n) + " processes " + str(- t + time()))
     else:
