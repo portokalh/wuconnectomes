@@ -76,7 +76,7 @@ if 'start' not in locals():
     else:
         l = l[0:end]
 print("Will go from subject "+ l[0] + " to subject "+l[-1])
-max_processors = 1
+max_processors = 50
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
