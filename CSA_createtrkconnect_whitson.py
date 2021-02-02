@@ -67,7 +67,7 @@ l = ['H22102', 'H27841', 'H22101',
  'H27017', 'H27610', 'H27640', 'H27680', 'H27778', 'H27982', 'H28338', 'H28437', 'H28463', 'H28532', 'H28809',
  'H28857', 'H29013', 'H29025']
 """
-l = ["H26637"]
+
 
 if 'start' in locals():
     del(start, end)
@@ -82,8 +82,8 @@ if 'start' not in locals():
         l = l
     else:
         l = l[0:end]
-
-max_processors = 48
+print("Will go from subject "+ l[0] + " to subject "+l[-1])
+max_processors = 50
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -160,7 +160,7 @@ if isempty(labelslist) and roi.lower() != "wholebrain" and roi.lower() != "brain
     print(txt)
 
 bvec_orient=[1,2,-3]
-# ---------------------------------------------------------
+
 tall = time()
 tract_results = []
 
