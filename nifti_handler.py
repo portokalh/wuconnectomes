@@ -9,6 +9,7 @@ from BIAC_tools import send_mail
 from dipy.core.gradients import gradient_table
 from dif_to_trk import make_tensorfit
 from dipy.io.image import load_nifti
+import shutil
 
 def getfa(mypath, subject, bvec_orient, verbose=None):
 
@@ -157,8 +158,8 @@ def get_reference_info(reference, affine = np.eye(4).astype(np.float32)):
 
 def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
 
-    #fdwi = mypath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
-    #fdwipath = mypath + '/nii4D_' + subject + '.nii'
+    if os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
+        fdwipath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
     if os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
         fdwipath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
     elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
@@ -213,28 +214,6 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
     hdr = img.header
     del(img)
 
-    if os.path.exists(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz'):
-        labels, affine_labels = load_nifti(mypath+'/Reg_'+subject+'_nii4D_brain_mask.nii.gz')
-    elif os.path.exists(mypath+'/'+subject+'_chass_symmetric3_labels_RAS.nii.gz'):
-        labels, affine_labels = load_nifti(mypath+'/'+subject+'_chass_symmetric3_labels_RAS.nii.gz')
-    elif os.path.exists(mypath+'/'+subject+'_chass_symmetric3_labels_RAS_combined.nii.gz'):
-        labels, affine_labels = load_nifti(mypath+'/'+subject+'_chass_symmetric3_labels_RAS_combined.nii.gz')
-    elif os.path.exists(mypath + '/fa_labels_warp_' + subject +'_RAS.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz')
-    elif os.path.exists(mypath + '/labels/fa_labels_warp_' + subject +'_RAS.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz')
-    elif os.path.exists(mypath + '/mask.nii.gz'):
-        labels, affine_labels = load_nifti(mypath + '/mask.nii.gz')
-    elif os.path.exists(mypath + '/mask.nii'):
-        labels, affine_labels = load_nifti(mypath + '/mask.nii')
-    else:
-        print('mask not found, taking all non null values in nii file instead (not recommended for complex operations)')
-        labels = (fdwi_data[:, :, :, 0] > 0).astype(int)
-        affine_labels = affine
-
-    #bvecs = np.c_[bvecs[:, 1], bvecs[:, 0], -bvecs[:, 2]]
-    #bvecs = np.c_[-bvecs[:, 1], bvecs[:, 0], bvecs[:, 2]]
-
     gtab = gradient_table(bvals, bvecs)
 
     # Build Brain Mask
@@ -242,4 +221,87 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
     #mask = bm
 
     header = get_reference_info(fdwipath)
-    return fdwi_data, affine, gtab, labels, vox_size, fdwipath, hdr, header
+
+    return fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header
+
+def getlabelmask(mypath, subject, verbose=None):
+
+
+    labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
+    if np.size(labelsoption)>0:
+        labelspath = labelsoption[0]
+    elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'):
+        labelspath = mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'
+    elif os.path.exists(mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'):
+        labelspath = mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'
+    elif os.path.exists(mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz'):
+        labelspath = mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz'
+    elif os.path.exists(mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz'):
+        labelspath = mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz'
+    elif os.path.exists(mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz'):
+        labelspath = mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz'
+    elif os.path.exists(mypath + '/mask.nii.gz'):
+        labelspath = mypath + '/mask.nii.gz'
+    elif os.path.exists(mypath + '/mask.nii'):
+        labelspath = mypath + '/mask.nii'
+
+    if 'labelspath' in locals():
+        labels, affine_labels = load_nifti(labelspath)
+        if verbose:
+            print("Label mask taken from " + labelspath)
+    else:
+        print('mask not found')
+        txt = ("Label mask taken from " + labelspath)
+        deprecation(txt)
+
+    return labels, affine_labels
+
+def getmask(mypath, subject, verbose=None):
+    maskpath = glob.glob(os.path.join(mypath, subject + '*_binary_mask.nii.gz'))
+    if np.size(maskpath)>0:
+        maskpath = maskpath[0]
+
+    if 'maskpath' in locals():
+        mask, affine_mask = load_nifti(maskpath)
+        if verbose:
+            print("Mask taken from " + maskpath)
+    else:
+        print('mask not found')
+        txt = ("Label mask taken from " + maskpath)
+
+    return mask, affine_mask
+
+def move_bvals(mypath, subject, dwipathnew):
+
+    if os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
+        fdwipath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
+    if os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
+        fdwipath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
+    elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
+        fdwipath = mypath + '/nii4D_' + subject + '.nii'
+    elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
+        fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
+    elif os.path.exists(mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'):
+        fdwipath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
+    elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
+        fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
+    elif os.path.exists(mypath + '/' + subject + '/'):
+        fdwipath = glob.glob(mypath + '/' + subject + '/' + subject + '*nii4D*.nii*')[0]
+
+    mypath = str(pathlib.Path(fdwipath).parent.absolute())
+
+
+    try:
+        fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
+        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
+    except IndexError:
+        fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
+        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec*.txt')[0]
+        fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
+
+    fbvals_new = os.path.join(dwipathnew, subject + "_bvals_fix.txt")
+    shutil.copyfile(fbvals, fbvals_new)
+    fbvec_new = os.path.join(dwipathnew, subject + "_bvec_fix.txt")
+    shutil.copyfile(fbvecs, fbvec_new)
+
+    return fbvals_new, fbvec_new

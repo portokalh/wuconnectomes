@@ -102,7 +102,7 @@ def connective_streamlines_figuremaker(allstreamlines, ROI_streamlines, ROI_name
     scene.SetBackground(1, 1, 1)
 
     colors = ['white', 'cadmium_red_deep', 'misty_rose', 'slate_grey_dark', 'ivory_black', 'chartreuse']
-    colors = [window.colors.white, window.colors.cadmium_red_deep]
+    colors = [window.colors.white, window.colors.cadmium_red_deep, window.colors.misty_rose, window.colors.slate_grey_dark, window.colors.ivory_black, window.colors.chartreuse]
     i = 0
     for ROI in ROI_streamlines:
         ROI_streamline = allstreamlines[ROI]
@@ -168,7 +168,7 @@ def connective_streamlines_figuremaker(allstreamlines, ROI_streamlines, ROI_name
     show_m.initialize()
 
     interactive = True
-
+    interactive = False
     if interactive:
 
         show_m.add_window_callback(win_callback)

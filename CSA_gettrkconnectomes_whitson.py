@@ -35,8 +35,8 @@ print("Running on ", max_processors, " processors")
 
 # please set the parameter here
 #BIGGUS_DISKUS = "/Volumes/Badea/Lab/mouse"
-#BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
-BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
+BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
+#BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
 dwipath = BIGGUS_DISKUS
 
 outtrkpath = '/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_QA/'
@@ -47,7 +47,7 @@ figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS_40subj/"
 
 outpathpickle = figspath
 
-atlas_legends = BIGGUS_DISKUS + "/atlases/CHASSSYMM3AtlasLegends.xlsx"
+atlas_legends = BIGGUS_DISKUS + "../../atlases/CHASSSYMM3AtlasLegends.xlsx"
 #atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_lookup.xlsx"
 
 df = pd.read_excel(atlas_legends, sheet_name='Sheet1')

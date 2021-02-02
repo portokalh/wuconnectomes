@@ -52,13 +52,13 @@ from dipy.reconst import shm
 
 from scipy.ndimage.morphology import binary_dilation
 from dipy.tracking import utils
-from dipy.tracking.stopping_criterion import BinaryStoppingCriterion
+from dipy.tracking.stopping_criterion import BinaryStoppingCriterion, ThresholdStoppingCriterion
+
 from dipy.tracking.streamline import Streamlines
 import matplotlib.pyplot as plt
 
 #from dipy.denoise.localpca import mppca
-from denoise_processes import mppca
-from dipy.denoise.gibbs import gibbs_removal
+
 
 from random import randint
 
@@ -67,12 +67,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 import xlsxwriter
 
-from figures_handler import denoise_fig, shore_scalarmaps
+from figures_handler import shore_scalarmaps
 from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
 from BIAC_tools import send_mail, isempty
 from tract_handler import target, prune_streamlines, get_trk_params, get_tract_params
-from nifti_handler import getfa, getdwidata
+from nifti_handler import getfa, getdwidata, getlabelmask, move_bvals, getmask
+from diff_preprocessing import dwi_to_mask, denoise_pick
 import tract_save
 import xlrd
 import warnings
@@ -81,21 +82,6 @@ from multiprocessing import Pool
 
 from connectivity_own import connectivity_matrix_special
 
-def string_inclusion(string_option,allowed_strings,option_name):
-    "checks if option string is part of the allowed list of strings for that option"
-    try:
-        string_option=string_option.lower()
-    except AttributeError:
-        if string_option is None:
-            #raise Warning(option_name + " stated as None value, option will not be implemented")
-            print(option_name + " stated as None value, option will not be implemented")
-        else:
-            raise AttributeError('Unrecognized value for ' + option_name)
-
-    if not any(string_option == x for x in allowed_strings):
-        raise ValueError(string_option + " is an unrecognized string, please check your input for " + option_name)
-    if string_option == "none":
-        print(option_name + " stated as None value, option will not be implemented")
 
 def strfile(string):
     # Converts strings into more usable 'file strings (mostly takes out . and turns it into _
@@ -393,37 +379,13 @@ def gettrkpath(trkpath, subject, str_identifier, verbose=False):
 def deprecation(message):
     warnings.warn(message, DeprecationWarning, stacklevel=2)
 
-def getlabelmask(mypath, subject, verbose=None):
+def makemask_fromdiff(dwipath, subject, bvec_orient):
 
+    data, affine, _, mask, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient)
+    outpath = os.path.join(dwipath, subject)
+    mask = dwi_to_mask(data, affine, outpath, makefig = False)
+    return(mask)
 
-    labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
-    if np.size(labelsoption)>0:
-        labelspath = labelsoption[0]
-    elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'):
-        labelspath = mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'
-    elif os.path.exists(mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'):
-        labelspath = mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'
-    elif os.path.exists(mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz'):
-        labelspath = mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz'
-    elif os.path.exists(mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz'):
-        labelspath = mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz'
-    elif os.path.exists(mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz'):
-        labelspath = mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz'
-    elif os.path.exists(mypath + '/mask.nii.gz'):
-        labelspath = mypath + '/mask.nii.gz'
-    elif os.path.exists(mypath + '/mask.nii'):
-        labelspath = mypath + '/mask.nii'
-
-    if 'labelspath' in locals():
-        labels, affine_labels = load_nifti(labelspath)
-        if verbose:
-            print("Label mask taken from " + labelspath)
-    else:
-        print('mask not found')
-        txt = ("Label mask taken from " + labelspath)
-        deprecation(txt)
-
-    return labels, affine_labels
 
 def connectomes_to_excel(connectome,ROI_excel,output_path):
 
@@ -524,14 +486,12 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
     connectome_xlsxpath = outpath + subject + str_identifier + "_connectomes.xlsx"
     grouping_xlsxpath = outpath + subject + str_identifier + "_grouping.xlsx"
+
     if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and not forcestart:
         print("The writing of pickle and excel of " + str(subject) + " is already done")
         return
-    elif verbose:
-        txt = ("Start of process for subject "+subject)
-        send_mail(txt, subject="Start subject")
-        print(txt)
 
+    trkprunepath = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_2_ratio_100_wholebrain_pruned.trk"
     trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
     trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
     labelmask, affine = getlabelmask(dwipath, subject, verbose)
@@ -596,6 +556,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         except:
             pruned_streamlines = prune_streamlines(list(pruned_streamlines_SL), labelmask, cutoff=cutoff,
                                                    verbose=False)
+            pruned_streamlines_SL = Streamlines(pruned_streamlines)
         del(trkprunedata)
 
     cutoff = 4
@@ -608,7 +569,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     if function_processes > 1:
         listcut = []
         n = function_processes
-        size_SL = np.size(pruned_streamlines_SL)
+        size_SL = np.size(pruned_streamlines)
         listcut.append(0)
         for i in np.arange(n - 1):
             listcut.append(np.int(((i + 1) * size_SL) / n))
@@ -618,33 +579,39 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         pruned_cut = []
         for i in np.arange(n):
             pruned_cut.append(pruned_streamlines[listcut[i]:listcut[i+1]])
-
         pool = Pool()
         symmetric = True
         return_mapping = True
         mapping_as_streamlines = False
 
         connectomic_results = []
+
+        #connectomic_results = pool.starmap_async(connectivity_matrix, [(Streamlines(pruned_bit), affine_streams, labelmask,
+        #                                                                      inclusive, symmetric, return_mapping,
+        #                                                                      mapping_as_streamlines) for pruned_bit in pruned_cut]).get()
         connectomic_results = pool.starmap_async(connectivity_matrix, [(Streamlines(pruned_streamlines[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
                                                                               inclusive, symmetric, return_mapping,
                                                                               mapping_as_streamlines) for i in np.arange(n)]).get()
-        del(pruned_streamlines)
         M = np.zeros(np.shape(connectomic_results[0][0]))
         grouping = {}
+        i=0
         for connectome_results in connectomic_results:
             M += connectome_results[0]
             for key, val in connectome_results[1].items():
                 if key in grouping:
-                    grouping[key].extend(val)
+                    #grouping[key].extend(val+listcut[i])
+                    grouping[key].extend([j+listcut[i] for j in val])
                 else:
                     grouping[key] = val
+            i = i + 1
+
         if verbose:
             print("Time taken for the accelerated calculation with " + str(n) + " processes " + str(- t + time()))
     else:
-        M, grouping = connectivity_matrix(Streamlines(pruned_streamlines), affine_streams, labelmask, inclusive=True, symmetric=True,
+        M, grouping = connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask, inclusive=True, symmetric=True,
                                             return_mapping=True,
                                             mapping_as_streamlines=False)
-        del(pruned_streamlines)
+
     matrix_sl = np.empty(np.shape(M), dtype=object)
     for i in np.arange(np.shape(matrix_sl)[0]):
         for j in np.arange(np.shape(matrix_sl)[1]):
@@ -659,6 +626,11 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     matrix_sl = np.delete(matrix_sl, 0, 0)
     matrix_sl = np.delete(matrix_sl, 0, 1)
 
+    if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and forcestart:
+        os.remove(picklepath_connect)
+        os.remove(connectome_xlsxpath)
+        os.remove(grouping_xlsxpath)
+
     if picklesave:
         pickle.dump(M, open(picklepath_connect, "wb"))
         if verbose:
@@ -672,8 +644,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         txt = ("The excelfile was saved at "+grouping_xlsxpath)
         send_mail(txt, subject="Excel save")
         print(txt)
-    del(M, matrix_sl)
-    return
 
 def convert_labelmask(ROI_excel, labelmask):
     df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
@@ -891,93 +861,43 @@ def tract_connectome_analysis_old(dwipath, trkpath, str_identifier, outpath, sub
     """
 
 
+def ROI_labels_mask(fdwi_data, labelsmask, labelslist):
 
+    mask = np.zeros(np.shape(labelsmask), dtype=int)
 
-def denoise_pick(data,affine,hdr,outpath,mask,type_denoise='macenko', processes = 1, savedenoise= True, verbose=False, display=None):
+    for label in labelslist:
+        mask = mask + (labelsmask == label)
+    fdwi_data_masked = fdwi_data * np.repeat(mask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
 
-    allowed_strings=['mpca','yes','all','gibbs','none', 'macenko']
-    string_inclusion(type_denoise, allowed_strings, "type_denoise")
+    return(fdwi_data_masked, mask)
 
-    if type_denoise == 'macenko' or 'mpca' or type_denoise == 'yes' or type_denoise == 'all':
-        # data, snr = marcenko_denoise(data, False, verbose=verbose)
-        t = time()
-        denoised_arr, sigma = mppca(data, patch_radius=2, return_sigma=True, processes=processes, verbose=verbose)
-        outpath_mpca = outpath + '_mpca.nii.gz'
-        save_nifti(outpath_mpca, denoised_arr, affine, hdr=hdr)
-        print("Saved image at " + outpath_mpca)
+def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savefa="yes",processes=1, strproperty="", createmask = True, vol_b0 = None, verbose = False):
 
-        mean_sigma = np.mean(sigma[mask])
-        b0 = denoised_arr[..., 0]
+    move_bvals(dwipath, subject, outpath)
 
-        mean_signal = np.mean(b0[mask])
-
-        snr = mean_signal / mean_sigma
-
-        if verbose:
-            print("Time taken for local MP-PCA ", -t +
-                  time())
-            print("The SNR of the b0 image appears to be at " + str(snr))
-        if display:
-            marcenko_denoise_fig(data, denoised_arr, type='macenko')
-
-        data = denoised_arr
-
-    if type_denoise == 'gibbs' or type_denoise =='all':
-        t = time()
-        data_corrected = gibbs_removal(data, slice_axis=2)
-        outpath_gibbs = outpath + '_gibbs.nii.gz'
-        save_nifti(outpath_gibbs, denoised_arr, affine, hdr=hdr)
-        if verbose:
-            print("Time taken for the gibbs removal ", - t + time())
-        if display:
-            denoise_fig(data,data_corrected,type='gibbs')
-
-        data=data_corrected
-        
-    if type_denoise == 'none':
-        print('No denoising was done')
-
-    return data
-
-
-def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savefa="yes",processes=1, labelslist=None, strproperty="", verbose = False):
-
-    bvec_orient=[1,2,3]
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, header, hdr, _ = getdwidata(dwipath, subject, bvec_orient, verbose)
-    #fdwi_data, affine, vox_size = load_nifti(fdwi, return_voxsize=True) (mypath, subject, bvec_orient=[1,2,3], verbose=None)
-
-    #labels = glob.glob(mypath + '/' + subject + '*labels*nii.gz') #ffalabels = mypath + 'labels/' + 'fa_labels_warp_' + subject + '_RAS.nii.gz'
-
-    #mask = glob.glob(mypath + '/' + subject + '*mask*nii.gz')
-    #labelmask = labels + mask #Whether the image is a labels or a mask, we output a mask for mpca
-        
-    # Build Brain Mask
-    print(labelslist)
-    if isempty(labelslist):
-        mask = np.where(labelmask == 0, False, True)
-    else:
-        if labelmask is None:
-            raise ("File not found error: labels requested but labels file could not be found at " + dwipath + " for subject " + subject)
-        mask = np.zeros(np.shape(labelmask), dtype=int)
-        for label in labelslist:
-            mask = mask + (labelmask == label)
-        fdwi_data = fdwi_data * np.repeat(mask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
+    fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient, verbose)
     if verbose:
-        print('Running the ' + subject + ' file')
+        print('Running the preprocessing for subject ' + subject)
 
-    fdwi_data = fdwi_data * np.repeat(mask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
+    if createmask:         # Build Brain Mask
+        outpathmask = os.path.join(outpath, subject)
+        mask, _ = dwi_to_mask(fdwi_data, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
+    else:
+        mask, _ = getlabelmask(dwipath, subject, verbose=True)
 
-    outpathdenoise= outpath + subject + '_nii4D_RAS'
-    print(denoise)
-    fdwi_data = denoise_pick(fdwi_data, affine,hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
-
-    #testsnr => not yet fully implemented
     print(savefa)
     if savefa == "yes" or savefa == "y" or savefa == 1 or savefa is True or savefa == "all":
-        outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=outpath,strproperty=strproperty,verbose = verbose)
+        outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=outpath,strproperty=strproperty,verbose=verbose)
     else:
         print('FA was not calculated')
-        outpathbmfa=None
+        outpathbmfa = None
+
+    outpathdenoise = os.path.join(outpath, subject)
+    fdwi_data, outpath_denoise = denoise_pick(fdwi_data, affine, hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
+    move_bvals(dwipath, subject, outpath)
+
+    return (outpath_denoise)
+
 
 def create_tracts(dwipath, outpath, subject, step_size, peak_processes, strproperty = "", ratio = 1, save_fa=True,
                       labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False, get_params=False,
@@ -1003,13 +923,16 @@ def create_tracts(dwipath, outpath, subject, step_size, peak_processes, strprope
         print('Running the ' + subject + ' file')
 
 
-    if get_params is True and params is None:
+    if get_params is True and not 'params' in locals():
         numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(trkstreamlines, verbose)
         params = [numtracts, minlength, maxlength, meanlength, stdlength]
 
     #outpath_subject = outpathsubject + saved_str + '_stepsize_' + str(step_size) + '.trk'
 
-    fdwi_data, affine, gtab, mask, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient)
+    fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient, verbose)
+    mask = getmask(dwipath,subject,verbose)
+    #mask, _ = getlabelmask(dwipath, subject, verbose)
+
     if np.size(np.shape(mask)) == 1:
         mask = mask[0]
     if np.size(np.shape(mask)) == 4:
@@ -1019,9 +942,8 @@ def create_tracts(dwipath, outpath, subject, step_size, peak_processes, strprope
         print("The subject " + subject + "could not be found at " + dwipath)
         return
 
-    if save_fa == "yes" or save_fa == "y" or save_fa == 1 or save_fa is True or save_fa == "all" or save_fa == "only":
-        make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=dwipath,strproperty=strproperty,verbose=verbose)
-
+    if save_fa == "yes" or save_fa == "y" or save_fa == 1 or save_fa is True or save_fa == "all" or save_fa == "only" or save_fa == "classifier":
+        outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=dwipath,strproperty=strproperty,verbose=verbose)
     else:
         print('FA was not calculated')
         outpathbmfa = None
@@ -1035,7 +957,7 @@ def create_tracts(dwipath, outpath, subject, step_size, peak_processes, strprope
 
     outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, header, step_size,
                                                         peak_processes, outpathtrk, subject, ratio,
-                                                        overwrite, get_params, doprune, verbose=verbose)
+                                                        overwrite, get_params, doprune, pathfa = outpathbmfa, verbose=verbose)
 
     if labelslist:
         print('In process of implementing')

@@ -38,6 +38,9 @@ l = ['H29056', 'H26578', 'H29060', 'H26637', 'H29264', 'H26765', 'H29225', 'H266
      'H28869', 'H29044', 'H29089', 'H29127', 'H29242', 'H29254', 'H26745', 'H26850', 'H26880', 'H26958', 'H26974',
      'H27017', 'H27610', 'H27640', 'H27680', 'H27778', 'H27982', 'H28338', 'H28437', 'H28463', 'H28532', 'H28809',
      'H28857', 'H29013', 'H29025']
+l = ["H26966", "H26637"]
+l = ["H29410", "H29060"]
+#l = ["H29410", "H29060"]
 argv = sys.argv[1:]
 try:
     opts, args = getopt.getopt(argv,"hb:e:",["first=","last="])
@@ -52,6 +55,7 @@ for opt, arg in opts:
         start = arg
     elif opt in ("-e", "--last"):
         end = arg
+"""
 l = ["H21593", "H21729"]
 l = ["H21729"]
 l = ['H22102', 'H27841', 'H22101',
@@ -62,7 +66,11 @@ l = ['H22102', 'H27841', 'H22101',
  'H28869', 'H29044', 'H29089', 'H29127', 'H29242', 'H29254', 'H26745', 'H26850', 'H26880', 'H26958', 'H26974',
  'H27017', 'H27610', 'H27640', 'H27680', 'H27778', 'H27982', 'H28338', 'H28437', 'H28463', 'H28532', 'H28809',
  'H28857', 'H29013', 'H29025']
+"""
+l = ["H26637"]
 
+if 'start' in locals():
+    del(start, end)
 if 'start' in locals():
     start = int(start)
     if 'end' in locals():
@@ -82,8 +90,8 @@ if mp.cpu_count() < max_processors:
 
 print("Running on ", max_processors, " processors")
 
-#BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse"
-BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse"
+BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse"
+#BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse"
 #BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
 #BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
 dwipath = BIGGUS_DISKUS + "/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
@@ -110,7 +118,7 @@ if max_processors < subject_processes:
 function_processes = np.int(max_processors/subject_processes)
 
 targetrois = ["Cerebellum"]
-ratio = 1
+ratio = 10
 if ratio == 1:
     saved_streamlines = "_all"
 else:
@@ -166,7 +174,9 @@ if verbose:
 duration1=time()
 overwrite = False
 get_params = False
-forcestart = False
+forcestart = True
+if forcestart:
+    print("WARNING: FORCESTART EMPLOYED. THIS WILL COPY OVER PREVIOUS DATA")
 picklesave = True
 
 donelist = []
