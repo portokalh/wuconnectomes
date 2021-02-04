@@ -532,7 +532,7 @@ def genpca(arr, sigma=None, mask=None, patch_radius=2, pca_method='eig',
                     this_var, ncomps = _pca_classifier(d, patch_size ** 3)
                 else:
                     # Predefined variance
-                    this_var = var[i, j, k]
+                    this_var = var[ii, jj, kk]
 
                 # Threshold by tau:
                 tau = tau_factor ** 2 * this_var
@@ -555,7 +555,7 @@ def genpca(arr, sigma=None, mask=None, patch_radius=2, pca_method='eig',
                     thetavar[ix1:ix2, jx1:jx2, kx1:kx2] += this_theta
 
         if verbose:
-            print("Ran loop on line ", str(k))
+            print("Ran loop on line ", str(kk))
             print("Process has been running for "+ str(time()-duration1) + "s")
 
     denoised_arr = thetax / theta

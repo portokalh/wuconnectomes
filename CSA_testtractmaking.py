@@ -66,7 +66,6 @@ if 'start' not in locals():
         l = l[0:end]
 
 max_processors = 48
-#max_processors = 1
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -108,7 +107,7 @@ else:
     saved_streamlines = "_ratio_" + str(ratio)
 savefa="yes"
 verbose=True
-denoise='mpca'
+denoise='none'
 #denoise=None
 savedenoise=True
 display=False
@@ -205,7 +204,6 @@ else:
        tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject,
                                                      atlas_legends, bvec_orient, inclusive, function_processes,
                                                      forcestart, picklesave, verbose))
-
 
 
 subject=l[0]

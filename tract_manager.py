@@ -19,6 +19,9 @@ import pickle
 import pandas as pd
 import smtplib
 
+from dipy.denoise.localpca import mppca
+
+
 import os, re, sys, io, struct, socket, datetime
 from email.mime.text import MIMEText
 import glob
@@ -893,7 +896,6 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
 
     outpathdenoise = os.path.join(outpath, subject)
     fdwi_data, outpath_denoise = denoise_pick(fdwi_data, affine, hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
-    move_bvals(dwipath, subject, outpath)
 
     return (outpath_denoise)
 

@@ -160,7 +160,7 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
 
     if os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
         fdwipath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
-    if os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
+    elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
         fdwipath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
     elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
         fdwipath = mypath + '/nii4D_' + subject + '.nii'
@@ -290,18 +290,18 @@ def move_bvals(mypath, subject, dwipathnew):
 
     mypath = str(pathlib.Path(fdwipath).parent.absolute())
 
-
-    try:
-        fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
-        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
-    except IndexError:
-        fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
-        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec*.txt')[0]
-        fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
-
     fbvals_new = os.path.join(dwipathnew, subject + "_bvals_fix.txt")
-    shutil.copyfile(fbvals, fbvals_new)
     fbvec_new = os.path.join(dwipathnew, subject + "_bvec_fix.txt")
-    shutil.copyfile(fbvecs, fbvec_new)
+
+    if not os.path.exists(fbvals_new) and not os.path.exists(fbvec_new):
+        try:
+            fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
+            fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
+        except IndexError:
+            fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
+            fbvecs = glob.glob(mypath + '/' + subject + '*_bvec*.txt')[0]
+            fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
+        shutil.copyfile(fbvals, fbvals_new)
+        shutil.copyfile(fbvecs, fbvec_new)
 
     return fbvals_new, fbvec_new

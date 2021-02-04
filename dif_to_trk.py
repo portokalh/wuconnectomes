@@ -38,27 +38,28 @@ from tract_handler import target, prune_streamlines
 import nibabel as nib
 from dipy.tracking.streamline import Streamlines
 
-def make_tensorfit(data,mask,gtab,affine,subject,outpath,strproperty, overwrite="yes", forcestart = False, verbose=None):
+def make_tensorfit(data,mask,gtab,affine,subject,outpath,strproperty, overwrite=False, forcestart = False, verbose=None):
 
 
     from dipy.reconst.dti import TensorModel
     if os.path.isdir(outpath):
-        outpathbmfa = outpath + '/bmfa' + subject + '.nii.gz'
+        #outpathbmfa = outpath + '/bmfa' + subject + '.nii.gz'
+        outpathbmfa = os.path.join(outpath, subject + '_bmfa.nii.gz')
     elif os.path.isfile(outpath):
-        outpathbmfa = os.path.dirname(outpath) + '/bmfa' + subject + '.nii.gz'
-    if os.path.isfile(outpathbmfa) and overwrite == 'no':
+        #outpathbmfa = os.path.dirname(outpath) + '/bmfa' + subject + '.nii.gz'
+        outpathbmfa = os.path.join(os.path.dirname(outpath), subject + '_bmfa.nii.gz')
+    if os.path.isfile(outpathbmfa) and not forcestart:
         print("FA has already been saved at " + outpathbmfa + ", no overwrite")
         return outpathbmfa
-    if verbose:
-        print('Calculating the tensor model from bval/bvec values of ', subject)
 
-    outpathbmfa = os.path.join(outpath, subject + '_bmfa.nii.gz')
     if os.path.exists(outpathbmfa) and not forcestart:
         if verbose:
             txt = "FA already computed at "+outpathbmfa
             print(txt)
         return(outpathbmfa)
     else:
+        if verbose:
+            print('Calculating the tensor model from bval/bvec values of ', subject)
         tensor_model = TensorModel(gtab)
 
         t1 = time()

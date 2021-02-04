@@ -76,7 +76,7 @@ def denoise_pick(data, affine, hdr, outpath, mask, type_denoise='macenko', proce
     string_inclusion(type_denoise, allowed_strings, "type_denoise")
 
     if type_denoise == 'macenko' or type_denoise == 'mpca' or type_denoise == 'yes' or type_denoise == 'all':
-        type_denoise = '_mpca_'
+        type_denoise = '_mpca_2_'
     if type_denoise == 'gibbs':
         type_denoise = "_gibbs"
     if type_denoise is None or type_denoise == 'none':
@@ -90,7 +90,7 @@ def denoise_pick(data, affine, hdr, outpath, mask, type_denoise='macenko', proce
         if datareturn:
             data = load_nifti(outpath_denoise)
     else:
-        if type_denoise == '_mpca_':
+        if type_denoise == '_mpca_2_':
             # data, snr = marcenko_denoise(data, False, verbose=verbose)
             t = time()
             denoised_arr, sigma = mppca(data, patch_radius=2, return_sigma=True, processes=processes, verbose=verbose)
