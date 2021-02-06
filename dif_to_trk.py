@@ -38,7 +38,7 @@ from tract_handler import target, prune_streamlines
 import nibabel as nib
 from dipy.tracking.streamline import Streamlines
 
-def make_tensorfit(data,mask,gtab,affine,subject,outpath,strproperty, overwrite=False, forcestart = False, verbose=None):
+def make_tensorfit(data,mask,gtab,affine,subject,outpath, overwrite=False, forcestart = False, verbose=None):
 
 
     from dipy.reconst.dti import TensorModel
@@ -48,15 +48,14 @@ def make_tensorfit(data,mask,gtab,affine,subject,outpath,strproperty, overwrite=
     elif os.path.isfile(outpath):
         #outpathbmfa = os.path.dirname(outpath) + '/bmfa' + subject + '.nii.gz'
         outpathbmfa = os.path.join(os.path.dirname(outpath), subject + '_bmfa.nii.gz')
-    if os.path.isfile(outpathbmfa) and not forcestart:
-        print("FA has already been saved at " + outpathbmfa + ", no overwrite")
-        return outpathbmfa
 
     if os.path.exists(outpathbmfa) and not forcestart:
+        fa = load_nifti(outpathbmfa)
+        fa_array = fa[0]
         if verbose:
-            txt = "FA already computed at "+outpathbmfa
+            txt = "FA already computed at " + outpathbmfa
             print(txt)
-        return(outpathbmfa)
+        return outpathbmfa, fa_array
     else:
         if verbose:
             print('Calculating the tensor model from bval/bvec values of ', subject)
@@ -71,7 +70,7 @@ def make_tensorfit(data,mask,gtab,affine,subject,outpath,strproperty, overwrite=
         if verbose:
             print(subject + ' DTI duration %.3f' % (duration1,))
 
-        outpathbmfa = outpath + 'bmfa' + subject + strproperty + '.nii.gz'
+        outpathbmfa = outpath + 'bmfa' + subject + '.nii.gz'
         print(outpathbmfa)
         save_nifti(outpathbmfa, tensor_fit.fa, affine)
         if verbose:
@@ -80,7 +79,7 @@ def make_tensorfit(data,mask,gtab,affine,subject,outpath,strproperty, overwrite=
             #outpathbmfa = None
 
         #fa = tensor_fit.fa
-        return outpathbmfa
+        return outpathbmfa, tensor_fit.fa
 
 # strproperty, trkpath, subject, affine, header
 #(trkfile, roislist, roisexcel, labelmask, ratio)
@@ -135,7 +134,7 @@ def save_roisubset(trkfile, roislist, roisexcel, labelmask):
                                            affine=header[0], header=myheader)
 
 
-def QCSA_tractmake(data, affine, vox_size, gtab, mask, header, step_size, peak_processes, outpathtrk, subject='NA',
+def QCSA_tractmake_old(data, affine, vox_size, gtab, mask, header, step_size, peak_processes, outpathtrk, subject='NA',
                    ratio=1, overwrite=False, get_params=False, doprune = False, pathfa = None, verbose=None):
     # Compute odfs in Brain Mask
     t2 = time()
@@ -171,7 +170,7 @@ def QCSA_tractmake(data, affine, vox_size, gtab, mask, header, step_size, peak_p
                   ',it has been ' + str(round(duration)) + 'seconds since the start of tractmaker',subject="Seed computation" )
 
         print('Computing classifier for local tracking for subject ' + subject)
-
+    pathfa = None
     if pathfa is None:
         classifier = BinaryStoppingCriterion(wholemask)
     else:
@@ -409,10 +408,17 @@ def QCSA_tractmake(data, affine, vox_size, gtab, mask, header, step_size, peak_p
         params = None
     return outpathtrk, streamlines_generator, params
 
-def QCSA_tractmake(data, affine, vox_size, gtab, mask, header, step_size, peak_processes, outpathtrk, subject='NA',
-                   ratio=1, overwrite=False, get_params=False, pathfig = None, doprune = False, pathfa = None, verbose=None):
+def QCSA_tractmake(data, affine, vox_size, gtab, mask, masktype, header, step_size, peak_processes, outpathtrk, subject='NA',
+                   ratio=1, overwrite=False, get_params=False, doprune=False, figspath=None, verbose=None):
     # Compute odfs in Brain Mask
     t2 = time()
+
+    if os.path.isfile(outpathtrk) and not overwrite:
+        txt = "Subject already saved at "+outpathtrk
+        print(txt)
+        streamlines_generator = None
+        params = None
+        return outpathtrk, streamlines_generator, params
 
     csa_model = CsaOdfModel(gtab, 6)
     if peak_processes < 2:
@@ -446,26 +452,25 @@ def QCSA_tractmake(data, affine, vox_size, gtab, mask, header, step_size, peak_p
 
         print('Computing classifier for local tracking for subject ' + subject)
 
-    if pathfa is None:
-        classifier = BinaryStoppingCriterion(wholemask)
-    else:
+    if masktype == "FA":
         #tensor_model = dti.TensorModel(gtab)
         #tenfit = tensor_model.fit(data, mask=labels > 0)
         #FA = fractional_anisotropy(tenfit.evals)
-        FA_nifti = load_nifti(pathfa)
-        FA = FA_nifti[0]
-        classifier = ThresholdStoppingCriterion(FA, .2)
+        FA_threshold = 0.05
+        classifier = ThresholdStoppingCriterion(mask, FA_threshold)
 
-        if pathfig is not None:
+        if figspath is not None:
             fig = plt.figure()
-            mask_fa = FA.copy()
-            mask_fa[mask_fa < 0.2] = 0
+            mask_fa = mask.copy()
+            mask_fa[mask_fa < FA_threshold] = 0
             plt.xticks([])
             plt.yticks([])
             plt.imshow(mask_fa[:, :, data.shape[2] // 2].T, cmap='gray', origin='lower',
                        interpolation='nearest')
             fig.tight_layout()
-            fig.savefig(pathfig + 'threshold_fa.png')
+            fig.savefig(figspath + 'threshold_fa.png')
+    else:
+        classifier = BinaryStoppingCriterion(wholemask)
 
     # generates about 2 seeds per voxel
     # seeds = utils.random_seeds_from_mask(fa > .2, seeds_count=2,
@@ -546,135 +551,3 @@ def QCSA_tractmake(data, affine, vox_size, gtab, mask, header, step_size, peak_p
 
     return outpathtrk, streamlines_generator, params
 
-
-"""
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=step_size)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_2_ratio_100_wholebrain.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=1)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_1_ratio_100_wholebrain.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=0.5)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_0_5_ratio_100_wholebrain.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-"""
-
-"""
-cutoff = 2
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=step_size)
-streamlines_generator = prune_streamlines(list(streamlines_generator), data[:, :, :, 0], cutoff=cutoff,
-                                          verbose=verbose)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_2_ratio_100_wholebrain_pruned.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=1)
-streamlines_generator = prune_streamlines(list(streamlines_generator), data[:, :, :, 0], cutoff=cutoff,
-                                          verbose=verbose)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_1_ratio_100_wholebrain_pruned.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=0.5)
-streamlines_generator = prune_streamlines(list(streamlines_generator), data[:, :, :, 0], cutoff=cutoff,
-                                          verbose=verbose)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_0_5_ratio_100_wholebrain_pruned.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-
-FA_nifti = load_nifti(pathfa)
-FA = FA_nifti[0]
-classifier = ThresholdStoppingCriterion(FA, .2)
-
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=step_size)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_2_ratio_100_wholebrain_fa.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=1)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_1_ratio_100_wholebrain_fa.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=0.5)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_0_5_ratio_100_wholebrain_fa.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-
-"""
-"""
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=step_size)
-streamlines_generator = prune_streamlines(list(streamlines_generator), data[:, :, :, 0], cutoff=cutoff,
-                                          verbose=verbose)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_2_ratio_100_wholebrain_pruned_fa.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=1)
-streamlines_generator = prune_streamlines(list(streamlines_generator), data[:, :, :, 0], cutoff=cutoff,
-                                          verbose=verbose)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_1_ratio_100_wholebrain_pruned_fa.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-
-streamlines_generator = LocalTracking(csa_peaks, classifier,
-                                      seeds, affine=np.eye(4), step_size=0.5)
-streamlines_generator = prune_streamlines(list(streamlines_generator), data[:, :, :, 0], cutoff=cutoff,
-                                          verbose=verbose)
-sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
-outpathtrk = outpathtrk = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_0_5_ratio_100_wholebrain_pruned_fa.trk"
-myheader = create_tractogram_header(outpathtrk, *header)
-save_trk_heavy_duty(outpathtrk, streamlines=sg,
-                    affine=affine, header=myheader,
-                    shape=mask.shape, vox_size=vox_size)
-
-"""

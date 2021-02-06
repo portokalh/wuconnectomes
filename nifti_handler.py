@@ -230,6 +230,9 @@ def getlabelmask(mypath, subject, verbose=None):
     labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
     if np.size(labelsoption)>0:
         labelspath = labelsoption[0]
+    labelsoption = glob.glob(mypath + '/' + subject + '*labels.nii.gz')
+    if np.size(labelsoption)>0:
+        labelspath = labelsoption[0]
     elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'):
         labelspath = mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'
     elif os.path.exists(mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'):
@@ -250,11 +253,10 @@ def getlabelmask(mypath, subject, verbose=None):
         if verbose:
             print("Label mask taken from " + labelspath)
     else:
-        print('mask not found')
-        txt = ("Label mask taken from " + labelspath)
+        txt=('mask not found')
         deprecation(txt)
 
-    return labels, affine_labels
+    return labels, affine_labels, labelspath
 
 def getmask(mypath, subject, verbose=None):
     maskpath = glob.glob(os.path.join(mypath, subject + '*_binary_mask.nii.gz'))

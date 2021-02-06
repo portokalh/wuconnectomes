@@ -40,6 +40,8 @@ l = ['H29056', 'H26578', 'H29060', 'H26637', 'H29264', 'H26765', 'H29225', 'H266
      'H28857', 'H29013', 'H29025']
 l = ["H26966", "H26637"]
 l = ["H29410", "H29060"]
+l = ["H26966", "H26637","H29410", "H29060"]
+
 #l = ["H29410", "H29060"]
 argv = sys.argv[1:]
 try:
@@ -120,7 +122,7 @@ function_processes = np.int(max_processors/subject_processes)
 targetrois = ["Cerebellum"]
 ratio = 10
 if ratio == 1:
-    saved_streamlines = "_all"
+    saved_streamlines = "_all_"
 else:
     saved_streamlines = "_ratio_" + str(ratio)
 savefa="no"
