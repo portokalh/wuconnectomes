@@ -130,7 +130,7 @@ def denoise_pick(data, affine, hdr, outpath, mask, type_denoise='macenko', proce
 
             data = data_corrected
 
-        if type_denoise == "":
+        if type_denoise == "_":
             print('No denoising was done')
             save_nifti(outpath_denoise, data, affine, hdr=hdr)
 
