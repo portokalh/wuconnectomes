@@ -1,4 +1,5 @@
 from dipy.io.utils import create_tractogram_header
+
 from tract_save import save_trk_heavy_duty
 from os import path
 from dipy.io.streamline import load_trk
@@ -91,7 +92,6 @@ if reduce_ratio == 1:
 else:
     saved_streamlines = "_ratio_" + str(reduce_ratio)
 
-
 if masktype == "FA":
     maskuse = "_fa"
 else:
@@ -103,7 +103,6 @@ streamlines_grouping_path = connectomes_dir + subj + str_identifier + "_grouping
 anat_path = diff_dir + subj + "/" + subj + "_nii4D_masked_isotropic.nii.gz"
 anat_path = path.join(diff_dir, subj, subj + "_nii4D_masked_isotropic.nii.gz")
 
-outpath = '/Users/alex/jacques/whiston_test_2/'
 outpath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/Whiston_figures_files/" + subj + "*/"
 import glob
 dir = glob.glob(outpath)
