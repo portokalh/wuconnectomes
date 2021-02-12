@@ -1,4 +1,3 @@
-
 import matplotlib.pyplot as plt
 from dipy.core.histeq import histeq
 #from os.path import join as pjoin
