@@ -964,11 +964,6 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
     if verbose:
         print('Running the ' + subject + ' file')
 
-    """
-    if get_params is True and not 'params' in locals():
-        numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(trkstreamlines, verbose)
-        params = [numtracts, minlength, maxlength, meanlength, stdlength]
-    """
 
     fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient, verbose)
     mask = getmask(dwipath,subject,verbose)
