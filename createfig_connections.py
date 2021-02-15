@@ -1,4 +1,5 @@
 from dipy.io.utils import create_tractogram_header
+
 from tract_save import save_trk_heavy_duty
 from os import path
 from dipy.io.streamline import load_trk
@@ -25,8 +26,13 @@ def intarray(x):
 from tract_eval import launch_quickbundles
 import sys
 
+#2yr
 subj = "H29060"
 #subj = "H29410"
+
+#init
+#subj = "H26966"
+#subj = "H26637"
 
 orig_ratio = 10
 if orig_ratio == 1:
@@ -40,26 +46,6 @@ else:
     newratio = "_ratio_"+str(reduce_ratio)+"_"
 
 #tract_path = "C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\H21593_stepsize_2_all_wholebrain_pruned.trk"
-"""
-tract_path = "C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\" + subj +"_stepsize_2_ratio_100_wholebrain_pruned.trk"
-tract_newpath = "C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\" + subj + "_stepsize_2_ratio_1000_wholebrain_pruned.trk"
-labelspath = "C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\" + subj + "_IITmean_RPI_labels.nii.gz"
-labels_convert_path = "C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\" + subj + "_IITmean_RPI_labels_convert.nii.gz"
-
-tract_path = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/" + subj + "_stepsize_2_ratio_100_wholebrain_pruned.trk"
-tract_newpath = "//Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/" + subj + "_stepsize_2_ratio_100_wholebrain_pruned.trk"
-labelspath = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/" + subj + "/" + subj + "_IITmean_RPI_labels.nii.gz"
-labels_convert_path = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_labels/" + subj + "_IITmean_RPI_labels_convert.nii.gz"
-
-
-tract_path = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/" + subj + "_stepsize_2"+ratio+"wholebrain_pruned.trk"
-tract_newpath = "//Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/" + subj + "_stepsize_2"+ratio+"wholebrain_pruned.trk"
-labelspath = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/" + subj + "/" + subj + "_IITmean_RPI_labels.nii.gz"
-labels_convert_path = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_labels/" + subj + "_IITmean_RPI_labels_convert.nii.gz"
-
-ROI_excel = 'C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\IITmean_RPI_index.xlsx'
-textfilepath = "C:\\Users\\Jacques Stout\\Documents\\Work\\results\\myresults_initpaired.csv"
-"""
 
 tract_dir = "/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_QA_new/"
 #tract_dir = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/"
@@ -68,11 +54,12 @@ labels_output_dir = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_labels/
 connectomes_dir = "/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_Figs_inclusive_new/"
 ROI_excel = "/Users/alex/jacques/whiston_test/IITmean_RPI_index.xlsx"
 textfilepath = "/Users/alex/jacques/whiston_test/myresults_initpaired.csv"
-textfilepath = "/Users/alex/jacques/whiston_test/myresults_2yrpaired.csv"
+#textfilepath = "/Users/alex/jacques/whiston_test/myresults_2yrpaired.csv"
+textfilepath = "/Users/alex/jacques/whiston_test/myresults_diff.csv"
 
 stepsize = 2
 masktype = "FA"
-#masktype = "binary"
+masktype = "binary"
 trkroi = ["wholebrain"]
 if len(trkroi)==1:
     roistring = "_" + trkroi[0] #+ "_"
@@ -87,6 +74,20 @@ else:
     saved_streamlines = "_ratio_" + str(reduce_ratio)
 
 
+stepsize = 2
+trkroi = ["wholebrain"]
+if len(trkroi)==1:
+    roistring = "_" + trkroi[0] #+ "_"
+elif len(trkroi)>1:
+    roistring="_"
+    for roi in trkroi:
+        roistring = roistring + roi[0:4]
+    roistring = roistring #+ "_"
+if reduce_ratio == 1:
+    saved_ratiostreamlines = "_all"
+else:
+    saved_streamlines = "_ratio_" + str(reduce_ratio)
+
 if masktype == "FA":
     maskuse = "_fa"
 else:
@@ -98,15 +99,15 @@ streamlines_grouping_path = connectomes_dir + subj + str_identifier + "_grouping
 anat_path = diff_dir + subj + "/" + subj + "_nii4D_masked_isotropic.nii.gz"
 anat_path = path.join(diff_dir, subj, subj + "_nii4D_masked_isotropic.nii.gz")
 
-outpath = '/Users/alex/jacques/whiston_test_2/'
-outpath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/Whiston_figures_files/" + subj + "/"
+outpath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/Whiston_figures_files/" + subj + "*/"
+import glob
+dir = glob.glob(outpath)
+outpath = dir[0]
 save_trk = True
 
 tract_path = tract_dir + subj + str_identifier + "_pruned.trk"
 labelspath = path.join(diff_dir, subj, subj + "_IITmean_RPI_labels.nii.gz")
 labels_convert_path = labels_output_dir + subj + "_IITmean_RPI_labels_convert.nii.gz"
-
-
 
 matrix = np.zeros((100,2))
 i = 0
@@ -154,13 +155,10 @@ else:
     myvtkImageData = itkToVtkFilter.GetOutput()
     print(myvtkImageData)
 """
-#launch_quickbundles(trkstreamlines, outpath, ROIname="all", labelmask=labelmask, affine=affine_labels, interactive=True)
-##matrix[0,0] = 0
-#matrix[0,1] = 30
 
 grouping = pd.read_excel(streamlines_grouping_path)
 group_matrix = grouping.values
-select_streamgroups = 3
+select_streamgroups = 1
 intarray2 = np.vectorize(intarray)
 ROI_names = []
 ROI_streamlines = []
@@ -221,7 +219,7 @@ if save_trk:
         for ROI_stream in ROI_streamlines[i]:
             trk_ROI_streamlines.append(trkstreamlines[ROI_stream])
         #trk_ROI_streamlines = trkstreamlines[ROI_streamlines]
-        pathfile_name = outpath + subj + str_identifier + ROI_names[i][0][0:10] + ROI_names[i][1][0:10] + '.trk'
+        pathfile_name = outpath + subj + str_identifier + ROI_names[i][0][0:11] + "_" + ROI_names[i][1][0:11] + '.trk'
         ROI_sl = lambda: (s for s in trk_ROI_streamlines)
         myheader = create_tractogram_header(pathfile_name, *header)
         save_trk_heavy_duty(pathfile_name, streamlines = ROI_sl, affine = affine, header = myheader)
