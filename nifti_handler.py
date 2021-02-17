@@ -158,7 +158,9 @@ def get_reference_info(reference, affine = np.eye(4).astype(np.float32)):
 
 def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
 
-    if os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
+    if os.path.isfile(mypath) and os.path.exists(mypath):
+        fdwipath = mypath
+    elif os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
         fdwipath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
     elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
         fdwipath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
@@ -187,6 +189,16 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
         return(0,0,0,0,0,0,0,0)
 
     mypath = str(pathlib.Path(fdwipath).parent.absolute())
+
+    if bvec_orient is None:
+        img = nib.load(fdwipath)
+        fdwi_data = img.get_data()
+        vox_size = img.header.get_zooms()[:3]
+        affine = img.affine
+        hdr = img.header
+        header = get_reference_info(fdwipath)
+        gtab = None
+        return fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header
 
     try:
         fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
@@ -258,8 +270,10 @@ def getlabelmask(mypath, subject, verbose=None):
 
     return labels, affine_labels, labelspath
 
-def getmask(mypath, subject, verbose=None):
-    maskpath = glob.glob(os.path.join(mypath, subject + '*_binary_mask.nii.gz'))
+def getmask(mypath, subject, masktype = "dwi", verbose=None):
+    if os.path.isfile(mypath):
+        mypath = str(pathlib.Path(mypath).parent.absolute())
+    maskpath = glob.glob(os.path.join(mypath, subject + '*' + masktype + '_binary_mask.nii.gz'))
     if np.size(maskpath)>0:
         maskpath = maskpath[0]
 

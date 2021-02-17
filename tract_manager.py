@@ -492,7 +492,7 @@ def copylabels(folder1, folder2, subject, verbose = False):
         shutil.copy2(labelspath, newlabelspath)
 
 
-def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient,
+def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype = "T1",
                               inclusive = False, function_processes = 1, forcestart = False, picklesave = True,
                               verbose = None):
 
@@ -508,7 +508,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
     trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
     labelmask, affine, _ = getlabelmask(dwipath, subject, verbose)
-    mask, _ = getmask(dwipath,subject,verbose)
+    mask, _ = getmask(dwipath,subject,masktype,verbose)
 
     #fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
     mypath = dwipath
@@ -966,7 +966,7 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
 
 
     fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient, verbose)
-    mask = getmask(dwipath,subject,verbose)
+    mask, _ = getmask(dwipath,subject, masktype, verbose)
 
     if np.size(np.shape(mask)) == 1:
         mask = mask[0]

@@ -28,11 +28,11 @@ import sys
 
 #2yr
 subj = "H29060"
-subj = "H29410"
+#subj = "H29410"
 
 #init
-subj = "H26966"
-subj = "H26637"
+#subj = "H26966"
+#subj = "H26637"
 
 orig_ratio = 10
 if orig_ratio == 1:
@@ -46,26 +46,6 @@ else:
     newratio = "_ratio_"+str(reduce_ratio)+"_"
 
 #tract_path = "C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\H21593_stepsize_2_all_wholebrain_pruned.trk"
-"""
-tract_path = "C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\" + subj +"_stepsize_2_ratio_100_wholebrain_pruned.trk"
-tract_newpath = "C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\" + subj + "_stepsize_2_ratio_1000_wholebrain_pruned.trk"
-labelspath = "C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\" + subj + "_IITmean_RPI_labels.nii.gz"
-labels_convert_path = "C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\" + subj + "_IITmean_RPI_labels_convert.nii.gz"
-
-tract_path = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/" + subj + "_stepsize_2_ratio_100_wholebrain_pruned.trk"
-tract_newpath = "//Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/" + subj + "_stepsize_2_ratio_100_wholebrain_pruned.trk"
-labelspath = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/" + subj + "/" + subj + "_IITmean_RPI_labels.nii.gz"
-labels_convert_path = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_labels/" + subj + "_IITmean_RPI_labels_convert.nii.gz"
-
-
-tract_path = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/" + subj + "_stepsize_2"+ratio+"wholebrain_pruned.trk"
-tract_newpath = "//Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/" + subj + "_stepsize_2"+ratio+"wholebrain_pruned.trk"
-labelspath = "/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/" + subj + "/" + subj + "_IITmean_RPI_labels.nii.gz"
-labels_convert_path = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_labels/" + subj + "_IITmean_RPI_labels_convert.nii.gz"
-
-ROI_excel = 'C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\IITmean_RPI_index.xlsx'
-textfilepath = "C:\\Users\\Jacques Stout\\Documents\\Work\\results\\myresults_initpaired.csv"
-"""
 
 tract_dir = "/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_QA_new/"
 #tract_dir = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/"
@@ -75,10 +55,26 @@ connectomes_dir = "/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whiston_Figs_inclusi
 ROI_excel = "/Users/alex/jacques/whiston_test/IITmean_RPI_index.xlsx"
 textfilepath = "/Users/alex/jacques/whiston_test/myresults_initpaired.csv"
 #textfilepath = "/Users/alex/jacques/whiston_test/myresults_2yrpaired.csv"
+textfilepath = "/Users/alex/jacques/whiston_test/myresults_diff.csv"
 
 stepsize = 2
 masktype = "FA"
 masktype = "binary"
+trkroi = ["wholebrain"]
+if len(trkroi)==1:
+    roistring = "_" + trkroi[0] #+ "_"
+elif len(trkroi)>1:
+    roistring="_"
+    for roi in trkroi:
+        roistring = roistring + roi[0:4]
+    roistring = roistring #+ "_"
+if reduce_ratio == 1:
+    saved_ratiostreamlines = "_all"
+else:
+    saved_streamlines = "_ratio_" + str(reduce_ratio)
+
+
+stepsize = 2
 trkroi = ["wholebrain"]
 if len(trkroi)==1:
     roistring = "_" + trkroi[0] #+ "_"
@@ -112,8 +108,6 @@ save_trk = True
 tract_path = tract_dir + subj + str_identifier + "_pruned.trk"
 labelspath = path.join(diff_dir, subj, subj + "_IITmean_RPI_labels.nii.gz")
 labels_convert_path = labels_output_dir + subj + "_IITmean_RPI_labels_convert.nii.gz"
-
-
 
 matrix = np.zeros((100,2))
 i = 0
@@ -161,13 +155,10 @@ else:
     myvtkImageData = itkToVtkFilter.GetOutput()
     print(myvtkImageData)
 """
-#launch_quickbundles(trkstreamlines, outpath, ROIname="all", labelmask=labelmask, affine=affine_labels, interactive=True)
-##matrix[0,0] = 0
-#matrix[0,1] = 30
 
 grouping = pd.read_excel(streamlines_grouping_path)
 group_matrix = grouping.values
-select_streamgroups = 3
+select_streamgroups = 1
 intarray2 = np.vectorize(intarray)
 ROI_names = []
 ROI_streamlines = []
