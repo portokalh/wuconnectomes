@@ -45,7 +45,7 @@ l = ["H26966", "H26637","H29410", "H29060"]
 #l = ["H29410", "H29060"]
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv,"hb:e:",["first=","last="])
+    opts, args = getopt.getopt(argv, "hb:e:", ["first=", "last="])
 except getopt.GetoptError:
     print('test.py -i <inputfile> -o <outputfile>')
     sys.exit(2)

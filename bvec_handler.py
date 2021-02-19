@@ -194,12 +194,14 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2):
 
     return fbvals, fbvecs
 
-def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):    
+#def extract_bxh_bval_bvec(filepath):
+
+def extractbvec_fromheader(source_file,fileoutpath=None,save=None,verbose=True):
 
     bvals = dsl = dpe = dro = None
     if save is not None:
+        """
         if basepath==None:
-        #if undefined, basepath will be in the form of 'path/N50000~ (then add .bvals, bvec, etc)
             basepath=os.path.split(source_file)[0]+"/"
         if os.path.isdir(basepath):
             basepath=basepath+"/"
@@ -209,8 +211,11 @@ def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):
             else:
                 basepath=os.path.join(sourcepath,basepath)
                 basepath=basepath
-    filename=os.path.split(source_file)[1]
-    fileoutpath=basepath+filename.split('.')[0]+"_"
+        """
+    filename = os.path.split(source_file)[1]
+    if fileoutpath is None:
+        basepath = os.path.split(source_file)[0]
+        fileoutpath=basepath+filename.split('.')[0]+"_"
     with open(source_file, 'rb') as source:
         if verbose: print('INFO    : Extracting acquisition parameters')
         header_size=source.read(4)
@@ -218,6 +223,9 @@ def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):
         if verbose: print('INFO    : Header size = ',int(header_size[0]))
         i=0
         stopsign=200
+        bvec_start = False
+        bval_start = False
+        bvecs = []
         for line in source: 
         
             # pattern1 = '<ParamLong."BaseResolution">  {*'
@@ -232,56 +240,142 @@ def extractbvec_fromheader(source_file,basepath=None,save=None,verbose=True):
             rx3 = re.compile(pattern3, re.IGNORECASE|re.MULTILINE|re.DOTALL)
             pattern4 = 'z_Agilent_dro'
             rx4 = re.compile(pattern4, re.IGNORECASE|re.MULTILINE|re.DOTALL)
+            pattern5 = 'diffusiondirection'
+            rx5 = re.compile(pattern5, re.IGNORECASE|re.MULTILINE|re.DOTALL)
+            pattern6 = 'bvalues'
+            rx6 = re.compile(pattern6, re.IGNORECASE|re.MULTILINE|re.DOTALL)
+            pattern7 = '<value>'
             i+=1
             if i==stopsign:
                 print("hi")
+
+            if bvec_start:
+                rx7 = re.compile(pattern7, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+                bvec_start = False
+                for a in rx7.findall(str(line)):
+                    bvec_start = True
+                    bvec_all = str(line).split('<value>')[1]
+                    bvec = bvec_all.split('</value>')[0]
+                    bvec = bvec.split(' ')
+                    bvecs.append(bvec)
+
             for a in rx1.findall(str(line)):
-                bvals_all=str(line).split(',')[1]
-                bvals=bvals_all.split('\\')[0]
+                bvals_all = str(line).split(',')[1]
+                bvals = bvals_all.split('\\')[0]
             for a in rx2.findall(str(line)):
-                dsl_all=str(line).split(',')[1]
-                dsl=dsl_all.split('\\')[0]
+                dsl_all = str(line).split(',')[1]
+                dsl = dsl_all.split('\\')[0]
                 #dsl=([float(s) for s in dsl_all.split() if s.isnumeric()])
             for a in rx3.findall(str(line)):
-                dpe_all=str(line).split(',')[1]
-                dpe=dpe_all.split('\\')[0]
+                dpe_all = str(line).split(',')[1]
+                dpe = dpe_all.split('\\')[0]
             for a in rx4.findall(str(line)):
-                dro_all=str(line).split(',')[1]
-                dro=dro_all.split('\\')[0]
-    if save=="all":
-        bval_file=fileoutpath+"bvals.txt"
+                dro_all = str(line).split(',')[1]
+                dro = dro_all.split('\\')[0]
+            for a in rx5.findall(str(line)):
+                bvec_start = True
+            for a in rx6.findall(str(line)):
+                if not 'bvals_all' in locals():
+                    bvals_all = str(line).split('"bvalues">')[1]
+                    bvals_all = str(bvals_all).split('</datapoints>')[0]
+                    bvals = bvals_all.split(' ')
+                    bvals = "\n".join(bvals)
+
+    if save == "all":
+        bval_file=fileoutpath+"_bvals.txt"
         print(bval_file)
         File_object = open(bval_file,"w")
         File_object.write(bvals)
         File_object.close()
 
-        dsl_file=fileoutpath+"dsl.txt"
-        File_object = open(dsl_file,"w")
-        File_object.write(dsl)
-        File_object.close()
+        if 'bvecs' in locals():
+            bvecs_file=fileoutpath+"_bvec.txt"
+            File_object = open(bvecs_file,"w")
+            for bvec in bvecs:
+                File_object.write(str(bvec[0]) + " " + str(bvec[1]) + " " + str(bvec[2]) + "\n")
+            File_object.close()
+            dsl = []
+            dpe = []
+            dro = []
+            for bvec in bvecs:
+                dsl.append(bvec[0])
+                dpe.append(bvec[1])
+                dro.append(bvec[2])
+            dsl = "\n".join(dsl)
+            dpe = "\n".join(dpe)
+            dro = "\n".join(dro)
 
-        dpe_file=fileoutpath+"dpe.txt"
-        File_object = open(dpe_file,"w")
-        File_object.write(dpe)
-        File_object.close()
-        
-        dro_file=fileoutpath+"dro.txt"
-        File_object = open(dro_file,"w")
-        File_object.write(dro)
-        File_object.close()      
+        elif dsl and dpe and dro:
+            dsl_file=fileoutpath+"_dsl.txt"
+            File_object = open(dsl_file,"w")
+            File_object.write(dsl)
+            File_object.close()
+
+            dpe_file=fileoutpath+"_dpe.txt"
+            File_object = open(dpe_file,"w")
+            File_object.write(dpe)
+            File_object.close()
+
+            dro_file=fileoutpath+"_dro.txt"
+            File_object = open(dro_file,"w")
+            File_object.write(dro)
+            File_object.close()
                          
-        bvecs_file=fileoutpath+"bvec.txt"
-        File_object = open(bvecs_file,"w")
-        dpe=dpe.split(" ")
-        dsl=dsl.split(" ")
-        dro=dro.split(" ")
-        print(dpe)
-        print(np.shape(dsl))
-        for i in range(np.size(dsl)):
-            File_object.write(str(dro[i]) + " " + str(dpe[i]) + " " + str(dsl[i]) + "\n")
-        File_object.close() 
+            bvecs_file=fileoutpath+"_bvec.txt"
+            File_object = open(bvecs_file,"w")
+            dpe=dpe.split(" ")
+            dsl=dsl.split(" ")
+            dro=dro.split(" ")
+            print(dpe)
+            print(np.shape(dsl))
+            for i in range(np.size(dsl)):
+                File_object.write(str(dro[i]) + " " + str(dpe[i]) + " " + str(dsl[i]) + "\n")
+            File_object.close()
         
-    return bvals,dsl,dpe,dro 
+        return bval_file, bvecs_file, bvals, dsl, dpe, dro
+
+def extractbvals(dwipath, subject):
+    if os.path.isdir(dwipath):
+        subjectpath = os.path.join(dwipath, subject)
+        fbvals = np.size(glob.glob(subjectpath + '*_bval*fix*'))
+        fbvecs = np.size(glob.glob(subjectpath + '*_bvec*fix*'))
+        if fbvals == 0 and fbvecs == 0:
+            fbvals = (glob.glob(subjectpath + '*_bval*'))
+            fbvecs = (glob.glob(subjectpath + '*_bvec*'))
+            if np.size(fbvals) > 0 and np.size(fbvecs) > 0:
+                fix_bvals_bvecs(fbvals[0], fbvecs[0])
+    elif os.path.isfile(dwipath):
+        dwifolder = os.path.dirname(os.path.abspath(dwipath))
+        subjectpath = os.path.join(dwifolder, "*" + subject)
+        fbvals = np.size(glob.glob(subjectpath + '*_bval*fix*'))
+        fbvecs = np.size(glob.glob(subjectpath + '*_bvec*fix*'))
+        if fbvals == 0 and fbvecs == 0:
+            fbvals = (glob.glob(subjectpath + '*_bval*'))
+            fbvecs = (glob.glob(subjectpath + '*_bvec*'))
+            if np.size(fbvals) == 0 or np.size(fbvecs) == 0:
+                bxhpath = dwipath.replace(".nii.gz", ".bxh")
+                bxhpath = bxhpath.replace(".nii", ".bxh")
+                fbvals, fbvecs, _, _, _, _ = extractbvec_fromheader(bxhpath,
+                                                                    fileoutpath=os.path.join(dwifolder, subject),
+                                                                    save="all")
+                fix_bvals_bvecs(fbvals, fbvecs)
+
+def checkbxh(source_file, verbose = False):
+    bxhtype = None
+    with open(source_file, 'rb') as source:
+        for line in source:
+
+            pattern1 = "psdname"
+            rx1 = re.compile(pattern1, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+
+            for a in rx1.findall(str(line)):
+                sequencetype = str(line).split('<psdname>')[1]
+                sequencetype = str(sequencetype).split('</psdname>')[0]
+                break
+    if sequencetype == "epi2muse":
+        bxhtype = "dwi"
+
+    return bxhtype
 
 def same_axis(first,second):
     if first==second:
@@ -289,6 +383,7 @@ def same_axis(first,second):
     if first=="A" and second=="P" or first=="P" and second=="A" or first==" ":
         print('hi')
 
+"""
 def bvec_reorient(bvecs,orig_orient="ARI",new_orient="RAS"):
 
     for i in range(3):
@@ -296,3 +391,4 @@ def bvec_reorient(bvecs,orig_orient="ARI",new_orient="RAS"):
         echo('jo')
 
     new_bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]]
+"""

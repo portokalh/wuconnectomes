@@ -3,7 +3,7 @@ import nibabel as nib
 import numpy as np
 import os, glob
 from dipy.io.gradients import read_bvals_bvecs
-from bvec_handler import fix_bvals_bvecs#, extractbvec_fromheader
+from bvec_handler import fix_bvals_bvecs, checkbxh, extractbvec_fromheader
 import pathlib
 from BIAC_tools import send_mail
 from dipy.core.gradients import gradient_table
@@ -81,8 +81,6 @@ def getfa(mypath, subject, bvec_orient, verbose=None):
     """
     return fa_data, affine, vox_size, hdr, header
 
-
-
 def get_reference_info(reference, affine = np.eye(4).astype(np.float32)):
     """ Will compare the spatial attribute of 2 references
 
@@ -155,13 +153,20 @@ def get_reference_info(reference, affine = np.eye(4).astype(np.float32)):
 
     return affine, dimensions, voxel_sizes, voxel_order
 
+def getdwipath(mypath, subject, verbose):
 
-def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
+    subjfolder = glob.glob(os.path.join(mypath, "*" + subject + "*"))
+    if np.size(subjfolder)==1:
+        subjfolder = subjfolder[0]
+    else:
+        subjfolder = None
 
     if os.path.isfile(mypath) and os.path.exists(mypath):
         fdwipath = mypath
     elif os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
         fdwipath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
+    elif np.size(glob.glob(os.path.join(mypath,subject+"*_dwi.nii.gz"))) == 1:
+        fdwipath = glob.glob(os.path.join(mypath,subject+"*_dwi.nii.gz"))[0]
     elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
         fdwipath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
     elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
@@ -172,22 +177,66 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
         fdwipath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
     elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
         fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
-    elif os.path.exists(mypath + '/' + subject + '/'):
-        fdwipath = glob.glob(mypath + '/' + subject + '/' + subject + '*nii4D*.nii*')[0]
-
-    #fdwi_data, affine, vox_size = load_nifti(fdwipath, return_voxsize=True)
+    elif os.path.exists(mypath + '/' + subject + '/') and np.size(glob.glob(os.join.path(subjfolder, subject + '*nii4D*.nii*'))) > 0:
+        fdwipath = glob.glob(os.join.path(subjfolder, subject + '*nii4D*.nii*'))[0]
+    elif os.path.exists(mypath) and np.size(glob.glob(os.path.join(subjfolder, "*.bxh"))) > 0:
+        subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
+        for bxhfile in subjbxh:
+            bxhtype = checkbxh(bxhfile, False)
+            if bxhtype == "dwi":
+                fdwipath = bxhfile.replace(".bxh", ".nii.gz")
+                break
 
     if verbose:
         txt = "Extracting information from the dwi file located at " + fdwipath
         print(txt)
-        send_mail(txt,subject="Begin data extraction")
+        send_mail(txt, subject="Begin data extraction")
 
     if 'fdwipath' not in locals():
         txt = "The subject " + subject + " was not detected, exit"
         print(txt)
-        send_mail(txt,subject="Error")
-        return(0,0,0,0,0,0,0,0)
+        send_mail(txt, subject="Error")
+        return (0, 0, 0, 0, 0, 0, 0, 0)
 
+    return(fdwipath)
+
+def getdwidata(mypath, subject, verbose=None):
+
+    dwi_fpath = getdwipath(mypath, subject, verbose)
+    img = nib.load(dwi_fpath)
+    dwi_data = img.get_data()
+    vox_size = img.header.get_zooms()[:3]
+    affine = img.affine
+    hdr = img.header
+    del(img)
+    header = get_reference_info(dwi_fpath)
+
+    return dwi_data, affine, vox_size, dwi_fpath, hdr, header
+
+def getgtab(mypath, subject, bvec_orient=[1,2,3]):
+
+    try:
+        fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
+        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
+    except IndexError:
+        fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
+        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec*.txt')[0]
+        fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
+    print(fbvecs)
+    bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
+
+    bvec_sign = bvec_orient/np.abs(bvec_orient)
+    bvecs = np.c_[bvec_sign[0]*bvecs[:, np.abs(bvec_orient[0])-1], bvec_sign[1]*bvecs[:, np.abs(bvec_orient[1])-1],
+                  bvec_sign[2]*bvecs[:, np.abs(bvec_orient[2])-1]]
+
+    gtab = gradient_table(bvals, bvecs)
+
+    return gtab
+
+
+def getdwidata_all(mypath, subject, bvec_orient=[1,2,3], verbose=None):
+
+    fdwi_data, affine, vox_size, fdwipath, hdr, header = getdwidata(mypath, subject, verbose)
     mypath = str(pathlib.Path(fdwipath).parent.absolute())
 
     if bvec_orient is None:
@@ -200,24 +249,12 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
         gtab = None
         return fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header
 
-    try:
-        fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
-        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
-    except IndexError:
-        fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
-        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec*.txt')[0]
-        fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
-    print(fbvecs)
-    bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
+    gtab = getgtab(mypath, subject, bvec_orient)
 
     #bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]  # FOR RAS according to Alex
     #bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]] #FOR RAS
 
     #bvecs = np.c_[bvecs[:, -], bvecs[:, 0], -bvecs[:, 2]] #estimated for RAS based on headfile info
-    bvec_sign = bvec_orient/np.abs(bvec_orient)
-    bvecs = np.c_[bvec_sign[0]*bvecs[:, np.abs(bvec_orient[0])-1], bvec_sign[1]*bvecs[:, np.abs(bvec_orient[1])-1],
-                  bvec_sign[2]*bvecs[:, np.abs(bvec_orient[2])-1]]
-
 
     img = nib.load(fdwipath)
     fdwi_data = img.get_data()
@@ -225,12 +262,6 @@ def getdwidata(mypath, subject, bvec_orient=[1,2,3], verbose=None):
     affine = img.affine
     hdr = img.header
     del(img)
-
-    gtab = gradient_table(bvals, bvecs)
-
-    # Build Brain Mask
-    #bm = np.where(labels == 0, False, True)
-    #mask = bm
 
     header = get_reference_info(fdwipath)
 
@@ -289,6 +320,17 @@ def getmask(mypath, subject, masktype = "dwi", verbose=None):
 
 def move_bvals(mypath, subject, dwipathnew):
 
+
+    subjfolder = glob.glob(os.path.join(mypath, "*" + subject + "*"))
+    if np.size(subjfolder) == 1 and os.path.isdir(subjfolder[0]):
+        subjfolder = subjfolder[0]
+    elif np.size(subjfolder) > 1:
+        raise Warning
+
+    if np.size(glob.glob(os.path.join(subjfolder,"*nii*"))) > 0:
+        mypath = subjfolder
+    elif np.size(glob.glob(os.path.join(mypath,subject+"*dwi*nii*"))) > 0:
+        fdwipath = (glob.glob(os.path.join(mypath,subject+"*dwi*nii*")))[0]
     if os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
         fdwipath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
     if os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
@@ -304,15 +346,18 @@ def move_bvals(mypath, subject, dwipathnew):
     elif os.path.exists(mypath + '/' + subject + '/'):
         fdwipath = glob.glob(mypath + '/' + subject + '/' + subject + '*nii4D*.nii*')[0]
 
-    mypath = str(pathlib.Path(fdwipath).parent.absolute())
+    if os.path.isfile(mypath):
+        mypath = str(pathlib.Path(fdwipath).parent.absolute())
+    elif os.path.isdir(mypath):
+        mypath = mypath
 
     fbvals_new = os.path.join(dwipathnew, subject + "_bvals_fix.txt")
     fbvec_new = os.path.join(dwipathnew, subject + "_bvec_fix.txt")
 
     if not os.path.exists(fbvals_new) and not os.path.exists(fbvec_new):
         try:
-            fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
-            fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
+            fbvals = glob.glob(os.path.join(mypath, subject + '*_bvals_fix.txt'))[0]
+            fbvecs = glob.glob(os.path.join(mypath, subject + '*_bvec_fix.txt'))[0]
         except IndexError:
             fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
             fbvecs = glob.glob(mypath + '/' + subject + '*_bvec*.txt')[0]

@@ -25,7 +25,7 @@ from dipy.denoise.localpca import mppca
 import os, re, sys, io, struct, socket, datetime
 from email.mime.text import MIMEText
 import glob
-
+from bvec_handler import extractbvals
 from dipy.tracking.utils import unique_rows
 
 
@@ -75,7 +75,7 @@ from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
 from BIAC_tools import send_mail, isempty
 from tract_handler import target, prune_streamlines, get_trk_params, get_tract_params
-from nifti_handler import getfa, getdwidata, getlabelmask, move_bvals, getmask
+from nifti_handler import getfa, getdwidata_all, getdwidata, getdwipath, getgtab, getlabelmask, move_bvals, getmask
 from diff_preprocessing import dwi_to_mask, denoise_pick
 import tract_save
 import xlrd
@@ -243,13 +243,13 @@ def analysis_diffusion_figures(dwipath,outpath,subject, bvec_orient=[1,2,3], ver
     if verbose:
         print('Running the ' + subject + ' file')
 
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata(dwipath, subject, bvec_orient)
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata_all(dwipath, subject, bvec_orient)
     outpath_fig = outpath + subject + "SHORE_maps.png"
     shore_scalarmaps(fdwi_data, gtab, outpath_fig, verbose = verbose)
 
 def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetrois, labelslist, bvec_orient=[1,2,3], verbose=None):
 
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, header, hdr = getdwidata(dwipath, subject, bvec_orient, verbose)
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, header, hdr = getdwidata_all(dwipath, subject, bvec_orient, verbose)
     #from dipy.data import read_stanford_labels, read_stanford_t1
     #hardi_img, gtab_hardi, labels_hardi = read_stanford_labels()
     #data = hardi_img.get_data()
@@ -385,7 +385,7 @@ def deprecation(message):
 
 def makemask_fromdiff(dwipath, subject, bvec_orient):
 
-    data, affine, _, mask, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient)
+    data, affine, _, mask, vox_size, fdwipath, hdr, header = getdwidata_all(dwipath, subject, bvec_orient)
     outpath = os.path.join(dwipath, subject)
     mask = dwi_to_mask(data, affine, outpath, makefig = False)
     return(mask)
@@ -537,7 +537,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         trkstreamlines = trkdata.streamlines
         trkprunepath = os.path.dirname(trkfilepath) + '/' + subject + str_identifier + '_pruned.trk'
 
-        fdwi_data = getdwidata(dwipath, subject, bvec_orient)
+        fdwi_data = getdwidata_all(dwipath, subject, bvec_orient)
 
         if np.size(np.shape(fdwi_data)) == 1:
             fdwi_data = fdwi_data[0]
@@ -886,29 +886,46 @@ def ROI_labels_mask(fdwi_data, labelsmask, labelslist):
 
     return(fdwi_data_masked, mask)
 
+
 def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savefa="yes",processes=1, createmask = True, vol_b0 = None, verbose = False):
 
-    move_bvals(dwipath, subject, outpath)
+    dwi_fpath= getdwipath(dwipath, subject, verbose)
 
-    fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient, verbose)
+    """
+    subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]
+    subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
+    for bxhfile in subjbxh:
+        bxhtype = checkbxh(bxhfile, False)
+        if bxhtype == "dwi":
+            dwipath = bxhfile.replace(".bxh", ".nii.gz")
+            break
+    """
+
+    extractbvals(dwi_fpath, subject)
+    fbvals, fbvecs = move_bvals(dwipath, subject, outpath)
+    gtab = getgtab(outpath, subject, bvec_orient)
+
+    dwi_data, affine, vox_size, dwi_fpath, hdr, header = getdwidata(dwi_fpath, subject, verbose)
+
     if verbose:
         print('Running the preprocessing for subject ' + subject)
 
     if createmask:         # Build Brain Mask
         outpathmask = os.path.join(outpath, subject)
-        mask, _ = dwi_to_mask(fdwi_data, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
+        mask, _ = dwi_to_mask(dwi_data, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
     else:
         mask, _ = getlabelmask(dwipath, subject, verbose=True)
 
+
+    outpathdenoise = os.path.join(outpath, subject)
+    fdwi_data, outpath_denoise = denoise_pick(dwi_data, affine, hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
+
     print(savefa)
     if savefa == "yes" or savefa == "y" or savefa == 1 or savefa is True or savefa == "all":
-        outpathbmfa = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=outpath, verbose=verbose)
+        outpathbmfa = make_tensorfit(dwi_data,mask,gtab,affine,subject,outpath=outpath, verbose=verbose)
     else:
         print('FA was not calculated')
         outpathbmfa = None
-
-    outpathdenoise = os.path.join(outpath, subject)
-    fdwi_data, outpath_denoise = denoise_pick(fdwi_data, affine, hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
 
     return (outpath_denoise)
 
@@ -942,15 +959,15 @@ def check_dif_ratio(trkpath, subject, strproperty, ratio):
     #trkfilepath = gettrkpath(trkpath, subject, strproperty, verbose)
 
 def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes, strproperty = "", ratio = 1, masktype="binary",
-                      labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False, get_params=False,
+                      classifier="FA", labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False, get_params=False,
                   verbose=None):
 
-    check_dif_ratio(outpath, subject, strproperty, ratio)
+    #check_dif_ratio(outpath, subject, strproperty, ratio)
     if doprune:
         outpathtrk = os.path.join(outpath,subject + strproperty + '_pruned.trk')
     else:
         outpathtrk = os.path.join(outpath, subject + strproperty + '.trk')
-    overwrite = False
+
     if os.path.isfile(outpathtrk) and overwrite is False:
         print("The tract creation of subject " + subject + " is already done")
         if get_params:
@@ -965,7 +982,7 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
         print('Running the ' + subject + ' file')
 
 
-    fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, bvec_orient, verbose)
+    fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata_all(dwipath, subject, bvec_orient, verbose)
     mask, _ = getmask(dwipath,subject, masktype, verbose)
 
     if np.size(np.shape(mask)) == 1:
@@ -977,7 +994,7 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
         print("The subject " + subject + "could not be found at " + dwipath)
         return
 
-    if masktype == "FA":
+    if classifier == "FA":
         outpathbmfa, mask = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=dwipath,verbose=verbose)
 
     print(verbose)
@@ -1058,7 +1075,7 @@ def evaluate_coherence(dwipath,trkpath,subject,stepsize, tractsize, labelslist=N
                        outpathfig=None, processes=1, allsave=False, display=True, strproperty="", ratio=1,
                        verbose=None):
 
-    _, affine, gtab, labelmask, vox_size, fdwipath, _, _ = getdwidata(dwipath, subject)
+    _, affine, gtab, labelmask, vox_size, fdwipath, _, _ = getdwidata_all(dwipath, subject)
 
     if isempty(labelslist):
         if labelmask is None:
@@ -1183,7 +1200,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     elif tractsize == "tiny":
         ratio=1000
 
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata(dwipath, subject)
+    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata_all(dwipath, subject)
     if isempty(labelslist):
         if labelmask is None:
             roimask = (fdwi_data[:, :, :, 0] > 0)
