@@ -39,8 +39,11 @@ def mkcdir(folderpaths):
             os.mkdir(folderpath)
 
 datapath = "/Volumes/Data/Badea/ADdecode.01/Data/Anat/"
-subjects = ["02110", "02224"]
-
+#subjects = ["01912", "02110", "02224", "02227", "02230", "02231", "02266", "02289", "02320", "02361", "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", '02490", "02491", "02506"]
+subjects = ["02227"]
+subjects = ["02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02490", "02491", "02506"]
+subjects = ["02402", "02410", "02421"]
+subjects = ["02424", "02446", "02451", "02469", "02473", "02485", "02490", "02491", "02506"]
 """
 subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]
 subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
@@ -68,7 +71,7 @@ if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 
 subject_processes = np.size(subjects)
-subject_processes = 1
+subject_processes = 15
 if max_processors < subject_processes:
     subject_processes = max_processors
 function_processes = np.int(max_processors / subject_processes)
