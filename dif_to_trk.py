@@ -70,8 +70,6 @@ def make_tensorfit(data,mask,gtab,affine,subject,outpath, overwrite=False, force
         if verbose:
             print(subject + ' DTI duration %.3f' % (duration1,))
 
-        outpathbmfa = outpath + 'bmfa' + subject + '.nii.gz'
-        print(outpathbmfa)
         save_nifti(outpathbmfa, tensor_fit.fa, affine)
         if verbose:
             print('Saving subject'+ subject+ ' at ' + outpathbmfa)

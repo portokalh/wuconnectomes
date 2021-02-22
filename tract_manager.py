@@ -918,7 +918,7 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
 
 
     outpathdenoise = os.path.join(outpath, subject)
-    fdwi_data, outpath_denoise = denoise_pick(dwi_data, affine, hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
+    dwi_data, outpath_denoise = denoise_pick(dwi_data, affine, hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
 
     print(savefa)
     if savefa == "yes" or savefa == "y" or savefa == 1 or savefa is True or savefa == "all":
