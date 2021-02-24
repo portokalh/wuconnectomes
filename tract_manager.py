@@ -889,7 +889,7 @@ def ROI_labels_mask(fdwi_data, labelsmask, labelslist):
 
 def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savefa="yes",processes=1, createmask = True, vol_b0 = None, verbose = False):
 
-    dwi_fpath= getdwipath(dwipath, subject, verbose)
+    dwi_fpath = getdwipath(dwipath, subject, verbose)
 
     """
     subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]

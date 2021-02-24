@@ -350,9 +350,9 @@ def extractbvals(dwipath, subject):
         fbvals = np.size(glob.glob(subjectpath + '*_bval*fix*'))
         fbvecs = np.size(glob.glob(subjectpath + '*_bvec*fix*'))
         if fbvals == 0 and fbvecs == 0:
-            fbvals = (glob.glob(subjectpath + '*_bval*'))
-            fbvecs = (glob.glob(subjectpath + '*_bvec*'))
-            if np.size(fbvals) == 0 or np.size(fbvecs) == 0:
+            fbvals = np.size(glob.glob(subjectpath + '*_bval*'))
+            fbvecs = np.size(glob.glob(subjectpath + '*_bvec*'))
+            if (fbvals) == 0 or (fbvecs) == 0:
                 bxhpath = dwipath.replace(".nii.gz", ".bxh")
                 bxhpath = bxhpath.replace(".nii", ".bxh")
                 fbvals, fbvecs, _, _, _, _ = extractbvec_fromheader(bxhpath,
@@ -374,6 +374,8 @@ def checkbxh(source_file, verbose = False):
                 break
     if sequencetype == "epi2muse":
         bxhtype = "dwi"
+    elif sequencetype == "BRAVO":
+        bxhtype = "T1"
 
     return bxhtype
 
