@@ -38,18 +38,30 @@ from tract_handler import target, prune_streamlines
 import nibabel as nib
 from dipy.tracking.streamline import Streamlines
 
-def make_tensorfit(data,mask,gtab,affine,subject,outpath, overwrite=False, forcestart = False, verbose=None):
 
+def check_for_fa(outpath, subject, getdata = False):
 
-    from dipy.reconst.dti import TensorModel
     if os.path.isdir(outpath):
-        #outpathbmfa = outpath + '/bmfa' + subject + '.nii.gz'
         outpathbmfa = os.path.join(outpath, subject + '_bmfa.nii.gz')
     elif os.path.isfile(outpath):
-        #outpathbmfa = os.path.dirname(outpath) + '/bmfa' + subject + '.nii.gz'
         outpathbmfa = os.path.join(os.path.dirname(outpath), subject + '_bmfa.nii.gz')
+    if os.path.exists(outpathbmfa):
+        if getdata is True:
+            fa = load_nifti(outpathbmfa)
+            return outpathbmfa, fa
+        else:
+            return outpathbmfa, fa
+    else:
+        return outpathbmfa, False
 
-    if os.path.exists(outpathbmfa) and not forcestart:
+
+def make_tensorfit(data,mask,gtab,affine,subject,outpath, overwrite=False, forcestart = False, verbose=None):
+
+    from dipy.reconst.dti import TensorModel
+
+    outpathbmfa, exists = check_for_fa(outpath, subject, getdata = False)
+
+    if exists and not forcestart:
         fa = load_nifti(outpathbmfa)
         fa_array = fa[0]
         if verbose:
@@ -73,14 +85,9 @@ def make_tensorfit(data,mask,gtab,affine,subject,outpath, overwrite=False, force
         save_nifti(outpathbmfa, tensor_fit.fa, affine)
         if verbose:
             print('Saving subject'+ subject+ ' at ' + outpathbmfa)
-            #print('Warning: Failure to save the fa as nifti')
-            #outpathbmfa = None
 
-        #fa = tensor_fit.fa
         return outpathbmfa, tensor_fit.fa
 
-# strproperty, trkpath, subject, affine, header
-#(trkfile, roislist, roisexcel, labelmask, ratio)
 
 def save_roisubset(trkfile, roislist, roisexcel, labelmask):
 

@@ -1,7 +1,7 @@
 import os
 from nifti_handler import getfa, getdwidata, getlabelmask, move_bvals, getmask
 import numpy as np
-from tract_manager import create_tracts, dwi_preprocessing, tract_connectome_analysis
+from tract_manager import create_tracts, dwi_preprocessing, tract_connectome_analysis, get_diffusionattributes
 from dipy.segment.mask import median_otsu
 from dipy.io.image import load_nifti, save_nifti
 from diff_preprocessing import dwi_to_mask, denoise_pick
@@ -47,7 +47,6 @@ subjects = ["01912", "02110", "02224", "02227", "02230", "02231", "02266", "0228
 subjects = ["02231", "02266", "02289"]
 subjects = ["02490", "02491", "02506"]
 subjects = ["01912", "02110", "02224", "02227", "02231", "02266", "02289", "02320", "02361", "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02491", "02506"]
-
 
 #"02230" "02490" these subjects are strange, to investigate
 
@@ -175,12 +174,14 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in subjects:
-        dwi_results.append(dwi_preprocessing(datapath, dwi_preprocessed, subject, bvec_orient, denoise, savefa,
-                                             function_processes, createmask, vol_b0, verbose))
-        tract_results.append(
-            create_tracts(dwi_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
-                          ratio, masktype, classifier, labelslist, bvec_orient, doprune, overwrite, get_params,
-                          verbose))
+        #dwi_results.append(dwi_preprocessing(datapath, dwi_preprocessed, subject, bvec_orient, denoise, savefa,
+        #                                     function_processes, createmask, vol_b0, verbose))
+        #tract_results.append(
+        #    create_tracts(dwi_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
+        #                  ratio, masktype, classifier, labelslist, bvec_orient, doprune, overwrite, get_params,
+        #                  verbose))
+        get_diffusionattributes(dwi_preprocessed, dwi_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
+                                createmask, overwrite, verbose)
         if make_connectomes:
             tract_results.append(tract_connectome_analysis(dwi_preprocessed, trkpath, str_identifier, figspath, subject,
                                                            atlas_legends, bvec_orient, inclusive, function_processes,

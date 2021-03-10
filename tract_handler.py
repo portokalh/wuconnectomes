@@ -53,6 +53,26 @@ def _with_initialize(generator):
 
     return helper
 
+def get_streamvals(streamlines, affine, value_array):
+    """With a set of streamlines and a value matrix,
+    iterates through the set of streamlines in order to determine what is the average and maximum values found in that array
+    expected to work with FA, MD, etc (must be properly registered and in same voxel space)"""
+
+    #vals = np.ndarray(shape=(3, 0), dtype=int)
+    locations = np.ndarray(shape=(3, 0), dtype=int)
+    lin_T, offset = _mapping_to_voxel(affine)
+    for sl, _ in enumerate(streamlines):
+        # Convert streamline to voxel coordinates
+        entire = _to_voxel_coordinates(streamlines[sl], lin_T, offset)
+        i, j, k = entire.T
+        locations = np.append(locations, i, j, k)
+
+    vals = value_array[locations]
+    meanvals = np.mean(vals)
+    maxvals = np.max(vals)
+
+    return meanvals, maxvals, locations
+
 def target(streamlines, affine, target_mask, include=True, strict=False):
     """Filters streamlines based on whether or not they pass through an ROI.
 
@@ -107,6 +127,7 @@ def target(streamlines, affine, target_mask, include=True, strict=False):
                 yield sl
 
 
+
 def get_trk_params(streamlines, verbose = False):
     #trkdata = load_trk(trkpath, "same")
     if verbose:
@@ -125,6 +146,22 @@ def get_trk_params(streamlines, verbose = False):
     stdlength = np.std(lengths)
     return numtracts, minlength, maxlength, meanlength, stdlength
 
+
+
+def get_connectome_attributes(streamlines, fa, md, verbose):
+    numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(streamlines, verbose)
+    if fa is None:
+        print("Fa not found")
+        meanfa, maxfa = 0, 0
+    else:
+        meanfa, maxfa = get_streamvals(streamlines, fa)
+    if md is None:
+        print("Fa not found")
+        meanmd, maxmd = 0, 0
+    else:
+        meanmd, maxmd = get_streamvals(streamlines, md)
+
+    return numtracts, minlength, maxlength, meanlength, stdlength, meanfa, maxfa, meanmd, maxmd
 
 def get_tract_params(mypath, subject, str_identifier, verbose = False):
 

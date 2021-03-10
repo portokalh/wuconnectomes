@@ -82,6 +82,9 @@ import xlrd
 import warnings
 import shutil
 
+import dipy.reconst.dki as dki
+import dipy.reconst.msdki as msdki
+
 from multiprocessing import Pool
 
 from connectivity_own import connectivity_matrix_special
@@ -886,6 +889,39 @@ def ROI_labels_mask(fdwi_data, labelsmask, labelslist):
 
     return(fdwi_data_masked, mask)
 
+def get_diffusionattributes(dwipath, outpath, subject, str_identifier, vol_b0, ratio, bvec_orient,
+                                createmask, overwrite, verbose):
+
+    dwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata_all(dwipath, subject, bvec_orient, verbose)
+    outpathmask = os.path.join(outpath, subject)
+
+    if createmask:         # Build Brain Mask
+        outpathmask = os.path.join(outpath, subject)
+        mask, _ = dwi_to_mask(dwi_data, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
+
+    averages = msdki.mean_signal_bvalue(dwi_data, gtab, bmag=None)
+    b0 = averages[0]
+    dwi = averages[1]
+    b0path = os.path.join(outpath, subject + "_b0.nii.gz")
+    dwipath = os.path.join(outpath, subject + "_dwi.nii.gz")
+    if not os.path.exists(b0path):
+        save_nifti(b0path, b0, affine)
+    if not os.path.exists(dwipath):
+        save_nifti(dwipath, dwi, affine)
+
+    """
+    msdki_model = msdki.MeanDiffusionKurtosisModel(gtab)
+    msdki_fit = msdki_model.fit(dwi_data, mask=mask)
+
+    MSD = msdki_fit.msd
+    MSK = msdki_fit.msk
+
+    dki_model = dki.DiffusionKurtosisModel(gtab)
+    dki_fit = dki_model.fit(dwi_data, mask=mask)
+
+    MD = dki_fit.md
+    MK = dki_fit.mk(0, 3)
+    """
 
 def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savefa="yes",processes=1, createmask = True, vol_b0 = None, verbose = False):
 
