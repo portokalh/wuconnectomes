@@ -9,6 +9,32 @@ from dipy.io.utils import (create_tractogram_header)
 from dif_to_trk import check_for_fa
 from tract_handler import get_connectome_attributes
 import pandas as pd
+from dipy.tracking.streamline import Streamlines
+
+from tract_handler import viewclusters
+from dipy.segment.metric import Feature
+from dipy.tracking.streamline import length
+class ArcLengthFeature(Feature):
+    """ Computes the arc length of a streamline. """
+    def __init__(self):
+        # The arc length stays the same even if the streamline is reversed.
+        super(ArcLengthFeature, self).__init__(is_order_invariant=True)
+
+    def infer_shape(self, streamline):
+        """ Infers the shape of features extracted from `streamline`. """
+        # Arc length is a scalar
+        return 1
+
+    def extract(self, streamline):
+        """ Extracts features from `streamline`. """
+        # return np.sum(np.sqrt(np.sum((streamline[1:] - streamline[:-1]) ** 2)))
+        # or use a DIPY's function that computes the arc length of a streamline.
+        return length(streamline)
+
+from dipy.segment.clustering import QuickBundles
+from dipy.segment.metric import SumPointwiseEuclideanMetric
+from dipy.segment.metric import Metric
+from dipy.segment.metric import VectorOfEndpointsFeature
 
 def intarray(x):
   return np.int(x)
@@ -24,12 +50,12 @@ subj = "H29060"
 #subj = "H26966"
 #subj = "H26637"
 
-orig_ratio = 10
+orig_ratio = 100
 if orig_ratio == 1:
     oldratio = '_all_'
 else:
     oldratio = "_ratio_"+str(orig_ratio)+"_"
-reduce_ratio = 10
+reduce_ratio = 100
 if reduce_ratio == 1:
     newratio = '_all_'
 else:
@@ -51,7 +77,10 @@ textfilepath = None
 
 BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse"
 fapath = BIGGUS_DISKUS + "/C57_JS/diff_whiston_preprocessed/"
-~, fa = check_for_fa(fapath, subj, getdata=True)
+fapath, exists, fa = check_for_fa(fapath, subj, getdata=True)
+
+if not exists:
+    print('Fa not found I guess xD')
 
 verbose = True
 
@@ -146,6 +175,9 @@ intarray2 = np.vectorize(intarray)
 ROI_names = []
 ROI_streamlines_all = []
 
+surface_ROI=np.zeros(np.size(group_matrix))
+view = True
+
 if textfilepath is None:
 
     trkdata = load_trk(tract_path, "same")
@@ -158,8 +190,8 @@ if textfilepath is None:
         header = trkdata.space_attributes
 
 
-    for i in np.arange(np.size(group_matrix),1)
-        for j in np.arange(np.size(group_matrix),1)
+    for i in np.arange(np.size(group_matrix),1):
+        for j in np.arange(np.size(group_matrix),1):
             ROI_tuple = intarray2(i,j)
             select_streamlines = group_matrix[ROI_tuple[0] - 1, ROI_tuple[1]]
             select_new = []
@@ -190,4 +222,11 @@ if textfilepath is None:
             save_trk_heavy_duty(pathfile_name, streamlines=ROI_sl, affine=affine, header=myheader)
 
             affine_streams = np.eye(4)
-            favals, mdvals, numtracts, minlength, maxlength, meanlength, stdlength = get_connectome_attributes(ROI_sl, fa, md=None, verbose)
+            favals, mdvals, numtracts, minlength, maxlength, meanlength, stdlength = get_connectome_attributes(ROI_sl, fa, md=None, verbose=True)
+
+            metric = SumPointwiseEuclideanMetric(feature=ArcLengthFeature())
+            qb = QuickBundles(threshold=2., metric=metric)
+            clusters = qb.cluster(Streamlines(ROI_sl))
+
+            if view:
+                viewclusters(clusters)

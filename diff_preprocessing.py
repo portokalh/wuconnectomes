@@ -30,11 +30,11 @@ def string_inclusion(string_option,allowed_strings,option_name):
     if string_option == "none":
         print(option_name + " stated as None value, option will not be implemented")
 
-def dwi_to_mask(data, affine, outpath, makefig=False, vol_idx=None, median_radius = 5, numpass=6, dilate = 2, forcestart = False, verbose = False):
+def dwi_to_mask(data, subject, affine, outpath, makefig=False, vol_idx=None, median_radius = 5, numpass=6, dilate = 2, forcestart = False, verbose = False):
 
     data = np.squeeze(data)
-    binarymask = outpath + '_dwi_binary_mask.nii.gz'
-    maskeddwi = outpath + '_dwi_mask.nii.gz'
+    binarymask = os.path.join(outpath, subject + '_dwi_binary_mask.nii.gz')
+    maskeddwi = os.path.join(outpath, subject + '_dwi_mask.nii.gz')
     if not os.path.exists(binarymask) and not os.path.exists(maskeddwi) and not forcestart:
         b0_mask, mask = median_otsu(data, vol_idx=vol_idx, median_radius=median_radius, numpass=numpass, dilate = dilate)
         if verbose:

@@ -39,7 +39,7 @@ import nibabel as nib
 from dipy.tracking.streamline import Streamlines
 
 
-def check_for_fa(outpath, subject, getdata = False):
+def check_for_fa(outpath, subject, getdata=False):
 
     if os.path.isdir(outpath):
         outpathbmfa = os.path.join(outpath, subject + '_bmfa.nii.gz')
@@ -48,18 +48,18 @@ def check_for_fa(outpath, subject, getdata = False):
     if os.path.exists(outpathbmfa):
         if getdata is True:
             fa = load_nifti(outpathbmfa)
-            return outpathbmfa, fa
+            return outpathbmfa, True, fa
         else:
-            return outpathbmfa, fa
+            return outpathbmfa, True, None
     else:
-        return outpathbmfa, False
+        return outpathbmfa, False, None
 
 
 def make_tensorfit(data,mask,gtab,affine,subject,outpath, overwrite=False, forcestart = False, verbose=None):
 
     from dipy.reconst.dti import TensorModel
 
-    outpathbmfa, exists = check_for_fa(outpath, subject, getdata = False)
+    outpathbmfa, exists, _ = check_for_fa(outpath, subject, getdata = False)
 
     if exists and not forcestart:
         fa = load_nifti(outpathbmfa)

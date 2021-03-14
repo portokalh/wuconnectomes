@@ -41,6 +41,7 @@ l = ['H29056', 'H26578', 'H29060', 'H26637', 'H29264', 'H26765', 'H29225', 'H266
 l = ["H26966", "H26637"]
 l = ["H29410", "H29060"]
 l = ["H26966", "H26637","H29410", "H29060"]
+l = ["H29060"]
 
 #l = ["H29410", "H29060"]
 argv = sys.argv[1:]
@@ -131,12 +132,14 @@ doprune = True
 inclusive=True
 allsave=True
 
-masktype = "FA"
+classifiertype = "FA"
+classifiertype = "binary"
+brainmask = "dwi"
 
-if masktype == "FA":
-    maskuse = "_fa_"
+if classifiertype == "FA":
+    classifiertype = "_fa"
 else:
-    maskuse = "_binary_"
+    classifiertype = "_binary"
 
 trkroi = ["wholebrain"]
 if len(trkroi)==1:
@@ -147,7 +150,7 @@ elif len(trkroi)>1:
         roistring = roistring + roi[0:4]
     roistring = roistring #+ "_"
 #str_identifier = '_stepsize_' + str(stepsize) + saved_streamlines+ roistring
-str_identifier = '_stepsize_' + str(stepsize) + saved_streamlines + roistring
+str_identifier = '_stepsize_' + str(stepsize) + classifiertype + roistring + saved_streamlines
 
 labelslist=[]
 if targetrois and (targetrois[0]!="wholebrain" or len(targetrois) > 1):
@@ -209,22 +212,22 @@ if subject_processes>1:
     dwi_results = pool.starmap_async(dwi_preprocessing, [(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa, function_processes,
                                      createmask, vol_b0, verbose) for subject in l]).get()
     tract_results = pool.starmap_async(create_tracts, [(dwipath_preprocessed, outtrkpath, subject, figspath, stepsize, function_processes,
-                                                        str_identifier, ratio, masktype, labelslist, bvec_orient, doprune,
+                                                        str_identifier, ratio, classifiertype, labelslist, bvec_orient, doprune,
                                                         overwrite, get_params, verbose) for subject in l]).get()
     tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath_preprocessed, outtrkpath, str_identifier, figspath,
-                                                                   subject, atlas_legends, bvec_orient, inclusive,
-                                                                   function_processes, forcestart, picklesave, verbose)
-                                                                 for subject in l]).get()
+                                                                   subject, atlas_legends, bvec_orient, brainmask,
+                                                                    inclusive,function_processes, forcestart,
+                                                                    picklesave, verbose) for subject in l]).get()
     pool.close()
 else:
     for subject in l:
-       dwi_results.append(dwi_preprocessing(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa,
-                                         function_processes, createmask, vol_b0, verbose))
+       #dwi_results.append(dwi_preprocessing(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa,
+       #                                  function_processes, createmask, vol_b0, verbose))
        tract_results.append(create_tracts(dwipath_preprocessed, outtrkpath, subject, figspath, stepsize, function_processes, str_identifier,
-                                              ratio, masktype, labelslist, bvec_orient, doprune, overwrite, get_params,
+                                              ratio, classifiertype, labelslist, bvec_orient, doprune, overwrite, get_params,
                                            verbose))
        tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject,
-                                                     atlas_legends, bvec_orient, inclusive, function_processes,
+                                                     atlas_legends, bvec_orient, brainmask, inclusive, function_processes,
                                                      forcestart, picklesave, verbose))
 
 

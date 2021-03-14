@@ -155,7 +155,7 @@ def get_reference_info(reference, affine = np.eye(4).astype(np.float32)):
 
 def getdwipath(mypath, subject, verbose):
 
-    subjfolder = glob.glob(os.path.join(mypath, "*" + subject + "*"))
+    subjfolder = glob.glob(os.path.join(mypath, "*" + subject + "*/"))
     if np.size(subjfolder)==1:
         subjfolder = subjfolder[0]
     else:
@@ -177,8 +177,8 @@ def getdwipath(mypath, subject, verbose):
         fdwipath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
     elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
         fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
-    elif os.path.exists(mypath + '/' + subject + '/') and np.size(glob.glob(os.join.path(subjfolder, subject + '*nii4D*.nii*'))) > 0:
-        fdwipath = glob.glob(os.join.path(subjfolder, subject + '*nii4D*.nii*'))[0]
+    elif os.path.exists(mypath + '/' + subject + '/') and np.size(glob.glob(os.path.join(subjfolder, subject + '*nii4D*.nii*'))) > 0:
+        fdwipath = glob.glob(os.path.join(subjfolder, subject + '*nii4D*.nii*'))[0]
     elif os.path.exists(mypath) and np.size(glob.glob(os.path.join(subjfolder, "*.bxh"))) > 0:
         subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
         for bxhfile in subjbxh:
@@ -273,7 +273,7 @@ def getlabelmask(mypath, subject, verbose=None):
     labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
     if np.size(labelsoption)>0:
         labelspath = labelsoption[0]
-    labelsoption = glob.glob(mypath + '/' + subject + '*labels.nii.gz')
+    labelsoption = glob.glob(mypath + '/*' + subject + '*labels.nii.gz')
     if np.size(labelsoption)>0:
         labelspath = labelsoption[0]
     elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'):
@@ -291,6 +291,7 @@ def getlabelmask(mypath, subject, verbose=None):
     elif os.path.exists(mypath + '/mask.nii'):
         labelspath = mypath + '/mask.nii'
 
+
     if 'labelspath' in locals():
         labels, affine_labels = load_nifti(labelspath)
         if verbose:
@@ -303,20 +304,31 @@ def getlabelmask(mypath, subject, verbose=None):
 
 def getmask(mypath, subject, masktype = "dwi", verbose=None):
     if os.path.isfile(mypath):
-        mypath = str(pathlib.Path(mypath).parent.absolute())
+        if mypath.contains(masktype+'binary_mask.nii.gz'):
+            mask, affine_mask = load_nifti(mypath)
+            if verbose:
+                print("Mask taken from " + mypath)
+            return(mask, affine_mask)
+        else:
+            mypath = str(pathlib.Path(mypath).parent.absolute())
+    subjectdir = glob.glob(os.path.join(mypath, "*" + subject + "*"))
+    if np.size(subjectdir) == 1:
+        mypath = subjectdir[0]
     maskpath = glob.glob(os.path.join(mypath, subject + '*' + masktype + '_binary_mask.nii.gz'))
     if np.size(maskpath)>0:
         maskpath = maskpath[0]
 
-    if 'maskpath' in locals():
+    if np.size(maskpath) == 1:
         mask, affine_mask = load_nifti(maskpath)
         if verbose:
             print("Mask taken from " + maskpath)
-    else:
+        return mask, affine_mask
+    elif np.size(maskpath) == 0:
         print('mask not found')
-        txt = ("Label mask taken from " + maskpath)
+        return None, None
+    elif np.size(maskpath)>1:
+        raise Warning("too many masks fitting parameters!!")
 
-    return mask, affine_mask
 
 def move_bvals(mypath, subject, dwipathnew):
 

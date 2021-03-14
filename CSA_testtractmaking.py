@@ -137,13 +137,14 @@ savefig=False
 doprune = True
 inclusive=True
 allsave=True
-masktype = "FA"
-masktype = "binary"
+classifiertype = "FA"
+classifiertype = "binary"
+brainmask = "dwi"
 
-if masktype == "FA":
-    maskuse = "_fa"
+if classifiertype == "FA":
+    classifiertype = "_fa"
 else:
-    maskuse = "_binary"
+    classifiertype = "_binary"
 
 
 trkroi = ["wholebrain"]
@@ -217,7 +218,7 @@ if subject_processes>1:
     dwi_results = pool.starmap_async(dwi_preprocessing, [(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa, function_processes,
                                      createmask, vol_b0, verbose) for subject in l]).get()
     tract_results = pool.starmap_async(create_tracts, [(dwipath_preprocessed, outtrkpath, subject, figspath, stepsize, function_processes,
-                                                        str_identifier, ratio, masktype, labelslist, bvec_orient, doprune,
+                                                        str_identifier, ratio, classifiertype, labelslist, bvec_orient, doprune,
                                                         overwrite, get_params, verbose) for subject in l]).get()
     pool.starmap_async = copylabels(dwipath, dwipath_preprocessed, subject, verbose)
     tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath_preprocessed, outtrkpath, str_identifier, figspath,
@@ -227,10 +228,10 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in l:
-       dwi_results.append(dwi_preprocessing(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa,
-                                         function_processes, createmask, vol_b0, verbose))
+       #dwi_results.append(dwi_preprocessing(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa,
+       #                                  function_processes, createmask, vol_b0, verbose))
        #tract_results.append(create_tracts(dwipath_preprocessed, outtrkpath, subject, figspath, stepsize, function_processes, str_identifier,
-       #                                       ratio, masktype, labelslist, bvec_orient, doprune, overwrite, get_params,
+       #                                       ratio, classifiertype, labelslist, bvec_orient, doprune, overwrite, get_params,
        #                                    verbose))
        copylabels(dwipath, dwipath_preprocessed, subject, verbose)
        tract_results.append(tract_connectome_analysis(dwipath_preprocessed, outtrkpath, str_identifier, figspath, subject,

@@ -18,7 +18,7 @@ from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
 import pickle
 import pandas as pd
 import smtplib
-
+import pathlib
 from dipy.denoise.localpca import mppca
 
 
@@ -74,7 +74,7 @@ from figures_handler import shore_scalarmaps
 from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
 from BIAC_tools import send_mail, isempty
-from tract_handler import target, prune_streamlines, get_trk_params, get_tract_params
+from tract_handler import target, prune_streamlines, get_trk_params, get_tract_params, gettrkpath
 from nifti_handler import getfa, getdwidata_all, getdwidata, getdwipath, getgtab, getlabelmask, move_bvals, getmask
 from diff_preprocessing import dwi_to_mask, denoise_pick
 import tract_save
@@ -370,18 +370,6 @@ def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetro
     sft = StatefulTractogram(lr_sf_trk, dm_img, Space.VOX)
     save_trk(sft, outpath + subject + "lr-superiorfrontal.trk")
 
-#def gettrkpath(trkpath, subject, tractsize, strproperty, stepsize, verbose=False):
-def gettrkpath(trkpath, subject, str_identifier, verbose=False):
-    filepath=(trkpath + '/' + subject + "*" + str_identifier + '.trk')
-    trkpaths = glob.glob(filepath)
-    if trkpaths:
-        trkfile = trkpaths[0]
-        if verbose:
-            print("Subject " + subject + " was found at " + trkfile)
-    else:
-        print("Could not find "+filepath)
-        return
-    return trkfile
 
 def deprecation(message):
     warnings.warn(message, DeprecationWarning, stacklevel=2)
@@ -390,7 +378,7 @@ def makemask_fromdiff(dwipath, subject, bvec_orient):
 
     data, affine, _, mask, vox_size, fdwipath, hdr, header = getdwidata_all(dwipath, subject, bvec_orient)
     outpath = os.path.join(dwipath, subject)
-    mask = dwi_to_mask(data, affine, outpath, makefig = False)
+    mask = dwi_to_mask(data, subject, affine, outpath, makefig = False)
     return(mask)
 
 
@@ -499,27 +487,33 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
                               inclusive = False, function_processes = 1, forcestart = False, picklesave = True,
                               verbose = None):
 
-    picklepath_connect = outpath + subject + str_identifier + '_connectomes.p'
-    connectome_xlsxpath = outpath + subject + str_identifier + "_connectomes.xlsx"
-    grouping_xlsxpath = outpath + subject + str_identifier + "_grouping.xlsx"
+    picklepath_connect = os.path.join(outpath, subject + str_identifier + '_connectomes.p')
+    connectome_xlsxpath = os.path.join(outpath, subject + str_identifier + "_connectomes.xlsx")
+    grouping_xlsxpath = os.path.join(outpath, subject + str_identifier + "_grouping.xlsx")
 
     if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and not forcestart:
         print("The writing of pickle and excel of " + str(subject) + " is already done")
         return
 
-    trkprunepath = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_2_ratio_100_wholebrain_pruned.trk"
-    trkfilepath = gettrkpath(trkpath, subject, str_identifier, verbose)
-    trkprunepath = gettrkpath(trkpath, subject, str_identifier+"_pruned", verbose)
-    labelmask, affine, _ = getlabelmask(dwipath, subject, verbose)
+    #trkprunepath = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_2_ratio_100_wholebrain_pruned.trk"
+    trkfilepath = gettrkpath(trkpath, subject, str_identifier, pruned = False, verbose = verbose)
+    trkprunepath = gettrkpath(trkpath, subject, str_identifier, pruned = True, verbose = verbose)
+    labelmask, labelaffine, _ = getlabelmask(dwipath, subject, verbose)
     mask, _ = getmask(dwipath,subject,masktype,verbose)
-
+    if mask is None:         # Build Brain Mask
+        if masktype == 'dwi':
+            dwi_data, dwiaffine, _, dwipath, _, _ = getdwidata(dwipath, subject, verbose)
+            outpathmask = str(pathlib.Path(dwipath).parent.absolute())
+            mask, _ = dwi_to_mask(dwi_data, subject, dwiaffine, outpathmask, makefig=False, vol_idx=[0,1,2,3], median_radius=5,
+                                  numpass=6, dilate=2)
+    #else:
+    #    mask, _ = getlabelmask(dwipath, subject, verbose=True)
     #fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
     mypath = dwipath
     #labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
 
     import numpy as np
     prunesave = True
-
     if np.size(np.shape(labelmask)) == 1:
         labelmask = labelmask[0]
     if np.size(np.shape(labelmask)) == 4:
@@ -897,7 +891,8 @@ def get_diffusionattributes(dwipath, outpath, subject, str_identifier, vol_b0, r
 
     if createmask:         # Build Brain Mask
         outpathmask = os.path.join(outpath, subject)
-        mask, _ = dwi_to_mask(dwi_data, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
+        #changes to the outpath reading, to check next time
+        mask, _ = dwi_to_mask(dwi_data, subject, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
 
     averages = msdki.mean_signal_bvalue(dwi_data, gtab, bmag=None)
     b0 = averages[0]
@@ -948,7 +943,7 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
 
     if createmask:         # Build Brain Mask
         outpathmask = os.path.join(outpath, subject)
-        mask, _ = dwi_to_mask(dwi_data, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
+        mask, _ = dwi_to_mask(dwi_data, subject, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
     else:
         mask, _ = getlabelmask(dwipath, subject, verbose=True)
 
@@ -998,17 +993,13 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
                       classifier="FA", labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False, get_params=False,
                   verbose=None):
 
-    #check_dif_ratio(outpath, subject, strproperty, ratio)
-    if doprune:
-        outpathtrk = os.path.join(outpath,subject + strproperty + '_pruned.trk')
-    else:
-        outpathtrk = os.path.join(outpath, subject + strproperty + '.trk')
+    outpathtrk, trkexists = gettrkpath(outpath, subject, strproperty, pruned=False, verbose=False)
 
-    if os.path.isfile(outpathtrk) and overwrite is False:
+    if trkexists and overwrite is False:
         print("The tract creation of subject " + subject + " is already done")
         if get_params:
-            numtracts, minlength, maxlength, meanlength, stdlength = get_tract_params(outpathtrk, subject, strproperty,
-                                                                                      verbose)
+            subject, numtracts, minlength, maxlength, meanlength, stdlength, _, _, _ = \
+                get_tract_params(outpathtrk, subject, strproperty, verbose = verbose)
             params = [numtracts, minlength, maxlength, meanlength, stdlength]
             return outpathtrk, None, params
         else:
@@ -1017,15 +1008,16 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
     if verbose:
         print('Running the ' + subject + ' file')
 
-
     fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata_all(dwipath, subject, bvec_orient, verbose)
-    mask, _ = getmask(dwipath,subject, masktype, verbose)
 
-    if np.size(np.shape(mask)) == 1:
-        mask = mask[0]
-    if np.size(np.shape(mask)) == 4:
-        mask = mask[:, :, :, 0]
-    print("Mask shape is " + str(np.shape(mask)))
+    if masktype == "dwi":
+        mask, _ = getmask(dwipath,subject, masktype, verbose)
+        if np.size(np.shape(mask)) == 1:
+            mask = mask[0]
+        if np.size(np.shape(mask)) == 4:
+            mask = mask[:, :, :, 0]
+        print("Mask shape is " + str(np.shape(mask)))
+
     if np.mean(fdwi_data) == 0:
         print("The subject " + subject + "could not be found at " + dwipath)
         return
@@ -1073,9 +1065,9 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
                 params = None
                 return subject, outpathtrk, params
 
-    outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, masktype, header, step_size,
-                                                        peak_processes, outpathtrk, subject, ratio,
-                                                        overwrite, get_params, doprune, figspath = figspath,
+    outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, masktype, header,
+                                                        step_size, peak_processes, outpathtrk, subject, ratio,
+                                                        overwrite, get_params, doprune, figspath=figspath,
                                                         verbose=verbose)
 
     if labelslist:

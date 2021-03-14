@@ -19,6 +19,8 @@ from dipy.io.utils import create_tractogram_header
 from tract_save import save_trk_heavy_duty
 from dipy.io.streamline import load_trk
 from dipy.tracking.utils import length
+from dipy.viz import window, actor
+import glob
 import os
 
 def longstring(string,margin=0):
@@ -127,6 +129,27 @@ def target(streamlines, affine, target_mask, include=True, strict=False):
                 yield sl
 
 
+#def gettrkpath(trkpath, subject, tractsize, strproperty, stepsize, verbose=False):
+def gettrkpath(trkpath, subject, str_identifier, pruned=False, verbose=False):
+
+    if os.path.isfile(trkpath):
+        if os.path.splitext(trkpath)[1] == ".trk":
+            return trkpath
+        else:
+            trkpath = os.path.abspath(trkpath)
+    if pruned:
+        filepath = os.path.join(trkpath,subject + str_identifier + '_pruned.trk')
+    else:
+        filepath = os.path.join(trkpath, subject + str_identifier + '.trk')
+    trkpaths = glob.glob(filepath)
+    if trkpaths:
+        trkfile = trkpaths[0]
+        if verbose:
+            print("Subject " + subject + " was found at " + trkfile)
+        return trkfile, True
+    else:
+        print("Could not find "+filepath)
+        return filepath, False
 
 def get_trk_params(streamlines, verbose = False):
     #trkdata = load_trk(trkpath, "same")
@@ -147,6 +170,22 @@ def get_trk_params(streamlines, verbose = False):
     return numtracts, minlength, maxlength, meanlength, stdlength
 
 
+def viewclusters(clusters,streamlines, outpath=None):
+    colormap = actor.create_colormap(np.ravel(clusters.centroids))
+    colormap_full = np.ones((len(streamlines), 3))
+    for cluster, color in zip(clusters, colormap):
+        colormap_full[cluster.indices] = color
+
+    scene = window.Scene()
+    scene.SetBackground(1, 1, 1)
+    scene.add(actor.streamtube(streamlines, colormap_full))
+    window.record(scene, out_path=outpath, size=(600, 600))
+
+    # Enables/disables interactive visualization
+    interactive = False
+    if interactive:
+        window.show(scene)
+
 
 def get_connectome_attributes(streamlines, fa, md, verbose):
     numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(streamlines, verbose)
@@ -163,28 +202,36 @@ def get_connectome_attributes(streamlines, fa, md, verbose):
 
     return numtracts, minlength, maxlength, meanlength, stdlength, meanfa, maxfa, meanmd, maxmd
 
-def get_tract_params(mypath, subject, str_identifier, verbose = False):
+def get_tract_params(mypath, subject, str_identifier, pruned = False, verbose = False):
 
-    trkpath = gettrkpath(mypath, subject, str_identifier, verbose)
-    trkdata = load_trk(trkpath, "same")
-    verbose = True
-    if verbose:
-        print("loaded ")
-    # trkdata.to_vox()
-    header = trkdata.space_attribute
-    affine = trkdata._affine
-    lengths = length(trkdata.streamlines)
-    #del trkdata
-    # lengths = list(length(trkstreamlines))
-    lengths = list(lengths)
-    numtracts = np.size(lengths)
-    minlength = np.min(lengths)
-    maxlength = np.max(lengths)
-    meanlength = np.mean(lengths)
-    stdlength = np.std(lengths)
-    if verbose:
-        print("For subject " + subject + " the number of tracts is " + numtracts + ", the minimum length is " + minlength + ", the maximum length is " + maxlength + ", the mean length is " + meanlength + ", the std is " + stdlength)
-    return subject, numtracts, minlength, maxlength, meanlength, stdlength, header, affine, trkdata
+    trkpath = gettrkpath(mypath, subject, str_identifier, pruned, verbose)
+    if trkpath is not None:
+        trkdata = load_trk(trkpath, "same")
+        verbose = True
+        if verbose:
+            print("loaded ")
+        # trkdata.to_vox()
+        if hasattr(trkdata, 'space_attribute'):
+            header = trkdata.space_attribute
+        elif hasattr(trkdata, 'space_attributes'):
+            header = trkdata.space_attributes
+        affine = trkdata._affine
+        lengths = length(trkdata.streamlines)
+        #del trkdata
+        # lengths = list(length(trkstreamlines))
+        lengths = list(lengths)
+        numtracts = np.size(lengths)
+        minlength = np.min(lengths)
+        maxlength = np.max(lengths)
+        meanlength = np.mean(lengths)
+        stdlength = np.std(lengths)
+        if verbose:
+            print("For subject " + subject + " the number of tracts is " + str(numtracts) + ", the minimum length is " +
+                  str(minlength) + ", the maximum length is " + str(maxlength) + ", the mean length is " + str(meanlength)
+                  + ", the std is " + str(stdlength))
+        return subject, numtracts, minlength, maxlength, meanlength, stdlength, header, affine, trkdata
+    else:
+        print("Error, trkfile not found")
 
 
 def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
