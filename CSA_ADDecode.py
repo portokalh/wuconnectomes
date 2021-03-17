@@ -97,7 +97,7 @@ elif masktype == "T1":
 stepsize = 2
 
 
-ratio = 100
+ratio = 1
 if ratio == 1:
     saved_streamlines = "_all"
 else:
