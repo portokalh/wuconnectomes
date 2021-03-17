@@ -495,10 +495,9 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         print("The writing of pickle and excel of " + str(subject) + " is already done")
         return
 
-    #trkprunepath = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_2_ratio_100_wholebrain_pruned.trk"
     trkfilepath, trkexists = gettrkpath(trkpath, subject, str_identifier, pruned = False, verbose = verbose)
     trkprunepath, trkpruneexists = gettrkpath(trkpath, subject, str_identifier, pruned = True, verbose = verbose)
-    labelmask, labelaffine, _ = getlabelmask(dwipath, subject, verbose)
+    labelmask, labelaffine, labelpath = getlabelmask(dwipath, subject, verbose)
     mask, affinemask = getmask(dwipath,subject,masktype,verbose)
     if mask is None:         # Build Brain Mask
         if masktype == 'dwi':
@@ -518,8 +517,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     cutoff = 2
                     
     labelmask = convert_labelmask(ROI_excel, labelmask)
-
-    #save_nifti("/Users/alex/jacques/atlast_"+subject+"_after.nii", labelmask, affine)
 
     if (trkfilepath is not None and trkprunepath is None and prunesave):
 
