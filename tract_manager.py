@@ -939,7 +939,7 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
         print('Running the preprocessing for subject ' + subject)
 
     if createmask:         # Build Brain Mask
-        mask, _ = dwi_to_mask(dwi_data, subject, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
+        mask, _ = dwi_to_mask(dwi_data, subject, affine, outpath, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
     else:
         mask, _ = getlabelmask(dwipath, subject, verbose=True)
 
