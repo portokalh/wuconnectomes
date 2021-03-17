@@ -187,10 +187,10 @@ else:
     for subject in subjects:
         #dwi_results.append(dwi_preprocessing(datapath, dwi_preprocessed, subject, bvec_orient, denoise, savefa,
         #                                     function_processes, createmask, vol_b0, verbose))
-        tract_results.append(
-            create_tracts(dwi_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
-                          ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params,
-                          verbose))
+        #tract_results.append(
+        #    create_tracts(dwi_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
+        #                  ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params,
+        #                  verbose))
         #get_diffusionattributes(dwi_preprocessed, dwi_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
         #                        createmask, overwrite, verbose)
         if make_connectomes:

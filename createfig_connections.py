@@ -224,7 +224,7 @@ if save_trk:
         myheader = create_tractogram_header(pathfile_name, *header)
         save_trk_heavy_duty(pathfile_name, streamlines = ROI_sl, affine = affine, header = myheader)
 
-#connective_streamlines_figuremaker(trkstreamlines, ROI_streamlines, ROI_names, anat_path)
+connective_streamlines_figuremaker(trkstreamlines, ROI_streamlines, ROI_names, anat_path)
 #M, grouping = connectivity_selection(trkstreamlines, affine, labelmask, matrix[0,:], symmetric = True, return_mapping=True,
 #                                     mapping_as_streamlines=True)
 #M, grouping = connectivity_selection_getsl(trkstreamlines, affine, labelmask, symmetric = True, return_mapping=True,

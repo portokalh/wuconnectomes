@@ -165,9 +165,6 @@ if not path.exists(labels_convert_path):
 else:
     labelmask, affine_labels = load_nifti(labels_convert_path)
 
-
-
-
 grouping = pd.read_excel(streamlines_grouping_path)
 group_matrix = grouping.values
 select_streamgroups = 1

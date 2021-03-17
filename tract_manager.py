@@ -496,21 +496,17 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         return
 
     #trkprunepath = "/Users/alex/whiston_figures/whiston_methodtesting/H26637_stepsize_2_ratio_100_wholebrain_pruned.trk"
-    trkfilepath = gettrkpath(trkpath, subject, str_identifier, pruned = False, verbose = verbose)
-    trkprunepath = gettrkpath(trkpath, subject, str_identifier, pruned = True, verbose = verbose)
+    trkfilepath, trkexists = gettrkpath(trkpath, subject, str_identifier, pruned = False, verbose = verbose)
+    trkprunepath, trkpruneexists = gettrkpath(trkpath, subject, str_identifier, pruned = True, verbose = verbose)
     labelmask, labelaffine, _ = getlabelmask(dwipath, subject, verbose)
-    mask, _ = getmask(dwipath,subject,masktype,verbose)
+    mask, affinemask = getmask(dwipath,subject,masktype,verbose)
     if mask is None:         # Build Brain Mask
         if masktype == 'dwi':
             dwi_data, dwiaffine, _, dwipath, _, _ = getdwidata(dwipath, subject, verbose)
             outpathmask = str(pathlib.Path(dwipath).parent.absolute())
             mask, _ = dwi_to_mask(dwi_data, subject, dwiaffine, outpathmask, makefig=False, vol_idx=[0,1,2,3], median_radius=5,
                                   numpass=6, dilate=2)
-    #else:
-    #    mask, _ = getlabelmask(dwipath, subject, verbose=True)
-    #fa_data, _, vox_size, hdr, header = getfa(dwipath, subject, bvec_orient, verbose)
     mypath = dwipath
-    #labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
 
     import numpy as np
     prunesave = True
@@ -553,13 +549,16 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         if prunesave:
             tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
         del(prune_sl,pruned_streamlines,trkdata)
-    elif trkprunepath is not None:
+    elif trkpruneexists:
         trkprunedata = load_trk(trkprunepath, "same")
         affine = trkprunedata._affine
         trkprunedata.to_vox()
         pruned_streamlines_SL = trkprunedata.streamlines
 
         streamlines_test = list(pruned_streamlines_SL)
+        from figures_handler import viewstreamlines_anat
+        #viewstreamlines_anat(streamlines_test, mask, affinemask, ratio=100, threshold=10., verbose=False)
+        """
         endpoints = [sl[0::len(sl) - 1] for sl in streamlines_test]
         lin_T, offset = _mapping_to_voxel(affine)
         endpoints = _to_voxel_coordinates(endpoints, lin_T, offset)
@@ -570,6 +569,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
             pruned_streamlines = prune_streamlines(list(pruned_streamlines_SL), mask, cutoff=cutoff,
                                                    verbose=False)
             pruned_streamlines_SL = Streamlines(pruned_streamlines)
+        """
         del(trkprunedata)
 
     cutoff = 4
@@ -993,7 +993,7 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
                       classifier="FA", labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False, get_params=False,
                   verbose=None):
 
-    outpathtrk, trkexists = gettrkpath(outpath, subject, strproperty, pruned=False, verbose=False)
+    outpathtrk, trkexists = gettrkpath(outpath, subject, strproperty, pruned=doprune, verbose=False)
 
     if trkexists and overwrite is False:
         print("The tract creation of subject " + subject + " is already done")

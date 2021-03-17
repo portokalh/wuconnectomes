@@ -134,7 +134,7 @@ def gettrkpath(trkpath, subject, str_identifier, pruned=False, verbose=False):
 
     if os.path.isfile(trkpath):
         if os.path.splitext(trkpath)[1] == ".trk":
-            return trkpath
+            return trkpath, True
         else:
             trkpath = os.path.abspath(trkpath)
     if pruned:

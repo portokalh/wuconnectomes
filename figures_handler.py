@@ -23,7 +23,7 @@ from dipy.viz import colormap as cmap
 from BIAC_tools import send_mail
 from dipy.reconst.shore import ShoreModel
 from dipy.io.image import load_nifti, save_nifti
-
+import os
 from dipy.segment.clustering import QuickBundles
 from dipy.segment.bundles import RecoBundles
 from itertools import combinations, groupby
@@ -84,6 +84,94 @@ def denoise_fig(data,denoised_arr,type='macenko',savefigpath='none'):
             pass
         else:
             fig1.savefig(savefigpath)
+
+def viewstreamlines_anat(streamlines_full, anat_path, affine, ratio = 1, threshold = 10., verbose = False):
+
+    scene = window.Scene()
+    scene.SetBackground(1, 1, 1)
+
+    #colors = ['white', 'cadmium_red_deep', 'misty_rose', 'slate_grey_dark', 'ivory_black', 'chartreuse']
+    colors = [window.colors.white, window.colors.cadmium_red_deep, window.colors.misty_rose, window.colors.slate_grey_dark, window.colors.ivory_black, window.colors.chartreuse]
+    streamline_cut = []
+    i = 0
+    if ratio != 1:
+        for streamline in streamlines_full:
+            if i % ratio == 0:
+                streamline_cut.append(streamline)
+            i += 1
+    else:
+        streamline_cut = streamlines_full
+    qb = QuickBundles(threshold=threshold)
+    clusters = qb.cluster(streamline_cut)
+
+    if verbose:
+        print("Nb. clusters:", len(clusters))
+        print("Cluster sizes:", map(len, clusters))
+        print("Small clusters:", clusters < 10)
+        print("Streamlines indices of the first cluster:\n", clusters[0].indices)
+        print("Centroid of the last clustker:\n", clusters[-1].centroid)
+
+    j=0
+    scene = window.Scene()
+    scene.add(actor.streamtube(streamline_cut, colors[j]))
+    slicer_opacity = 0.6
+    j += 1
+
+    if isinstance(anat_path, str) and os.path.exists(anat_path):
+        anat_nifti = load_nifti(anat_path)
+        try:
+            data = anat_nifti.data
+        except AttributeError:
+            data = anat_nifti[0]
+        if affine is None:
+            try:
+                affine = anat_nifti.affine
+            except AttributeError:
+                affine = anat_nifti[1]
+    else:
+        data = anat_path
+
+
+    shape = np.shape(data)
+    if np.size(shape)==4:
+        data=data[:,:,:,0]
+    image_actor_z = actor.slicer(data, affine)
+    image_actor_z.opacity(slicer_opacity)
+
+    image_actor_x = image_actor_z.copy()
+    x_midpoint = int(np.round(shape[0] / 2))
+    image_actor_x.display_extent(x_midpoint,
+                                 x_midpoint, 0,
+                                 shape[1] - 1,
+                                 0,
+                                 shape[2] - 1)
+
+    image_actor_y = image_actor_z.copy()
+    y_midpoint = int(np.round(shape[1] / 2))
+    image_actor_y.display_extent(0, shape[0] - 1,
+                                 y_midpoint,
+                                 y_midpoint,
+                                 0,
+                                 shape[2] - 1)
+
+    scene.add(image_actor_z)
+    scene.add(image_actor_x)
+    scene.add(image_actor_y)
+    global size
+    size = scene.GetSize()
+    show_m = window.ShowManager(scene, size=(1200, 900))
+    show_m.initialize()
+
+    interactive = True
+    interactive = False
+    if interactive:
+
+        show_m.add_window_callback(win_callback)
+        show_m.render()
+        show_m.start()
+    else:
+        window.record(scene, out_path='bundles_and_3_slices.png', size=(1200, 900),
+                      reset_camera=False)
 
 
 def connective_streamlines_figuremaker(allstreamlines, ROI_streamlines, ROI_names, anat_path, threshold=10., verbose=False):

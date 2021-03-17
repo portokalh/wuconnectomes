@@ -115,7 +115,7 @@ if max_processors < subject_processes:
 function_processes = np.int(max_processors/subject_processes)
 
 targetrois = ["Cerebellum"]
-ratio = 10
+ratio = 100
 if ratio == 1:
     saved_streamlines = "_all_"
 else:
