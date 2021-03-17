@@ -884,12 +884,11 @@ def get_diffusionattributes(dwipath, outpath, subject, str_identifier, vol_b0, r
                                 createmask, overwrite, verbose):
 
     dwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata_all(dwipath, subject, bvec_orient, verbose)
-    outpathmask = os.path.join(outpath, subject)
 
     if createmask:         # Build Brain Mask
-        outpathmask = os.path.join(outpath, subject)
         #changes to the outpath reading, to check next time
-        mask, _ = dwi_to_mask(dwi_data, subject, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
+        mask, _ = dwi_to_mask(dwi_data, subject, affine, outpath, makefig=False, vol_idx=vol_b0, median_radius=5,
+                              numpass=6, dilate=2)
 
     averages = msdki.mean_signal_bvalue(dwi_data, gtab, bmag=None)
     b0 = averages[0]
