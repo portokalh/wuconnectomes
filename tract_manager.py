@@ -521,8 +521,11 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     labelmask = convert_labelmask(ROI_excel, labelmask)
 
     if (trkfilepath is not None and trkprunepath is None and prunesave):
-
+        if verbose:
+            print("Beginning to read " + trkfilepath)
         trkdata = load_trk(trkfilepath, "same")
+        if verbose:
+            print("loaded the file " + trkfilepath)
         print(trkfilepath)
         affine = trkdata._affine
         trkdata.to_vox()
@@ -549,7 +552,11 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
             tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
         del(prune_sl,pruned_streamlines,trkdata)
     elif trkpruneexists:
+        if verbose:
+            print("Beginning to read " + trkprunepath)
         trkprunedata = load_trk(trkprunepath, "same")
+        if verbose:
+            print("loaded the file " + trkprunepath)
         affine = trkprunedata._affine
         trkprunedata.to_vox()
         pruned_streamlines_SL = trkprunedata.streamlines
