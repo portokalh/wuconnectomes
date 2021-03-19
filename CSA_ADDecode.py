@@ -47,7 +47,7 @@ subjects = ["01912", "02110", "02224", "02227", "02230", "02231", "02266", "0228
 subjects = ["02231", "02266", "02289"]
 subjects = ["02490", "02491", "02506"]
 subjects = ["01912", "02110", "02224", "02227", "02231", "02266", "02289", "02320", "02361", "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02491", "02506"]
-
+#subjects = ["01912", "02110", "02224", "02227", "02231", "02266"]
 #"02230" "02490" these subjects are strange, to investigate
 
 """
@@ -71,13 +71,13 @@ masktype = "T1"
 masktype = "dwi"
 
 
-max_processors = 1
+max_processors = 10
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 
 subject_processes = np.size(subjects)
-subject_processes = 4
+subject_processes = 1
 if max_processors < subject_processes:
     subject_processes = max_processors
 function_processes = np.int(max_processors / subject_processes)
@@ -117,7 +117,7 @@ str_identifier = '_stepsize_' + str(stepsize).replace(".","_") + saved_streamlin
 duration1=time()
 overwrite = False
 get_params = False
-forcestart = True
+forcestart = False
 if forcestart:
     print("WARNING: FORCESTART EMPLOYED. THIS WILL COPY OVER PREVIOUS DATA")
 picklesave = True
@@ -190,8 +190,8 @@ else:
             create_tracts(dwi_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
                           ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params,
                           verbose))
-        get_diffusionattributes(dwi_preprocessed, dwi_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
-                                createmask, overwrite, verbose)
+        #get_diffusionattributes(dwi_preprocessed, dwi_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
+        #                        createmask, overwrite, verbose)
         if make_connectomes:
             tract_results.append(tract_connectome_analysis(dwi_preprocessed, trkpath, str_identifier, figspath, subject,
                                                            atlas_legends, bvec_orient,  brainmask, inclusive,

@@ -135,9 +135,11 @@ def almicedf_fix(df, verbose=None):
 
 def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, return_affine= False, verbose=False):
 
+    if verbose:
+        print("Beginning to read " + oldtrkfile)
     trkdata = load_trk(oldtrkfile, "same")
     if verbose:
-        print("loaded ")
+        print("loaded the file " + oldtrkfile)
     trkdata.to_vox()
     if hasattr(trkdata, 'space_attribute'):
         header = trkdata.space_attribute
@@ -156,7 +158,7 @@ def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, return
     tract_save.save_trk_heavy_duty(newtrkfilepath, streamlines=ratioed_sl,
                                    affine=affine, header=myheader)
     if verbose:
-        print("The file " + oldtrkfile + "was reduced to one "+str(ratio)+"th of its size and saved to "+newtrkfilepath)
+        print("The file " + oldtrkfile + " was reduced to one "+str(ratio)+"th of its size and saved to "+newtrkfilepath)
 
     if getdata:
         if return_affine:
@@ -574,12 +576,12 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     #pruned_streamlines_SL = Streamlines(pruned_streamlines)
 
     affine_streams = np.eye(4)
-    #function_processes = 2
     t = time()
+
     if function_processes > 1:
         listcut = []
         n = function_processes
-        size_SL = np.size(pruned_streamlines)
+        size_SL = np.size(pruned_streamlines_SL)
         listcut.append(0)
         for i in np.arange(n - 1):
             listcut.append(np.int(((i + 1) * size_SL) / n))
@@ -588,18 +590,16 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         print(listcut)
         pruned_cut = []
         for i in np.arange(n):
-            pruned_cut.append(pruned_streamlines[listcut[i]:listcut[i+1]])
+            pruned_cut.append(pruned_streamlines_SL[listcut[i]:listcut[i+1]])
         pool = Pool()
         symmetric = True
         return_mapping = True
         mapping_as_streamlines = False
 
-        connectomic_results = []
+        if verbose:
+            print("The streamline is split into "+str(function_processes)+" of size "+str(np.int(size_SL / n)))
 
-        #connectomic_results = pool.starmap_async(connectivity_matrix, [(Streamlines(pruned_bit), affine_streams, labelmask,
-        #                                                                      inclusive, symmetric, return_mapping,
-        #                                                                      mapping_as_streamlines) for pruned_bit in pruned_cut]).get()
-        connectomic_results = pool.starmap_async(connectivity_matrix, [(Streamlines(pruned_streamlines[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
+        connectomic_results = pool.starmap_async(connectivity_matrix, [(Streamlines(pruned_streamlines_SL[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
                                                                               inclusive, symmetric, return_mapping,
                                                                               mapping_as_streamlines) for i in np.arange(n)]).get()
         M = np.zeros(np.shape(connectomic_results[0][0]))
@@ -614,12 +614,14 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
                     grouping[key] = val
             i = i + 1
 
-        if verbose:
-            print("Time taken for the accelerated calculation with " + str(n) + " processes " + str(- t + time()))
+
     else:
         M, grouping = connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask, inclusive=True, symmetric=True,
                                             return_mapping=True,
                                             mapping_as_streamlines=False)
+
+    if verbose:
+        print("Time taken for the accelerated calculation with " + str(n) + " processes " + str(- t + time()))
 
     matrix_sl = np.empty(np.shape(M), dtype=object)
     for i in np.arange(np.shape(matrix_sl)[0]):
@@ -963,25 +965,27 @@ def check_dif_ratio(trkpath, subject, strproperty, ratio):
     string_list = ["_ratio_100", "_ratio_10", "_all"]
     strremoved = strproperty
     for word in string_list:
-        strremoved = strremoved.replace(word, "_")
+        strremoved = strremoved.replace(word, "_alt")
 
-    filepath=(os.path.join(trkpath, subject + "*" + strremoved + '*.trk'))
-    trkpaths = glob.glob(filepath)
-    if trkpaths:
-        trkfile = trkpaths[0]
-        trknewpath = os.path.join(trkpath, subject + strproperty + '.trk')
-        ratiostart = strproperty.find("ratio")
-        if os.path.exists(trknewpath):
-            return
-        elif strproperty.find("all"):
-            reducetractnumber(trkfile,trknewpath, getdata=False, ratio=ratio, return_affine=False, verbose=True)
-            return
-        elif ratiostart:
-            temp = re.findall(r'\d+', strproperty[ratiostart:])
-            res = list(map(int, temp))
-            newratio = ratio/res[0]
-            reducetractnumber(trkfile,trknewpath, getdata=False, ratio=newratio, return_affine=False, verbose=True)
-            return
+    for word in string_list:
+        strnew = strremoved.replace("_alt", word)
+        filepath = (os.path.join(trkpath, subject + "*" + strnew + '*.trk'))
+        trkpaths = glob.glob(filepath)
+        if trkpaths:
+            trkfile = trkpaths[0]
+            trknewpath = os.path.join(trkpath, subject + strproperty + '.trk')
+            ratiostart = strproperty.find("ratio")
+            if os.path.exists(trknewpath):
+                return
+            elif strproperty.find("all"):
+                reducetractnumber(trkfile,trknewpath, getdata=False, ratio=ratio, return_affine=False, verbose=True)
+                return
+            elif ratiostart:
+                temp = re.findall(r'\d+', strproperty[ratiostart:])
+                res = list(map(int, temp))
+                newratio = ratio/res[0]
+                reducetractnumber(trkfile,trknewpath, getdata=False, ratio=newratio, return_affine=False, verbose=True)
+                return
     #trkfilepath = gettrkpath(trkpath, subject, strproperty, verbose)
 
 def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes, strproperty = "", ratio = 1, masktype="binary",
@@ -999,6 +1003,8 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
             return outpathtrk, None, params
         else:
             return outpathtrk, None, None
+
+    check_dif_ratio(outpath, subject, strproperty, ratio)
 
     if verbose:
         print('Running the ' + subject + ' file')
