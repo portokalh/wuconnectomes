@@ -55,25 +55,55 @@ def _with_initialize(generator):
 
     return helper
 
-def get_streamvals(streamlines, affine, value_array):
+def totuple(a):
+    try:
+        return tuple(totuple(i) for i in a)
+    except TypeError:
+        return a
+
+def catch_unique(list_in):
+   # intilize an empty list
+   unq_list = []
+   for x in list_in:
+       x = totuple(x)
+       if x not in unq_list:
+         unq_list.append(x)
+   return(unq_list)
+
+def array_to_tuplelist(array):
+    list = []
+    for x in array:
+        x = totuple(x)
+        list.append(x)
+    return list
+
+def get_streamvals(streamlines, affine, value_array, voxel_array = None):
     """With a set of streamlines and a value matrix,
     iterates through the set of streamlines in order to determine what is the average and maximum values found in that array
     expected to work with FA, MD, etc (must be properly registered and in same voxel space)"""
 
     #vals = np.ndarray(shape=(3, 0), dtype=int)
-    locations = np.ndarray(shape=(3, 0), dtype=int)
-    lin_T, offset = _mapping_to_voxel(affine)
-    for sl, _ in enumerate(streamlines):
-        # Convert streamline to voxel coordinates
-        entire = _to_voxel_coordinates(streamlines[sl], lin_T, offset)
-        i, j, k = entire.T
-        locations = np.append(locations, i, j, k)
+    #locations = np.ndarray(shape=(3, 0), dtype=int)
+    if voxel_array is None:
+        stream_voxels = []
+        lin_T, offset = _mapping_to_voxel(affine)
+        for sl, _ in enumerate(streamlines):
+            # Convert streamline to voxel coordinates
+            entire = _to_voxel_coordinates(streamlines[sl], lin_T, offset)
+            stream_voxels_temp = array_to_tuplelist(entire)
+            stream_voxels = stream_voxels + stream_voxels_temp
 
-    vals = value_array[locations]
+        stream_voxels_uniq = catch_unique(stream_voxels) #to ensure that voxels arent counted multiple times. Remove if voxel weight is considered a positive
+        voxel_array = np.array(stream_voxels_uniq)
+
+    i,j,k = voxel_array.T
+    if np.size(value_array) == 2:
+        value_array = value_array[0]
+    vals = value_array[i,j,k]
     meanvals = np.mean(vals)
     maxvals = np.max(vals)
 
-    return meanvals, maxvals, locations
+    return meanvals, maxvals, stream_voxels_uniq
 
 def target(streamlines, affine, target_mask, include=True, strict=False):
     """Filters streamlines based on whether or not they pass through an ROI.
@@ -187,24 +217,24 @@ def viewclusters(clusters,streamlines, outpath=None):
         window.show(scene)
 
 
-def get_connectome_attributes(streamlines, fa, md, verbose):
+def get_connectome_attributes(streamlines, affine, fa, md, verbose):
     numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(streamlines, verbose)
     if fa is None:
         print("Fa not found")
         meanfa, maxfa = 0, 0
     else:
-        meanfa, maxfa = get_streamvals(streamlines, fa)
+        meanfa, maxfa, voxel_array = get_streamvals(streamlines, affine, fa)
     if md is None:
         print("Fa not found")
         meanmd, maxmd = 0, 0
     else:
-        meanmd, maxmd = get_streamvals(streamlines, md)
+        meanmd, maxmd = get_streamvals(streamlines, affine, md, voxel_array = voxel_array)
 
     return numtracts, minlength, maxlength, meanlength, stdlength, meanfa, maxfa, meanmd, maxmd
 
 def get_tract_params(mypath, subject, str_identifier, pruned = False, verbose = False):
 
-    trkpath = gettrkpath(mypath, subject, str_identifier, pruned, verbose)
+    trkpath, exists = gettrkpath(mypath, subject, str_identifier, pruned, verbose)
     if trkpath is not None:
         trkdata = load_trk(trkpath, "same")
         verbose = True

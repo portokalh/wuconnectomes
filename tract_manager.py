@@ -520,7 +520,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
                     
     labelmask = convert_labelmask(ROI_excel, labelmask)
 
-    if (trkfilepath is not None and trkprunepath is None and prunesave):
+    if (trkfilepath is not None and trkpruneexists is False and prunesave):
         if verbose:
             print("Beginning to read " + trkfilepath)
         trkdata = load_trk(trkfilepath, "same")
@@ -1000,6 +1000,7 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
                   verbose=None):
 
     outpathtrk, trkexists = gettrkpath(outpath, subject, strproperty, pruned=doprune, verbose=False)
+    check_dif_ratio(outpath, subject, strproperty, ratio)
 
     if trkexists and overwrite is False:
         print("The tract creation of subject " + subject + " is already done")
@@ -1010,8 +1011,6 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
             return outpathtrk, None, params
         else:
             return outpathtrk, None, None
-
-    check_dif_ratio(outpath, subject, strproperty, ratio)
 
     if verbose:
         print('Running the ' + subject + ' file')
@@ -1073,7 +1072,7 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
                 params = None
                 return subject, outpathtrk, params
 
-    outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, masktype, header,
+    outpathtrk, trkstreamlines, params = f(fdwi_data, affine, vox_size, gtab, mask, masktype, header,
                                                         step_size, peak_processes, outpathtrk, subject, ratio,
                                                         overwrite, get_params, doprune, figspath=figspath,
                                                         verbose=verbose)

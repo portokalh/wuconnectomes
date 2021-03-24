@@ -158,14 +158,15 @@ else:
 
 grouping = pd.read_excel(streamlines_grouping_path)
 group_matrix = grouping.values
+ROI_list = group_matrix[:,0]
+streamline_matrix = group_matrix[:,1:]
 select_streamgroups = 1
 intarray2 = np.vectorize(intarray)
 ROI_names = []
 ROI_streamlines = []
 for i in np.arange(select_streamgroups):
     ROI_tuple = intarray2(matrix[i,:])
-    #ROI_tuple = np.array([4,10])
-    select_streamlines = group_matrix[ROI_tuple[0]-1, ROI_tuple[1]]
+    select_streamlines = streamline_matrix[ROI_tuple[0], ROI_tuple[1]] #####TO TEST AGAIN TO MAKE SURE ROI ARE ALIGNED!!!!! REMOVE THIS WARNING WHEN CHECKED
     select_new = []
     select_streamlines = select_streamlines.replace('[', '')
     select_streamlines = select_streamlines.replace(']','')
@@ -180,7 +181,8 @@ for i in np.arange(select_streamgroups):
         pass
     select_streamlines = [int(i) for i in select_streamlines]
     ROI_streamlines.append(select_streamlines)
-    ROI_names.append([group_matrix[ROI_tuple[0]-1,0], group_matrix[ROI_tuple[1]-1,0]])
+    ROI_name = ([ROI_list[ROI_tuple[0]], ROI_list[ROI_tuple[1]]])
+    ROI_names.append(ROI_name)
 
 
 #bigtracts = load_tractogram(tract_path, 'same', bbox_valid_check=False)
