@@ -149,8 +149,10 @@ else:
     classifiertype = "_binary"
 
 
-atlas_legends = None
-atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+#atlas_legends = None
+#atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+atlas_legends = outpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+
 
 if make_connectomes:
     for subject in subjects:
