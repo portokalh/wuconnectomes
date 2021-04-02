@@ -212,7 +212,7 @@ def viewclusters(clusters,streamlines, outpath=None):
     window.record(scene, out_path=outpath, size=(600, 600))
 
     # Enables/disables interactive visualization
-    interactive = False
+    interactive = True
     if interactive:
         window.show(scene)
 

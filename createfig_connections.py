@@ -106,7 +106,7 @@ outpath = dir[0]
 save_trk = True
 
 tract_path = tract_dir + subj + str_identifier + "_pruned.trk"
-labelspath = path.join(diff_dir, subj, subj + "_IITmean_RPI_labels.nii.gz")
+labelspath = os.path.join(diff_dir, subj, subj + "_IITmean_RPI_labels.nii.gz")
 labels_convert_path = labels_output_dir + subj + "_IITmean_RPI_labels_convert.nii.gz"
 
 matrix = np.zeros((100,2))

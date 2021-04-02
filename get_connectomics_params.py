@@ -3,17 +3,19 @@ from dipy.io.streamline import load_trk
 import csv
 import numpy as np
 from dipy.io.image import load_nifti, save_nifti
-from tract_manager import convert_labelmask
+from tract_manager import convert_labelmask, makedir
 from tract_save import save_trk_heavy_duty
 from dipy.io.utils import (create_tractogram_header)
 from dif_to_trk import check_for_fa
+from nifti_handler import getlabelmask
 from tract_handler import get_connectome_attributes
 import pandas as pd
 from dipy.tracking.streamline import Streamlines
 import os
-from tract_handler import viewclusters
+from tract_handler import viewclusters, gettrkpath
 from dipy.segment.metric import Feature
 from dipy.tracking.streamline import length
+
 class ArcLengthFeature(Feature):
     """ Computes the arc length of a streamline. """
     def __init__(self):
@@ -43,30 +45,35 @@ from tract_eval import launch_quickbundles
 import sys
 
 #2yr
-subj = "H29060"
+subj = "02110"
 #subj = "H29410"
 
 #init
 #subj = "H26966"
 
-orig_ratio = 100
+orig_ratio = 1
 if orig_ratio == 1:
     oldratio = '_all_'
 else:
     oldratio = "_ratio_"+str(orig_ratio)+"_"
-reduce_ratio = 100
+reduce_ratio = 1
 
 #tract_path = "C:\\Users\\Jacques Stout\\Documents\\Work\\VBM_whiston_data\\H21593_stepsize_2_all_wholebrain_pruned.trk"
 maindir = "/Volumes/Data/Badea/Lab/mouse/C57_JS/"
 tract_dir = maindir + "VBM_whiston_QA_new/"
-#tract_dir = "/Volumes/dusom_dibs_ad_decode/all_staff/VBM_whiston_QA/"
 diff_dir = maindir +"/../VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics"
 labels_output_dir = maindir + "VBM_whiston_labels/"
 connectomes_dir = maindir + "VBM_whiston_Figs_inclusive_new/"
 ROI_excel = "/Users/alex/jacques/whiston_test/IITmean_RPI_index.xlsx"
+
+maindir = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
+tract_dir = os.path.join(maindir,"TRK")
+trk_outpath = os.path.join(maindir, "TRK_ROIs")
+makedir(trk_outpath)
+labels_input_dir = os.path.join(maindir,"DWI_labels")
+labels_output_dir = os.path.join(maindir,"DWI_labels_new")
+connectomes_dir = os.path.join(maindir, "Figures")
 textfilepath = "/Users/alex/jacques/whiston_test/myresults_initpaired.csv"
-
-
 textfilepath = "/Users/alex/jacques/whiston_test/myresults_diff.csv"
 textfilepath = None
 
@@ -91,7 +98,7 @@ elif len(trkroi)>1:
         roistring = roistring + roi[0:4]
     roistring = roistring #+ "_"
 if reduce_ratio == 1:
-    saved_ratiostreamlines = "_all"
+    saved_streamlines = "_all"
 else:
     saved_streamlines = "_ratio_" + str(reduce_ratio)
 
@@ -106,7 +113,7 @@ elif len(trkroi)>1:
         roistring = roistring + roi[0:4]
     roistring = roistring #+ "_"
 if reduce_ratio == 1:
-    saved_ratiostreamlines = "_all"
+    saved_streamlines = "_all"
 else:
     saved_streamlines = "_ratio_" + str(reduce_ratio)
 
@@ -116,20 +123,25 @@ else:
     maskuse = "_binary"
 
 str_identifier = '_stepsize_' + str(stepsize) + maskuse + roistring + saved_streamlines
+str_identifier = '_stepsize_' + str(stepsize).replace(".","_") + saved_streamlines + roistring
 
-streamlines_grouping_path = connectomes_dir + subj + str_identifier + "_grouping.xlsx"
-anat_path = diff_dir + subj + "/" + subj + "_nii4D_masked_isotropic.nii.gz"
-anat_path = path.join(diff_dir, subj, subj + "_nii4D_masked_isotropic.nii.gz")
+streamlines_grouping_path = os.path.join(connectomes_dir, subj + str_identifier + "_grouping.xlsx")
 
-outpath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/Whiston_figures_files/" + subj + "*/"
-import glob
-dir = glob.glob(outpath)
-outpath = dir[0]
+#anat_path = os.path.join(diff_dir + subj + "/" + subj + "_nii4D_masked_isotropic.nii.gz"
+#anat_path = path.join(diff_dir, subj, subj + "_nii4D_masked_isotropic.nii.gz")
+
+#outpath = "/Volumes/Data/Badea/Lab/mouse/C57_JS/Whiston_figures_files/" + subj + "*/"
+##import glob
+#dir = glob.glob(outpath)
+#outpath = dir[0]
 save_trk = True
 
 tract_path = tract_dir + subj + str_identifier + "_pruned.trk"
-labelspath = path.join(diff_dir, subj, subj + "_IITmean_RPI_labels.nii.gz")
-labels_convert_path = labels_output_dir + subj + "_IITmean_RPI_labels_convert.nii.gz"
+
+tract_path,trkexists = gettrkpath(tract_dir, subj,str_identifier, pruned= True, verbose= True)
+#labelspath = path.join(labels_input_dir, subj, subj + "_IITmean_RPI_labels.nii.gz")
+labelmask, affine_labels, labelspath = getlabelmask(labels_input_dir, subj, verbose)
+labels_convert_path = os.path.join(labels_output_dir, subj + "_IITmean_RPI_labels_convert.nii.gz")
 
 
 ### Change this to a list with append that is converted to a matrix instead of this
@@ -169,8 +181,11 @@ ROI_names = []
 ROI_streamlines_all = []
 
 surface_ROI=np.zeros(np.size(group_matrix))
-view = True
+view = False
 trksave = True
+
+trk_outpath_subj = os.path.join(trk_outpath, subj)
+makedir(trk_outpath_subj)
 
 if textfilepath is None:
 
@@ -182,7 +197,6 @@ if textfilepath is None:
         header = trkdata.space_attribute
     elif hasattr(trkdata, 'space_attributes'):
         header = trkdata.space_attributes
-
 
     for i in np.arange(np.shape(group_matrix)[0]-1):
         for j in np.arange(np.shape(group_matrix)[1]):
@@ -211,20 +225,26 @@ if textfilepath is None:
                 for ROI_stream in ROI_streamlines:
                     trk_ROI_streamlines.append(trkstreamlines[ROI_stream])
                 # trk_ROI_streamlines = trkstreamlines[ROI_streamlines]
-                pathfile_name = outpath + subj + str_identifier + "_"+ ROI_name[0][0:11] + "_" + ROI_name[1][0:11] + '.trk'
+                pathfile_name = os.path.join(trk_outpath_subj, subj + str_identifier + "_" + ROI_name[0][0:11] + "_" + ROI_name[1][0:11] + '.trk')
                 ROI_sl = lambda: (s for s in trk_ROI_streamlines)
                 myheader = create_tractogram_header(pathfile_name, *header)
                 if trksave and not os.path.isfile(pathfile_name):
                     save_trk_heavy_duty(pathfile_name, streamlines=ROI_sl, affine=affine, header=myheader)
                 affine_streams = np.eye(4)
                 trkaffine = np.eye(4)
-                favals, mdvals, numtracts, minlength, maxlength, meanlength, stdlength = get_connectome_attributes(trk_ROI_streamlines, affine=trkaffine, fa=fa, md=None, verbose=True)
+                #favals, mdvals, numtracts, minlength, maxlength, meanlength, stdlength = get_connectome_attributes(trk_ROI_streamlines, affine=trkaffine, fa=fa, md=None, verbose=True)
 
                 metric = SumPointwiseEuclideanMetric(feature=ArcLengthFeature())
                 qb = QuickBundles(threshold=2., metric=metric)
-                clusters = qb.cluster(Streamlines(ROI_sl))
+                clusters = qb.cluster(trk_ROI_streamlines)
 
                 if view:
-                    viewclusters(clusters)
+                    viewclusters(clusters,trk_ROI_streamlines)
+
+                print("Nb. clusters:", len(clusters))
+                print("Cluster sizes:", map(len, clusters))
+                print("Small clusters:", clusters < 10)
+                print("Streamlines indices of the first cluster:\n", clusters[0].indices)
+                print("Centroid of the last cluster:\n", clusters[-1].centroid)
             else:
                 favals, mdvals, numtracts, minlength, maxlength, meanlength, stdlength = 0, 0, 0, 0, 0, 0, 0

@@ -484,6 +484,12 @@ def copylabels(folder1, folder2, subject, verbose = False):
     else:
         shutil.copy2(labelspath, newlabelspath)
 
+def makedir(dir):
+    if os.path.isdir(dir):
+        return
+    else:
+        os.mkdir(dir)
+
 
 def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype = "T1",
                               inclusive = False, function_processes = 1, forcestart = False, picklesave = True,
