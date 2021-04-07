@@ -41,15 +41,18 @@ def mkcdir(folderpaths):
 dwipath = "/Volumes/dusom_civm-atlas/20.abb.15/research/"
 dwipath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/research/"
 subject = "58214"
-outpath = "/Users/alex/jacques/APOE_temp"
-outpath = None
-outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
-outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/diffusion_prep_58214/"
-writeformat="tab"
-writeformat="dsi_format"
-overwrite=True
-#fbvals, fbvecs = extractbvals(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
-fbvals, fbvecs = rewrite_subject_bvalues(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
+subjects = ["58302", "58303", "58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+for subject in subjects:
+    outpath = "/Users/alex/jacques/APOE_temp"
+    outpath = None
+    outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
+    outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/diffusion_prep_"+subject
+    mkcdir(outpath)
+    writeformat="tab"
+    writeformat="dsi_format"
+    overwrite=True
+    #fbvals, fbvecs = extractbvals(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
+    fbvals, fbvecs = rewrite_subject_bvalues(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
 
 """
 subjectlist = ["58215","58216","58217","58218","58219","58221","58222","58223","58224","58225","58226","58228","58229","58230","58231","58232","58633","58634","58635","58636","58649","58650","58651","58653","58654"]
