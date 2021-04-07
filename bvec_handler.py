@@ -20,7 +20,7 @@ from types import ModuleType, FunctionType
 from gc import get_referents
 
 import smtplib
-
+from nibabel.tmpdirs import InTemporaryDirectory
 import os, re, sys, io, struct, socket, datetime
 from email.mime.text import MIMEText
 import glob
@@ -102,8 +102,6 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2):
     # Loop over the provided inputs, reading each one in turn and adding them
     # to this list:
     vals = []
-
-    from nibabel.tmpdirs import InTemporaryDirectory
 
     for this_fname in [fbvals, fbvecs]:
         # If the input was None or empty string, we don't read anything and
@@ -336,25 +334,103 @@ def extractbvec_fromheader(source_file,fileoutpath=None,save=None,verbose=True):
 
 import shutil
 
-def find_bval_file(subjectpath, subject, outpath = None, writetype = "line"):
+def find_bval_bvecs(subjectpath):
+
+    fbtable = glob.glob(os.path.join(subjectpath,"b_table.txt"))
+    if np.size(fbtable)>0:
+        bvals=[]
+        bvecs=[]
+        fbtable=fbtable[0]
+        with open(fbtable, 'rb') as source:
+            for line in source:
+                bvals_all = str(line).split("'")[1]
+                bvals_all = bvals_all.split("\\n")[0]
+                bvals_all = bvals_all.split("\\t")
+                bvals.append(float(bvals_all[0]))
+                bvecs.append([float(bvals_all[1]), float(bvals_all[2]), float(bvals_all[3])])
+        return np.array(bvals), np.array(bvecs)
+
+    fbvals = glob.glob(os.path.join(subjectpath,"input_bvals.txt"))[0]
+    fbvecs = glob.glob(os.path.join(subjectpath, "*input_gradient_matrix*"))[0]
+    vals=[]
+    for this_fname in [fbvals, fbvecs]:
+        # If the input was None or empty string, we don't read anything and
+        # move on:
+        if this_fname is None or not this_fname:
+            vals.append(None)
+        else:
+            if isinstance(this_fname, str):
+                base, ext = splitext(this_fname)
+                if ext in ['.bvals', '.bval', '.bvecs', '.bvec', '.txt', '.eddy_rotated_bvecs', '']:
+                    with open(this_fname, 'r') as f:
+                        content = f.read()
+                    # We replace coma and tab delimiter by space
+                    with InTemporaryDirectory():
+                        tmp_fname = "tmp_bvals_bvecs.txt"
+                        with open(tmp_fname, 'w') as f:
+                            f.write(re.sub(r'(\t|,)', ' ', content))
+                        vals.append(np.squeeze(np.loadtxt(tmp_fname)))
+                elif ext == '.npy':
+                    vals.append(np.squeeze(np.load(this_fname)))
+                else:
+                    e_s = "File type %s is not recognized" % ext
+                    raise ValueError(e_s)
+            else:
+                raise ValueError('String with full path to file is required')
+    bvals, bvecs = vals[0], vals[1]
+    return bvals,bvecs
+
+def writebfiles(subjectpath, subject, outpath = None, writeformat = "line", fbvals=None, fbvecs=None, overwrite=False):
     if outpath is None:
         outpath = subjectpath
-    bvecs = glob.glob(os.path.join(subjectpath,"*input_gradient_matrix*"))
+    if fbvals is None or fbvecs is None:
+        """
+        bval_input = glob.glob(os.path.join(subjectpath, "input_bvals.txt"))
+        if np.size(bval_input) > 0:
+            with open(bval_input[0], 'rb') as source:
+                pattern6 = 'b-value'
+                rx1 = re.compile(pattern6, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+                for line in source:
+                    for a in rx1.findall(str(line)):
+                        bval_all = str(line).split('=')[1]
+                        bval = bval_all.split('\\')[0]
+                        bval = float(bval)
+                        bval = int(round(bval))
+                        pass
+        """
+        bvals, bvecs = find_bval_bvecs(subjectpath)
+
+    #bvecs = glob.glob(os.path.join(subjectpath,"*input_gradient_matrix*"))
+
     bvec_file = os.path.join(outpath, subject+"_bvecs.txt")
-    if np.size(bvecs)>0:
+    if os.path.exists(bvec_file) and overwrite:
+        os.remove(bvec_file)
+    if writeformat=="dsi_format":
+        with open(bvec_file, 'w') as File_object:
+            for i in [0,1,2]:
+                for j in np.arange(np.shape(bvecs)[0]):
+                    if bvecs[j,i]==0:
+                        bvec=0
+                    else:
+                        bvec=round(bvecs[j,i],3)
+                    File_object.write(str(bvec)+"\t")
+                File_object.write("\n")
+            File_object.close()
+    else:
         shutil.copyfile(bvecs[0], bvec_file)
-    bval_input = glob.glob(os.path.join(subjectpath,"input_bvals.txt"))
-    if np.size(bval_input)>0:
-        with open(bval_input[0], 'rb') as source:
-            pattern6 = 'b-value'
-            rx1 = re.compile(pattern6, re.IGNORECASE | re.MULTILINE | re.DOTALL)
-            for line in source:
-                for a in rx1.findall(str(line)):
-                    bval_all = str(line).split('=')[1]
-                    bval = bval_all.split('\\')[0]
-                    bval = float(bval)
-                    bval = int(round(bval))
-                    pass
+    """
+        bval_input = glob.glob(os.path.join(subjectpath,"input_bvals.txt"))
+        if np.size(bval_input)>0:
+            with open(bval_input[0], 'rb') as source:
+                pattern6 = 'b-value'
+                rx1 = re.compile(pattern6, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+                for line in source:
+                    for a in rx1.findall(str(line)):
+                        bval_all = str(line).split('=')[1]
+                        bval = bval_all.split('\\')[0]
+                        bval = float(bval)
+                        bval = int(round(bval))
+                        pass
     bvals = []
     with open(bvec_file) as source:
         for line in source:
@@ -362,17 +438,23 @@ def find_bval_file(subjectpath, subject, outpath = None, writetype = "line"):
                 bvals.append(0)
             else:
                 bvals.append(bval)
+    """
     bval_file = os.path.join(outpath, subject+"_bvals.txt")
+    if os.path.exists(bval_file) and overwrite:
+        os.remove(bval_file)
     File_object = open(bval_file, "w")
     for bval in bvals:
-        if writetype == "line":
+        if writeformat == "line":
             File_object.write(str(bval) + "\n")
-        if writetype == "tab":
+        if writeformat == "tab":
+            File_object.write(str(bval) + "\t")
+        if writeformat == "dsi_format":
+            bval = int(round(bval))
             File_object.write(str(bval) + "\t")
     File_object.close()
     return bval_file, bvec_file
 
-def extractbvals(dwipath, subject, outpath=None, writetype="tab"):
+def extractbvals(dwipath, subject, outpath=None, writeformat="tab", overwrite=False):
 
     if os.path.isdir(dwipath):
         #subjectpath = os.path.join(dwipath, subject)
@@ -382,19 +464,19 @@ def extractbvals(dwipath, subject, outpath=None, writetype="tab"):
             outpath = subjectpath
         fbvals = np.size(glob.glob(subjectpath + '*_bval*fix*'))
         fbvecs = np.size(glob.glob(subjectpath + '*_bvec*fix*'))
-        if fbvals == 0 and fbvecs == 0:
-            fbvals = (glob.glob(subjectpath + '*_bval*'))
-            fbvecs = (glob.glob(subjectpath + '*_bvec*'))
-            if np.size(fbvals) > 0 and np.size(fbvecs) > 0:
+        if (fbvals == 0 and fbvecs == 0) or overwrite:
+            #fbvals = (glob.glob(subjectpath + '*_bval*'))
+            #fbvecs = (glob.glob(subjectpath + '*_bvec*'))
+            fbvals=(glob.glob(os.path.join(subjectpath, '*' + subject + '*_bvals.txt')))
+            fbvecs=(glob.glob(os.path.join(subjectpath, '*' + subject + '*_bvecs.txt')))
+            if (np.size(fbvals) > 0 and np.size(fbvecs) > 0) and not overwrite:
                 fbvals = fbvals[0]
                 fbvecs = fbvecs[0]
                 fix_bvals_bvecs(fbvals, fbvecs)
             else:
-                bval_file, bvec_file = find_bval_file(subjectpath, subject, outpath, writetype=writetype)
+                bval_file, bvec_file = writebfiles(subjectpath, subject, outpath, writeformat=writeformat)
                 fbvals, fbvecs = fix_bvals_bvecs(bval_file, bvec_file)
         return fbvals, fbvecs
-
-
 
     elif os.path.isfile(dwipath):
         dwifolder = os.path.dirname(os.path.abspath(dwipath))
@@ -413,6 +495,50 @@ def extractbvals(dwipath, subject, outpath=None, writetype="tab"):
                                                                     fileoutpath=os.path.join(dwifolder, subject),
                                                                     save="all")
                 fix_bvals_bvecs(fbvals, fbvecs)
+
+def rewrite_subject_bvalues(dwipath, subject, outpath=None, writeformat="tab", overwrite=False):
+
+    if os.path.isdir(dwipath):
+        #subjectpath = os.path.join(dwipath, subject)
+        subjectpath = glob.glob(os.path.join(os.path.join(dwipath, "*"+subject+"*")))
+        subjectpath = subjectpath[1]
+        if outpath is None:
+            outpath = subjectpath
+        fbvals = np.size(glob.glob(subjectpath + '*_bval*fix*'))
+        fbvecs = np.size(glob.glob(subjectpath + '*_bvec*fix*'))
+        if (fbvals == 0 and fbvecs == 0) or overwrite:
+            #fbvals = (glob.glob(subjectpath + '*_bval*'))
+            #fbvecs = (glob.glob(subjectpath + '*_bvec*'))
+            fbvals=(glob.glob(os.path.join(subjectpath, '*' + subject + '*_bvals.txt')))
+            fbvecs=(glob.glob(os.path.join(subjectpath, '*' + subject + '*_bvecs.txt')))
+            if (np.size(fbvals) > 0 and np.size(fbvecs) > 0) and not overwrite:
+                fbvals = fbvals[0]
+                fbvecs = fbvecs[0]
+                #fix_bvals_bvecs(fbvals, fbvecs)
+            else:
+                bval_file, bvec_file = writebfiles(subjectpath, subject, outpath, writeformat=writeformat, overwrite=overwrite)
+                #fbvals, fbvecs = fix_bvals_bvecs(bval_file, bvec_file)
+        return fbvals, fbvecs
+
+    elif os.path.isfile(dwipath):
+        dwifolder = os.path.dirname(os.path.abspath(dwipath))
+        subjectpath = os.path.join(dwifolder, "*" + subject)
+        if outpath is None:
+            outpath = subjectpath
+        fbvals = np.size(glob.glob(subjectpath + '*_bval*fix*'))
+        fbvecs = np.size(glob.glob(subjectpath + '*_bvec*fix*'))
+        if fbvals == 0 and fbvecs == 0:
+            fbvals = np.size(glob.glob(subjectpath + '*_bval*'))
+            fbvecs = np.size(glob.glob(subjectpath + '*_bvec*'))
+            if (fbvals) == 0 or (fbvecs) == 0:
+                bxhpath = dwipath.replace(".nii.gz", ".bxh")
+                bxhpath = bxhpath.replace(".nii", ".bxh")
+                fbvals, fbvecs, _, _, _, _ = extractbvec_fromheader(bxhpath,
+                                                                    fileoutpath=os.path.join(dwifolder, subject),
+                                                                    save="all")
+                fix_bvals_bvecs(fbvals, fbvecs)
+
+
 
 def checkbxh(source_file, verbose = False):
     bxhtype = None
