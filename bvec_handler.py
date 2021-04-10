@@ -77,7 +77,7 @@ from figures_handler import denoise_fig, show_bundles, window_show_test, LifEcre
 from tract_eval import bundle_coherence, LiFEvaluation
 from dif_to_trk import make_tensorfit, QCSA_tractmake
 
-def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2):
+def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, identifier = "_fix", format="classic"):
     """
     Read b-values and b-vectors from disk
 
@@ -176,19 +176,40 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2):
             raise ValueError("The vectors in bvecs should be unit (The tolerance "
                              "can be modified as an input parameter)")
 
-    base, ext = splitext(fbvals)
-    fbvals = base + '_fix' + ext
-    if not os.path.isfile(fbvals):
+    if outpath is None:
+        base, ext = splitext(fbvals)
+    else:
+        base=str(outpath)+os.path.basename(fbvals).replace(".txt","")
+
+    fbvals = base + identifier + ext
+    if format == "classic":
         np.savetxt(fbvals, bvals)
-#    with open(fbvals, 'w') as f:
-#        f.write(str(bvals))
-#    os.remove(fbvec)
+    if format=="dsi_format":
+        with open(fbvals, 'w') as File_object:
+            for bval in bvals:
+                if bval>10:
+                    bval = int(round(bval))
+                else:
+                    bval=0
+                File_object.write(str(bval) + "\t")
     base, ext = splitext(fbvecs)
-    fbvecs = base + '_fix' + ext
-    if not os.path.isfile(fbvecs):
-        np.savetxt(fbvecs, bvecs)
-#    with open(fbvecs, 'w') as f:
-#        f.write(str(bvec))
+    fbvecs = base + identifier + ext
+    if format=="classic":
+        if not os.path.isfile(fbvecs):
+            np.savetxt(fbvecs, bvecs)
+    #    with open(fbvecs, 'w') as f:
+    #        f.write(str(bvec))
+    if format=="dsi_format":
+        with open(fbvecs, 'w') as File_object:
+            for i in [0,1,2]:
+                for j in np.arange(np.shape(bvecs)[0]):
+                    if bvecs[j,i]==0:
+                        bvec=0
+                    else:
+                        bvec=round(bvecs[j,i],3)
+                    File_object.write(str(bvec)+"\t")
+                File_object.write("\n")
+            File_object.close()
 
     return fbvals, fbvecs
 
@@ -501,7 +522,7 @@ def rewrite_subject_bvalues(dwipath, subject, outpath=None, writeformat="tab", o
     if os.path.isdir(dwipath):
         #subjectpath = os.path.join(dwipath, subject)
         subjectpath = glob.glob(os.path.join(os.path.join(dwipath, "*"+subject+"*")))
-        subjectpath = subjectpath[1]
+        subjectpath = subjectpath[0]
         if outpath is None:
             outpath = subjectpath
         fbvals = np.size(glob.glob(subjectpath + '*_bval*fix*'))
