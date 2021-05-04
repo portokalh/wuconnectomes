@@ -524,9 +524,16 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     print("Mask shape is " + str(np.shape(labelmask)))
     cutoff = 2
                     
-    labelmask = convert_labelmask(ROI_excel, labelmask)
+    #labelmask = convert_labelmask(ROI_excel, labelmask)
 
     if (trkfilepath is not None and trkpruneexists is False and prunesave):
+
+        if verbose:
+            print("Beginning to read the dwifile of subject " + subject + " at "+dwipath)
+        fdwi_data, _, _, fdwipath, _, _ = getdwidata(dwipath, subject, verbose)
+        if verbose:
+            print("loaded the file " + fdwipath)
+
         if verbose:
             print("Beginning to read " + trkfilepath)
         trkdata = load_trk(trkfilepath, "same")
@@ -538,7 +545,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         trkstreamlines = trkdata.streamlines
         trkprunepath = os.path.dirname(trkfilepath) + '/' + subject + str_identifier + '_pruned.trk'
 
-        fdwi_data = getdwidata_all(dwipath, subject, bvec_orient)
 
         if np.size(np.shape(fdwi_data)) == 1:
             fdwi_data = fdwi_data[0]

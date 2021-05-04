@@ -4,6 +4,8 @@ import numpy as np
 import shutil
 import subprocess
 from file_tools import largerfile, mkcdir, getext
+from dipy.io.image import load_nifti, save_nifti
+
 
 def launch_preprocessing(id, raw_nii, outpath, cleanup=False):
 
@@ -48,7 +50,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False):
     tmp_mask = os.path.join(work_dir,f"{id}_tmp_mask{ext}")
     mask=os.path.join(work_dir,f"{id}_mask{ext}");
     raw_dwi = os.path.join(work_dir,f"{id}_raw_dwi.nii.gz")
-    if not os.path.exists(mask) and not os.path.exists(tmp_mask):
+    if not os.path.exists(mask):
         if not os.path.exists(raw_dwi):
             select_cmd = f"select_dwi_vols {raw_nii} {bvals} {raw_dwi} {nominal_bval} -m"
             os.system(select_cmd)
@@ -68,6 +70,10 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False):
     masked_nii = masked_nii.replace(".nii",".nii.gz")
     masked_nii = masked_nii.replace(ext,"_masked"+ext)
 
+    tempcheck=False
+    if tempcheck:
+        from basic_LPCA_denoise_new import basic_LPCA_denoise_func
+        basic_LPCA_denoise_func(id,masked_nii,bvecs,work_dir)
     if not os.path.exists(denoised_nii):
         if not os.path.exists(masked_nii):
             fsl_cmd = f"fslmaths {raw_nii} -mas {tmp_mask} {masked_nii} -odt 'input'";
@@ -101,8 +107,8 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False):
         if not os.path.exists(tmp_dwi_out):
             cmd=f"select_dwi_vols {coreg_nii} {bvals} {tmp_dwi_out} {nominal_bval}  -m"
             os.system(cmd)
-    elif cleanup and os.path.exists(tmp_dwi_out):
-        os.remove(tmp_dwi_out)
+    #elif cleanup and os.path.exists(tmp_dwi_out):
+    #    os.remove(tmp_dwi_out)
 
     # Generate tmp B0:
     tmp_b0_out=os.path.join(work_dir,f"{id}_tmp_b0{ext}")
@@ -130,10 +136,42 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False):
         if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
             os.unlink(linked_file)
 
+        if not os.path.islink(linked_file) and os.path.isfile(real_file):
+            real_file_name=os.path.basename(real_file)
+            link_cmd=f"ln -s ./{real_file_name} {linked_file}"
+            os.system(link_cmd)
+
+    if os.path.exists(dwi_out):
+        os.remove(dwi_out)
+    linked_file=dwi_out
+    real_file=tmp_dwi_out
+    if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
+        os.unlink(linked_file)
+    if not os.path.islink(linked_file) and os.path.isfile(real_file):
+        real_file_name=os.path.basename(real_file)
+        link_cmd=f"ln -s ./{real_file_name} {linked_file}"
+        os.system(link_cmd)
+
+    linked_file=b0_out
+    real_file=tmp_b0_out
+    if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
+        os.unlink(linked_file)
+    if not os.path.islink(linked_file) and os.path.isfile(real_file):
+        real_file_name=os.path.basename(real_file)
+        link_cmd=f"ln -s ./{real_file_name} {linked_file}"
+        os.system(link_cmd)
+
+    linked_file=mask
+    real_file=tmp_mask
+    if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
+        os.unlink(linked_file)
+    if not os.path.islink(linked_file) and os.path.isfile(real_file):
+        real_file_name=os.path.basename(real_file)
+        link_cmd=f"ln -s ./{real_file_name} {linked_file}"
+        os.system(link_cmd)
     # This should prevent linking to a non-existent file in the future.
         #if os.path.islink(linked_file) and os.path.exists(real_file):
         #    ln -s "./{real_file##*/}" {linked_file};
-
 
     # For Whitson data (at least) we empirically know that we need to move the data from LAS to RAS:
     # Enforce header consistency, based on fa from DSI Studio before reorienting data (will break if there's an affine xform in header)
@@ -209,10 +247,13 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False):
     fi
     fi
     """
-    for contrast in ["dwi", "b0 mask"]:
+    mddata, mdaffine = load_nifti(md)
+    for contrast in ["dwi", "b0", "mask"]:
         file=os.path.join(work_dir,f"{id}_{contrast}{ext}")
-        cmd = os.path.join(gunniespath,"nifti_header_splicer.bash")+f" {md} {file} {file}";
-        os.system(cmd)
+        olddata, oldaffine=load_nifti(file)
+        save_nifti(file, olddata, mdaffine)
+        #cmd = os.path.join(gunniespath,"nifti_header_splicer.bash")+f" {md} {file} {file}";
+        #os.system(cmd)
 
 
     # Apply updated mask to dwi and b0.
@@ -223,11 +264,11 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False):
     #    fslmaths ${file} -mas ${mask} ${file} -odt "input";
     # done
 
-    if cleanup and os.path.exists(tmp_mask) and os.path.exists(mask):
-        os.remove(tmp_mask)
+    #if cleanup and os.path.exists(tmp_mask) and os.path.exists(mask):
+    #    os.remove(tmp_mask)
 
-    if cleanup and os.path.exists(tmp_dwi_out) and os.path.exists(dwi_out):
-        os.remove(tmp_dwi_out)
+    #if cleanup and os.path.exists(tmp_dwi_out) and os.path.exists(dwi_out):
+    #    os.remove(tmp_dwi_out)
 
-    if cleanup and os.path.exists(tmp_b0_out) and os.path.exists(b0_out):
-        os.remove(tmp_b0_out);
+    #if cleanup and os.path.exists(tmp_b0_out) and os.path.exists(b0_out):
+    #    os.remove(tmp_b0_out);

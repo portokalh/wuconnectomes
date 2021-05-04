@@ -46,17 +46,36 @@ subject = "58214"
 outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/"
 
 subjects = ["58302", "58303", "58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
-"""
-for subject in subjects:
-    #outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
-    outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/diffusion_prep_"+subject
-    mkcdir(outpath)
-    writeformat="tab"
-    writeformat="dsi_format"
-    overwrite=True
-    #fbvals, fbvecs = extractbvals(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
-    #fbvals, fbvecs = rewrite_subject_bvalues(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
-"""
+subjects = ["58303", "58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+subjects = ["58303"]
+subjects = ["58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+#subjects = ["58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+subjects = ["58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+#subjects = ["58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+subjects = ["58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+subjects = ["58612","58613","58706","58708","58712"]
+subjects = ["58606","58608","58610","58611"]
+subjects = ["58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510"]
+subjects = ["58611"]
+subjects = ["58612","58613","58706","58708","58712"]
+subjects = ["58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611"]
+subjects = ["58613","58706"]
+subjects = ["58302", "58303", "58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+subjects = ["58613","58706","58708","58712"]
+subjects = ["58612"]
+
+makebtables=False
+if makebtables:
+    for subject in subjects:
+        #outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
+        outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/diffusion_prep_"+subject
+        mkcdir(outpath)
+        writeformat="tab"
+        writeformat="dsi_format"
+        overwrite=True
+        fbvals, fbvecs = extractbvals(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
+        #fbvals, fbvecs = rewrite_subject_bvalues(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
+
 quickfix = False
 if quickfix:
     bval_file="/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/research/diffusionN58302dsi_studio/N58302_bvals.txt"
@@ -68,18 +87,19 @@ bvec_file="/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/research/diffusionN
 proc_name ="diffusion_prep_"
 
 results=[]
-
-for subject in subjects:
-    subjectpath = os.path.join(outpath, proc_name + subject)
-    mkcdir(subjectpath)
-    #subjectpath = glob.glob(os.path.join(os.path.join(outpath, "*" + subject + "*")))
-    #subjectpath = subjectpath[0]
-    new_bval_file=os.path.join(subjectpath, subject+"_bvals.txt")
-    new_bvec_file=os.path.join(subjectpath, subject+"_bvecs.txt")
-    if not os.path.exists(new_bval_file):
-        shutil.copyfile(bval_file,new_bval_file)
-    if not os.path.exists(new_bvec_file):
-        shutil.copyfile(bvec_file,new_bvec_file)
+copybtables=False
+if copybtables:
+    for subject in subjects:
+        subjectpath = os.path.join(outpath, proc_name + subject)
+        mkcdir(subjectpath)
+        #subjectpath = glob.glob(os.path.join(os.path.join(outpath, "*" + subject + "*")))
+        #subjectpath = subjectpath[0]
+        new_bval_file=os.path.join(subjectpath, subject+"_bvals.txt")
+        new_bvec_file=os.path.join(subjectpath, subject+"_bvecs.txt")
+        if not os.path.exists(new_bval_file):
+            shutil.copyfile(bval_file,new_bval_file)
+        if not os.path.exists(new_bvec_file):
+            shutil.copyfile(bvec_file,new_bvec_file)
 
 max_processors = 50
 if mp.cpu_count() < max_processors:

@@ -480,7 +480,7 @@ def extractbvals(dwipath, subject, outpath=None, writeformat="tab", overwrite=Fa
     if os.path.isdir(dwipath):
         #subjectpath = os.path.join(dwipath, subject)
         subjectpath = glob.glob(os.path.join(os.path.join(dwipath, "*"+subject+"*")))
-        subjectpath = subjectpath[1]
+        subjectpath = subjectpath[0]
         if outpath is None:
             outpath = subjectpath
         fbvals = np.size(glob.glob(subjectpath + '*_bval*fix*'))
