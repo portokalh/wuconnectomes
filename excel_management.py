@@ -3,6 +3,15 @@ import xlsxwriter
 import pandas as pd
 import numpy as np
 
+"""
+Created by Jacques Stout
+
+Set of helper functions
+Currently has:
+make every float an int
+Calculate the average in each cell of values from multiple excel files (found in same folder)
+"""
+
 def round_array(array,rounder):
 
     newarray = np.zeros(np.shape(array))

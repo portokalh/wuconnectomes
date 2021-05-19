@@ -1,3 +1,10 @@
+
+"""
+Created by Jacques Stout
+Part of the DTC pipeline, mostly handles dwi files before calculating trk.
+Tries to create masks, determines the parameters of a denoising request, handles fa files, etc
+"""
+
 import matplotlib.pyplot as plt
 from dipy.core.histeq import histeq
 #from os.path import join as pjoin
@@ -67,6 +74,57 @@ def dwi_to_mask(data, subject, affine, outpath, makefig=False, vol_idx=None, med
         plt.savefig(outpath + 'median_otsu.png')
 
     return(mask.astype(np.float32), b0_mask.astype(np.float32))
+
+
+
+def check_for_fa(outpath, subject, getdata=False):
+    #Checks for fa files ('bmfa') in specified outpath folder. Returns with the path
+    #whether it exists or not, and the fa nifti if specified to do so
+    if os.path.isdir(outpath):
+        outpathbmfa = os.path.join(outpath, subject + '_bmfa.nii.gz')
+    elif os.path.isfile(outpath):
+        outpathbmfa = os.path.join(os.path.dirname(outpath), subject + '_bmfa.nii.gz')
+    if os.path.exists(outpathbmfa):
+        if getdata is True:
+            fa = load_nifti(outpathbmfa)
+            return outpathbmfa, True, fa
+        else:
+            return outpathbmfa, True, None
+    else:
+        return outpathbmfa, False, None
+
+def make_tensorfit(data,mask,gtab,affine,subject,outpath, overwrite=False, forcestart = False, verbose=None):
+    #Given dwi data, a mask, and other relevant information, creates the fa and saves it to outpath, unless
+    #if it already exists, in which case it simply returns the fa
+
+    from dipy.reconst.dti import TensorModel
+    outpathbmfa, exists, _ = check_for_fa(outpath, subject, getdata = False)
+    if exists and not forcestart:
+        fa = load_nifti(outpathbmfa)
+        fa_array = fa[0]
+        if verbose:
+            txt = "FA already computed at " + outpathbmfa
+            print(txt)
+        return outpathbmfa, fa_array
+    else:
+        if verbose:
+            print('Calculating the tensor model from bval/bvec values of ', subject)
+        tensor_model = TensorModel(gtab)
+
+        t1 = time()
+        if len(mask.shape) == 4:
+            mask = mask[...,0]
+        tensor_fit = tensor_model.fit(data, mask)
+
+        duration1 = time() - t1
+        if verbose:
+            print(subject + ' DTI duration %.3f' % (duration1,))
+
+        save_nifti(outpathbmfa, tensor_fit.fa, affine)
+        if verbose:
+            print('Saving subject'+ subject+ ' at ' + outpathbmfa)
+
+        return outpathbmfa, tensor_fit.fa
 
 
 def denoise_pick(data, affine, hdr, outpath, mask, type_denoise='macenko', processes=1, savedenoise=True, verbose=False,

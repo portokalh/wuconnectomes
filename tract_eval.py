@@ -4,7 +4,9 @@
 Created on Wed Feb 19 15:17:04 2020
 
 @author: Jacques Stout
-
+Functions for evaluating the results of other processes
+Is location for Life (inhouse parallel processing version), bundle coherence, others
+A bit left behind, has some WIP functions. May need fixing in places.
 """
 
 

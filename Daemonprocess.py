@@ -5,6 +5,7 @@ Created on Tue Feb  18 10:38:04 2020
 
 @author: Jacques Stout
 Multiprocessing class
+Used to have multiprocessing within a multiprocessing function
 """
 import multiprocessing
 

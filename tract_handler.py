@@ -4,7 +4,15 @@
 Created on Tue Feb  18 10:38:04 2020
 
 @author: Jacques Stout
-Small tools for sorting through tracts
+Small tools for sorting through tracts, part of DTC pipeline
+get_streamvals looks at tracts and catches the values in the same space on a different image (FA, MD, etc)
+target catches the streamlines going through the ROI
+gettrkpath catches the right file,
+gettrkparams gets the parameters from a set of streamlines
+get_tract_params is essentially the same but also catches the right file beforehand with gettrkpath
+get_connectome_attributes is a WIP that will be used for TNPCA, obtaining more parameters based on fa, md, rd, etc
+pruned_streamlines will... prune streamlines
+save_roisubset saves streamlines dependent on right ROI
 """
 
 import numpy as np
@@ -159,9 +167,8 @@ def target(streamlines, affine, target_mask, include=True, strict=False):
                 yield sl
 
 
-#def gettrkpath(trkpath, subject, tractsize, strproperty, stepsize, verbose=False):
 def gettrkpath(trkpath, subject, str_identifier, pruned=False, verbose=False):
-
+    #Finds the right trk file based on certain established parameters (folder, subject, extra identifiers)
     if os.path.isfile(trkpath):
         if os.path.splitext(trkpath)[1] == ".trk":
             return trkpath, True
@@ -182,7 +189,7 @@ def gettrkpath(trkpath, subject, str_identifier, pruned=False, verbose=False):
         return filepath, False
 
 def get_trk_params(streamlines, verbose = False):
-    #trkdata = load_trk(trkpath, "same")
+    #Gets extra parameters from a set of streamlines and returns them (num tracts, average/min/max length, std length)
     if verbose:
         print("loaded ")
     # trkdata.to_vox()
@@ -200,7 +207,8 @@ def get_trk_params(streamlines, verbose = False):
     return numtracts, minlength, maxlength, meanlength, stdlength
 
 
-def viewclusters(clusters,streamlines, outpath=None):
+def viewclusters(clusters,streamlines, outpath=None, interactive=False):
+    #Linked to viewing clusters. If outpath given, will save info to right location, if interactive, will show window
     colormap = actor.create_colormap(np.ravel(clusters.centroids))
     colormap_full = np.ones((len(streamlines), 3))
     for cluster, color in zip(clusters, colormap):
@@ -212,12 +220,12 @@ def viewclusters(clusters,streamlines, outpath=None):
     window.record(scene, out_path=outpath, size=(600, 600))
 
     # Enables/disables interactive visualization
-    interactive = True
     if interactive:
         window.show(scene)
 
 
 def get_connectome_attributes(streamlines, affine, fa, md, verbose):
+    #WIP, gets more parameters linked to streamlines and connectomes for TNPCA
     numtracts, minlength, maxlength, meanlength, stdlength = get_trk_params(streamlines, verbose)
     if fa is None:
         print("Fa not found")

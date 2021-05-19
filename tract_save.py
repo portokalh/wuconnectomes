@@ -4,6 +4,7 @@
 Created on Thu Feb 20 13:34:51 2020
 
 @author: alex
+Now part of DTC pipeline. Used to save and unload heavy trk files
 """
 
 

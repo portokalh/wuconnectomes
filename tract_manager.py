@@ -4,6 +4,11 @@
 Created on Wed Feb 19 15:48:38 2020
 
 @author: Jacques Stout
+
+Part of the DTC pipeline
+This is the big one. Almost all the DTC launchers call to it, and it essentially contains most if not all of the
+main 'steps', such as 'get diffusion preprocessing, launch the tractography, start the connectomes' without having those
+functions themselves. Essentially a 'transition file' between the launcher and the processing functions.
 """
 
 

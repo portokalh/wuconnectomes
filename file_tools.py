@@ -1,8 +1,16 @@
+
+"""
+Created by Jacques Stout
+Small useful tools for files and data management
+
+"""
+
 import os
 import glob
 import numpy as np
 
 def mkcdir(folderpaths):
+    #creates new folder only if it doesnt already exists
     if np.size(folderpaths) == 1:
         if not os.path.exists(folderpaths):
             os.mkdir(folderpaths)
@@ -10,6 +18,15 @@ def mkcdir(folderpaths):
         for folderpath in folderpaths:
             if not os.path.exists(folderpath):
                 os.mkdir(folderpath)
+
+
+def file_rename(folder, initstring, finalstring, identifier_string="*"):
+    #Renames files in a folder by replacing init string with final string, identifier_string being an optional
+    #identifier (* format)
+    files = glob.glob(os.path.join(folder, identifier_string))
+    for file in files:
+        newfile = file.replace(initstring, finalstring)
+        os.rename(file, newfile)
 
 
 def largerfile(path):

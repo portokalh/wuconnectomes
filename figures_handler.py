@@ -4,6 +4,9 @@
 Created on Wed Feb 19 15:14:39 2020
 
 @author: Jacques Stout
+
+Part of DTC pipeline
+Creates and generally handles results of said pipeline onto figures
 """
 
 

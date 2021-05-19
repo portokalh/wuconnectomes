@@ -17,6 +17,11 @@
 # NOTE: By default, this only returns the names of the original source files,
 #       but if you set convert=True, it will also convert aliases to symbolic links.
 #
+
+#Jacques's note: Some useful functions here for woroking on a mac, particularly when it comes to the use of shortcuts
+#Any calls should be prefaced with a platform system checker preferably, though these are also inside the functions themselves
+
+
 import subprocess
 import platform
 import os

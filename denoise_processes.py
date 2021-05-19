@@ -1,3 +1,10 @@
+
+"""
+Created by Jacques Stout
+Part of the DTC pipeline
+Just a variant of the dipy denoiser methods, but small modifications give it a multiprocessing option
+"""
+
 import numpy as np
 import multiprocessing as mp
 from time import time
