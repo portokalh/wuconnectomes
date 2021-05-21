@@ -77,22 +77,21 @@ import xlsxwriter
 
 from figures_handler import shore_scalarmaps
 from tract_eval import bundle_coherence, LiFEvaluation
-from dif_to_trk import make_tensorfit, QCSA_tractmake
 from BIAC_tools import send_mail, isempty
 from tract_handler import target, prune_streamlines, get_trk_params, get_tract_params, gettrkpath
 from nifti_handler import getfa, getdwidata_all, getdwidata, getdwipath, getgtab, getlabelmask, move_bvals, getmask
-from diff_preprocessing import dwi_to_mask, denoise_pick
+from diff_preprocessing import dwi_to_mask, denoise_pick, make_tensorfit
 import tract_save
 import xlrd
 import warnings
 import shutil
 
-import dipy.reconst.dki as dki
+#import dipy.reconst.dki as dki
 import dipy.reconst.msdki as msdki
 
 from multiprocessing import Pool
 
-from connectivity_own import connectivity_matrix_special
+#from connectivity_own import connectivity_matrix_special
 
 
 def strfile(string):

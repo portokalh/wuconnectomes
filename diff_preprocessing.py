@@ -7,9 +7,7 @@ Tries to create masks, determines the parameters of a denoising request, handles
 
 import matplotlib.pyplot as plt
 from dipy.core.histeq import histeq
-#from os.path import join as pjoin
 import numpy as np
-#from dipy.data import get_fnames
 from dipy.io.image import load_nifti, save_nifti
 from dipy.segment.mask import median_otsu
 import os
@@ -18,7 +16,9 @@ from dipy.denoise.gibbs import gibbs_removal
 from time import time
 from figures_handler import denoise_fig
 
-from nifti_handler import getdwidata
+#from os.path import join as pjoin
+#from dipy.data import get_fnames
+#from nifti_handler import getdwidata
 
 def string_inclusion(string_option,allowed_strings,option_name):
     "checks if option string is part of the allowed list of strings for that option"

@@ -7,7 +7,7 @@ from file_tools import largerfile, mkcdir, getext
 from dipy.io.image import load_nifti, save_nifti
 
 
-def launch_preprocessing(id, raw_nii, outpath, cleanup=False):
+def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000):
 
 
     gunniespath = "/Users/alex/bass/gitfolder/gunnies/"
@@ -15,8 +15,6 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False):
 
     ## 15 June 2020, BJA: I still need to figure out the best way to pull out the non-zero bval(s) from the bval file.
     ## For now, hardcoding it to 1000 to run Whitson data. # 8 September 2020, BJA: changing to 800 for Sinha data.
-
-    nominal_bval=4000;
 
     print(f"Processing diffusion data with runno/id: {id}")
 
@@ -72,13 +70,13 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False):
 
     tempcheck=False
     if tempcheck:
-        from basic_LPCA_denoise_new import basic_LPCA_denoise_func
+        from basic_LPCA_denoise import basic_LPCA_denoise_func
         basic_LPCA_denoise_func(id,masked_nii,bvecs,work_dir)
     if not os.path.exists(denoised_nii):
         if not os.path.exists(masked_nii):
             fsl_cmd = f"fslmaths {raw_nii} -mas {tmp_mask} {masked_nii} -odt 'input'";
             os.system(fsl_cmd)
-        from basic_LPCA_denoise_new import basic_LPCA_denoise_func
+        from basic_LPCA_denoise import basic_LPCA_denoise_func
         basic_LPCA_denoise_func(id,masked_nii,bvecs,work_dir)
 
     if cleanup and os.path.exists(denoised_nii) and os.path.exists(masked_nii):

@@ -3,11 +3,11 @@ import nibabel as nib
 import numpy as np
 import os, glob
 from dipy.io.gradients import read_bvals_bvecs
-from bvec_handler import fix_bvals_bvecs, checkbxh, extractbvec_fromheader
+#from bvec_handler import fix_bvals_bvecs, checkbxh, extractbvec_fromheader
 import pathlib
 from BIAC_tools import send_mail
 from dipy.core.gradients import gradient_table
-from dif_to_trk import make_tensorfit
+from diff_preprocessing import make_tensorfit
 from dipy.io.image import load_nifti
 import shutil
 
