@@ -1,58 +1,36 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+@author: Eleftherios and Serge
+
+Wenlin make some changes to track on the whole brain
+Wenlin add for loop to run all the animals 2018-20-25
+"""
+
 
 import numpy as np
-from tract_manager import create_tracts, dwi_preprocessing, tract_connectome_analysis,
+from tract_manager import create_tracts, dwi_preprocessing, tract_connectome_analysis
 from Daemonprocess import MyPool
 import multiprocessing as mp
 import os
 from file_tools import mkcdir
 from time import time
 
-def orient_to_str(bvec_orient):
-    mystr="_"
-    for i in np.arange(3):
-        if np.abs(bvec_orient[i]) == 1:
-            if bvec_orient[i]<0:
-                mystr = mystr+"mx"
-            else:
-                mystr = mystr+"px"
-        if np.abs(bvec_orient[i]) == 2:
-            if bvec_orient[i] < 0:
-                mystr = mystr + "my"
-            else:
-                mystr = mystr + "py"
-        if np.abs(bvec_orient[i])==3:
-            if bvec_orient[i]<0:
-                mystr = mystr+"mz"
-            else:
-                mystr = mystr+"pz"
-    return mystr
+import pandas as pd
+from pandas import ExcelWriter
+from pandas import ExcelFile
+from BIAC_tools import isempty
 
-datapath = "/Volumes/Data/Badea/ADdecode.01/Data/Anat/"
-subjects = ["01912", "02110", "02224", "02227", "02230", "02231", "02266", "02289", "02320", "02361", "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02490", "02491", "02506"]
-#subjects = ["02227"]
-#subjects = ["02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02490", "02491", "02506"]
-#subjects = ["02402", "02410", "02421"]
-#subjects = ["02424", "02446", "02451", "02469", "02473", "02485", "02490", "02491", "02506"]
-subjects = ["02231", "02266", "02289"]
-subjects = ["02490", "02491", "02506"]
-subjects = ["01912", "02110", "02224", "02227", "02231", "02266", "02289", "02320", "02361", "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02491", "02506"]
+import sys, getopt
 
-subjects = ["01912", "02110", "02224", "02227", "02231", "02266"]
-#"02230" "02490" these subjects are strange, to investigate
+subjects = ["00393", "00490", "00560", "00680", "00699", "00795","01952","02263"]
+weird_subjects = ["02432"]
+atlas_legends = "/Users/alex/jacques/connectomes_testing//atlases/CHASSSYMM3AtlasLegends.xlsx"
 
-"""
-subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]
-subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
-for bxhfile in subjbxh:
-    bxhtype = checkbxh(bxhfile, False)
-    if bxhtype == "dwi":
-        dwipath = bxhfile.replace(".bxh", ".nii.gz")
-        break
-"""
-
-outpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
+outpath = "/Volumes/Data/Badea/Lab/human/Sinha_epilepsy/"
+datapath = os.path.join(outpath, "DWI")
 figspath = os.path.join(outpath, "Figures")
-dwi_preprocessed = os.path.join(outpath, "DWI")
+dwi_preprocessed = os.path.join(outpath, "DWI_temp")
 trkpath = os.path.join(outpath, "TRK")
 
 mkcdir([outpath, figspath, dwi_preprocessed, trkpath])
@@ -124,9 +102,9 @@ donelist = []
 notdonelist = []
 createmask = masktype
 inclusive = True
-denoise = "mpca"
+denoise = None
 savefa = True
-make_connectomes = True
+make_connectomes = False
 
 classifiertype = "FA"
 classifiertype = "binary"
@@ -175,12 +153,12 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in subjects:
-        #dwi_results.append(dwi_preprocessing(datapath, dwi_preprocessed, subject, bvec_orient, denoise, savefa,
-        #                                     function_processes, createmask, vol_b0, verbose))
-        #tract_results.append(
-        #    create_tracts(dwi_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
-        #                  ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params,
-        #                  verbose))
+        dwi_results.append(dwi_preprocessing(datapath, dwi_preprocessed, subject, bvec_orient, denoise, savefa,
+                                             function_processes, createmask, vol_b0, verbose))
+        tract_results.append(
+            create_tracts(dwi_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
+                          ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params,
+                          verbose))
         #get_diffusionattributes(dwi_preprocessed, dwi_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
         #                        createmask, overwrite, verbose)
         if make_connectomes:

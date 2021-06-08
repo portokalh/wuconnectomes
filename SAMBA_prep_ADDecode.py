@@ -44,9 +44,13 @@ dwipath = mainpath + "Data/Anat"
 subject = "58214"
 #outpath = None
 #outpath = "/Users/alex/jacques/APOE_temp"
-outpath = "/Volumes/Data/Badea/Lab/human/diffusion_prep_locale/"
+outpath = "/Volumes/Data/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
+shortcutpath = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool/"
 mkcdir(outpath)
-subjects = ["02690", "02720", "02737", "02745", "02753", "02765", "02771"]
+#subjects = ["02690", "02720", "02737", "02745", "02753", "02765", "02771"]
+subjects = ["02753", "02765", "02771"]
+weirdones = ["02745", "02771"]
+subjects = ["02654"]
 proc_name ="diffusion_prep_"
 
 makebtables=False
@@ -55,7 +59,7 @@ if makebtables:
         #outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
         outpathsubj = outpath + "_" + subject
         writeformat="tab"
-        writeformat="dsi_format"
+        writeformat="dsi"
         overwrite=True
         fbvals, fbvecs = extractbvals(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
         #fbvals, fbvecs = rewrite_subject_bvalues(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
@@ -64,7 +68,7 @@ quickfix = True
 if quickfix:
     bval_file="/Volumes/Data/Badea/ADdecode.01/Analysis/DWI/01912_bvals.txt"
     bvec_file="/Volumes/Data/Badea/ADdecode.01/Analysis/DWI/01912_bvec.txt"
-    bval_file, bvec_file = fix_bvals_bvecs(bval_file, bvec_file, outpath= outpath, identifier="", format="dsi_format")
+    bval_file, bvec_file = fix_bvals_bvecs(bval_file, bvec_file, outpath= outpath, identifier="", format="dsi")
     results=[]
     copybtables=True
     if copybtables:
@@ -105,7 +109,7 @@ else:
         subjectpath = glob.glob(os.path.join(os.path.join(dwipath, "*" + subject + "*")))[0]
         max_file=largerfile(subjectpath)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        launch_preprocessing(subject, max_file, outpath, nominal_bval=1000)
+        launch_preprocessing(subject, max_file, outpath, nominal_bval=1000, shortcutpath=shortcutpath)
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
 """

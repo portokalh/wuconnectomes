@@ -25,7 +25,7 @@ import pandas as pd
 import smtplib
 import pathlib
 from dipy.denoise.localpca import mppca
-
+from dif_to_trk import QCSA_tractmake
 
 import os, re, sys, io, struct, socket, datetime
 from email.mime.text import MIMEText
@@ -78,14 +78,13 @@ import xlsxwriter
 from figures_handler import shore_scalarmaps
 from tract_eval import bundle_coherence, LiFEvaluation
 from BIAC_tools import send_mail, isempty
-from tract_handler import target, prune_streamlines, get_trk_params, get_tract_params, gettrkpath
+from tract_handler import target, prune_streamlines, get_trk_params, get_tract_params, gettrkpath, reducetractnumber, reducetractnumber_all
 from nifti_handler import getfa, getdwidata_all, getdwidata, getdwipath, getgtab, getlabelmask, move_bvals, getmask
 from diff_preprocessing import dwi_to_mask, denoise_pick, make_tensorfit
 import tract_save
 import xlrd
 import warnings
 import shutil
-
 #import dipy.reconst.dki as dki
 import dipy.reconst.msdki as msdki
 
@@ -136,57 +135,6 @@ def almicedf_fix(df, verbose=None):
     # na_columns=df.columns[df.isna().any()]
     # df_withna=df[df.isnull().any(axis=1)][:].head()
     # df = mice_day2.groupby('runno')['Acq Number'].nunique()
-
-def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, return_affine= False, verbose=False):
-
-    if verbose:
-        print("Beginning to read " + oldtrkfile)
-    trkdata = load_trk(oldtrkfile, "same")
-    if verbose:
-        print("loaded the file " + oldtrkfile)
-    trkdata.to_vox()
-    if hasattr(trkdata, 'space_attribute'):
-        header = trkdata.space_attribute
-    elif hasattr(trkdata, 'space_attributes'):
-        header = trkdata.space_attributes
-    affine = trkdata._affine
-    trkstreamlines = trkdata.streamlines
-
-    ministream=[]
-    for idx, stream in enumerate(trkstreamlines):
-        if (idx % ratio) == 0:
-            ministream.append(stream)
-    del trkstreamlines
-    myheader = create_tractogram_header(newtrkfilepath, *header)
-    ratioed_sl = lambda: (s for s in ministream)
-    tract_save.save_trk_heavy_duty(newtrkfilepath, streamlines=ratioed_sl,
-                                   affine=affine, header=myheader)
-    if verbose:
-        print("The file " + oldtrkfile + " was reduced to one "+str(ratio)+"th of its size and saved to "+newtrkfilepath)
-
-    if getdata:
-        if return_affine:
-            return(ministream,affine)
-        else:
-            return(ministream)
-    else:
-        if return_affine:
-            return(affine)
-        else:
-            return
-
-def reducetractnumber_all(trkpath, str_identifier1, str_identifier2,  subject, ratio, verbose):
-
-        trkoldpath = gettrkpath(trkpath, subject, str_identifier1 + "_pruned", verbose)
-        trknewpath = gettrkpath(trkpath, subject, str_identifier2 + "_pruned", verbose)
-        if trknewpath is None:
-            trknewpath = (trkpath + '/' + subject + "" + str_identifier2 + '.trk')
-            reducetractnumber(trkoldpath,trknewpath, getdata=False, ratio=ratio, return_affine=False, verbose=True)
-        else:
-            if verbose:
-                txt = ("Subject "+ subject +" is already done")
-                send_mail(txt, subject="reduce code in process")
-                print(txt)
 
 def testsnr():
 
@@ -1001,8 +949,13 @@ def check_dif_ratio(trkpath, subject, strproperty, ratio):
             if os.path.exists(trknewpath):
                 return
             elif strproperty.find("all"):
-                reducetractnumber(trkfile,trknewpath, getdata=False, ratio=ratio, return_affine=False, verbose=True)
-                return
+                if ratio==1:
+                    return
+                elif ratio>1:
+                    reducetractnumber(trkfile,trknewpath, getdata=False, ratio=ratio, return_affine=False, verbose=True)
+                    return
+                else:
+                    raise Warning("Error with the input ratio")
             elif ratiostart:
                 temp = re.findall(r'\d+', strproperty[ratiostart:])
                 res = list(map(int, temp))
@@ -1088,7 +1041,7 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
                 params = None
                 return subject, outpathtrk, params
 
-    outpathtrk, trkstreamlines, params = f(fdwi_data, affine, vox_size, gtab, mask, masktype, header,
+    outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, masktype, header,
                                                         step_size, peak_processes, outpathtrk, subject, ratio,
                                                         overwrite, get_params, doprune, figspath=figspath,
                                                         verbose=verbose)

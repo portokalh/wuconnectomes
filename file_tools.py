@@ -8,6 +8,7 @@ Small useful tools for files and data management
 import os
 import glob
 import numpy as np
+from pathlib import Path
 
 def mkcdir(folderpaths):
     #creates new folder only if it doesnt already exists
@@ -26,10 +27,11 @@ def file_rename(folder, initstring, finalstring, identifier_string="*"):
     files = glob.glob(os.path.join(folder, identifier_string))
     for file in files:
         newfile = file.replace(initstring, finalstring)
-        os.rename(file, newfile)
+        if newfile!=file:
+            os.rename(file, newfile)
 
 
-def largerfile(path):
+def largerfile(path, identifier=""):
     max_size=0
     max_file=None
     if os.path.isdir(path):
@@ -37,14 +39,18 @@ def largerfile(path):
 
             # checking the size of each file
             for file in files:
-                size = os.stat(os.path.join(folder, file)).st_size
+                if identifier in file:
+                    size = os.stat(os.path.join(folder, file)).st_size
 
-                # updating maximum size
-                if size > max_size:
-                    max_size = size
-                    max_file = os.path.join(folder, file)
+                    # updating maximum size
+                    if size > max_size:
+                        max_size = size
+                        max_file = os.path.join(folder, file)
     else:
-        files = glob.glob(path)
+        if identifier != "":
+            files = glob.glob(os.path.join(path,"*"+identifier+"*"))
+        else:
+            files = glob.glob(path)
         for file in files:
             size = os.stat(file).st_size
 
@@ -54,6 +60,14 @@ def largerfile(path):
                 max_file = file
 
     return max_file
+
+
+def getrelativepath(destination, origin):
+    if not os.path.isdir(origin):
+        origin=os.path.dirname(origin)
+    origin      = Path(origin).resolve()
+    destination = Path(destination).resolve()
+    return(os.path.relpath(destination, start=origin))
 
 def getext(file):
     filesplit=file.split('.')

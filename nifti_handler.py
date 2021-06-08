@@ -3,7 +3,7 @@ import nibabel as nib
 import numpy as np
 import os, glob
 from dipy.io.gradients import read_bvals_bvecs
-#from bvec_handler import fix_bvals_bvecs, checkbxh, extractbvec_fromheader
+from bvec_handler import fix_bvals_bvecs, checkbxh
 import pathlib
 from BIAC_tools import send_mail
 from dipy.core.gradients import gradient_table
@@ -165,6 +165,10 @@ def getdwipath(mypath, subject, verbose):
         fdwipath = mypath
     elif os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
         fdwipath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
+    elif os.path.exists(os.path.join(mypath,subject+"_rawnii.nii.gz")):
+        fdwipath = (os.path.join(mypath,subject+"_rawnii.nii.gz"))
+    elif os.path.exists(os.path.join(mypath,subject+"_coreg.nii.gz")):
+        fdwipath = (os.path.join(mypath,subject+"_coreg.nii.gz"))
     elif np.size(glob.glob(os.path.join(mypath,subject+"*_dwi.nii.gz"))) == 1:
         fdwipath = glob.glob(os.path.join(mypath,subject+"*_dwi.nii.gz"))[0]
     elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
@@ -333,19 +337,20 @@ def getmask(mypath, subject, masktype = "dwi", verbose=None):
 def move_bvals(mypath, subject, dwipathnew):
 
 
-    subjfolder = glob.glob(os.path.join(mypath, "*" + subject + "*"))
+    subjfolder = glob.glob(os.path.join(mypath, "*" + subject + "*/"))
     if np.size(subjfolder) == 1 and os.path.isdir(subjfolder[0]):
         subjfolder = subjfolder[0]
+        if np.size(glob.glob(os.path.join(subjfolder,"*nii*"))) > 0:
+            mypath = subjfolder
     elif np.size(subjfolder) > 1:
         raise Warning
-
-    if np.size(glob.glob(os.path.join(subjfolder,"*nii*"))) > 0:
-        mypath = subjfolder
+    elif np.size(glob.glob(os.path.join(mypath,subject+"*rawnii*"))) > 0:
+        fdwipath = (glob.glob(os.path.join(mypath,subject+"*rawnii*")))[0]
     elif np.size(glob.glob(os.path.join(mypath,subject+"*dwi*nii*"))) > 0:
         fdwipath = (glob.glob(os.path.join(mypath,subject+"*dwi*nii*")))[0]
-    if os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
+    elif os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
         fdwipath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
-    if os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
+    elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
         fdwipath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
     elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
         fdwipath = mypath + '/nii4D_' + subject + '.nii'

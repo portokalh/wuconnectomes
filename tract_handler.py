@@ -418,7 +418,7 @@ def save_roisubset(streamlines, roislist, roisexcel, labelmask, stringstep, rati
                     myheader = create_tractogram_header(trkminipath, *header)
                     ratioed_roi_sl_gen = lambda: (s for s in trkstreamlines)
                     if allsave:
-                        tract_save.save_trk_heavy_duty(trkroiminipath, streamlines=ratioed_roi_sl_gen,
+                        save_trk_heavy_duty(trkroiminipath, streamlines=ratioed_roi_sl_gen,
                                             affine=affine, header=myheader)
                 else:
                     trkdata = load_trk(trkminipath, 'same')
@@ -428,3 +428,54 @@ def save_roisubset(streamlines, roislist, roisexcel, labelmask, stringstep, rati
                     elif hasattr(trkdata, 'space_attributes'):
                         header = trkdata.space_attributes
                     trkstreamlines = trkdata.streamlines
+
+def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, return_affine= False, verbose=False):
+
+    if verbose:
+        print("Beginning to read " + oldtrkfile)
+    trkdata = load_trk(oldtrkfile, "same")
+    if verbose:
+        print("loaded the file " + oldtrkfile)
+    trkdata.to_vox()
+    if hasattr(trkdata, 'space_attribute'):
+        header = trkdata.space_attribute
+    elif hasattr(trkdata, 'space_attributes'):
+        header = trkdata.space_attributes
+    affine = trkdata._affine
+    trkstreamlines = trkdata.streamlines
+
+    ministream=[]
+    for idx, stream in enumerate(trkstreamlines):
+        if (idx % ratio) == 0:
+            ministream.append(stream)
+    del trkstreamlines
+    myheader = create_tractogram_header(newtrkfilepath, *header)
+    ratioed_sl = lambda: (s for s in ministream)
+    save_trk_heavy_duty(newtrkfilepath, streamlines=ratioed_sl,
+                                   affine=affine, header=myheader)
+    if verbose:
+        print("The file " + oldtrkfile + " was reduced to one "+str(ratio)+"th of its size and saved to "+newtrkfilepath)
+
+    if getdata:
+        if return_affine:
+            return(ministream,affine)
+        else:
+            return(ministream)
+    else:
+        if return_affine:
+            return(affine)
+        else:
+            return
+
+def reducetractnumber_all(trkpath, str_identifier1, str_identifier2,  subject, ratio, verbose):
+
+        trkoldpath = gettrkpath(trkpath, subject, str_identifier1 + "_pruned", verbose)
+        trknewpath = gettrkpath(trkpath, subject, str_identifier2 + "_pruned", verbose)
+        if trknewpath is None:
+            trknewpath = (trkpath + '/' + subject + "" + str_identifier2 + '.trk')
+            reducetractnumber(trkoldpath,trknewpath, getdata=False, ratio=ratio, return_affine=False, verbose=True)
+        else:
+            if verbose:
+                txt = ("Subject "+ subject +" is already done")
+                send_mail(txt, subject="reduce code in process")
+                print(txt)

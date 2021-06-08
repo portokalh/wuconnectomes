@@ -3,24 +3,32 @@ import os
 import numpy as np
 import shutil
 import subprocess
-from file_tools import largerfile, mkcdir, getext
+from file_tools import largerfile, mkcdir, getext, getrelativepath
 from dipy.io.image import load_nifti, save_nifti
 
+def buildlink(linked_file, real_file):
+    if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
+        os.unlink(linked_file)
+    if not os.path.islink(linked_file) and os.path.isfile(real_file):
+        relpath = getrelativepath(real_file, linked_file)
+        link_cmd=f"ln -s ./{relpath} {linked_file}"
+        os.system(link_cmd)
 
-def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000):
-
+def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000, shortcutpath=None, bonusniftipath=None):
 
     gunniespath = "/Users/alex/bass/gitfolder/gunnies/"
     proc_name ="diffusion_prep_" # Not gonna call it diffusion_calc so we don't assume it does the same thing as the civm pipeline
+    if shortcutpath is None:
+        shortcutpath = outpath
+        shortcut_dir = os.path.join(shortcutpath, proc_name + id)
+    else:
+        shortcut_dir = shortcutpath
 
     ## 15 June 2020, BJA: I still need to figure out the best way to pull out the non-zero bval(s) from the bval file.
     ## For now, hardcoding it to 1000 to run Whitson data. # 8 September 2020, BJA: changing to 800 for Sinha data.
 
     print(f"Processing diffusion data with runno/id: {id}")
-
-
     work_dir=os.path.join(outpath,proc_name+id)
-
     print(work_dir)
     mkcdir(work_dir)
 
@@ -46,16 +54,23 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000)
 
     # Make dwi for mask generation purposes.
     tmp_mask = os.path.join(work_dir,f"{id}_tmp_mask{ext}")
-    mask=os.path.join(work_dir,f"{id}_mask{ext}");
+    mask_link=os.path.join(shortcut_dir,f"{id}_mask{ext}");
     raw_dwi = os.path.join(work_dir,f"{id}_raw_dwi.nii.gz")
-    if not os.path.exists(mask):
+    if bonusniftipath is not None:
+        raw_nii_link = os.path.join(bonusniftipath, f"{id}_rawnii{ext}")
+        buildlink(raw_nii_link, raw_nii)
+        bvecs_new = os.path.join(bonusniftipath,id+"_bvecs.txt")
+        bvals_new = os.path.join(bonusniftipath,id+"_bvals.txt")
+        shutil.copyfile(bvecs,bvecs_new)
+        shutil.copyfile(bvals,bvals_new)
+    if not os.path.exists(mask_link):
         if not os.path.exists(raw_dwi):
             select_cmd = f"select_dwi_vols {raw_nii} {bvals} {raw_dwi} {nominal_bval} -m"
             os.system(select_cmd)
 
         if not os.path.exists(tmp_mask):
             tmp=tmp_mask.replace("_mask", "")
-            bet_cmd = f"bet {raw_dwi} {tmp} -m -n"
+            bet_cmd = f"bet {raw_dwi} {tmp} -m -nii"
             os.system(bet_cmd)
 
     if cleanup and (os.path.exists(tmp_mask) and os.path.exists(raw_dwi)):
@@ -65,7 +80,8 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000)
     # Note: the LPCA python has a logical switch that will produce another, confounding mask (though arguably better). This is currently switched off, but can cause confusion and delay if switched on and not properly documented.
     denoised_nii = os.path.join(work_dir,f"LPCA_{id}_nii4D.nii.gz")
     masked_nii = os.path.join(work_dir,nii_name)
-    masked_nii = masked_nii.replace(".nii",".nii.gz")
+    if not "nii.gz" in masked_nii:
+        masked_nii = masked_nii.replace(".nii",".nii.gz")
     masked_nii = masked_nii.replace(ext,"_masked"+ext)
 
     tempcheck=False
@@ -77,7 +93,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000)
             fsl_cmd = f"fslmaths {raw_nii} -mas {tmp_mask} {masked_nii} -odt 'input'";
             os.system(fsl_cmd)
         from basic_LPCA_denoise import basic_LPCA_denoise_func
-        basic_LPCA_denoise_func(id,masked_nii,bvecs,work_dir)
+        basic_LPCA_denoise_func(id,masked_nii,bvecs,work_dir) #to improve and make multiprocessing
 
     if cleanup and os.path.exists(denoised_nii) and os.path.exists(masked_nii):
         os.remove(masked_nii)
@@ -86,6 +102,9 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000)
 
     L_id=f"LPCA_{id}";
     coreg_nii=f"{outpath}/co_reg_{L_id}_m00-results/Reg_{L_id}_nii4D{ext}";
+    if bonusniftipath is not None:
+        coreg_link = os.path.join(bonusniftipath,f"{id}_coreg{ext}")
+        buildlink(coreg_link, coreg_nii)
     if not os.path.exists(coreg_nii):
         temp_cmd = os.path.join(gunniespath,"co_reg_4d_stack_tmpnew.bash")+f" {denoised_nii} {L_id} 0 {outpath}";
         os.system(temp_cmd)
@@ -109,14 +128,14 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000)
     #    os.remove(tmp_dwi_out)
 
     # Generate tmp B0:
-    tmp_b0_out=os.path.join(work_dir,f"{id}_tmp_b0{ext}")
-    b0_out=os.path.join(work_dir,f"{id}_b0{ext}")
-    if not os.path.exists(b0_out):
-        if not os.path.exists(tmp_b0_out):
-            cmd=f"select_dwi_vols {coreg_nii} {bvals} {tmp_b0_out} 0  -m;"
+    b0_out=os.path.join(work_dir,f"{id}_tmp_b0{ext}")
+    b0_out_link=os.path.join(shortcut_dir,f"{id}_b0{ext}")
+    if not os.path.exists(b0_out_link):
+        if not os.path.exists(b0_out):
+            cmd=f"select_dwi_vols {coreg_nii} {bvals} {b0_out} 0  -m;"
             os.system(cmd)
-    elif cleanup and os.path.exists(tmp_b0_out):
-        os.remove(tmp_b0_out)
+    #elif cleanup and os.path.exists(b0_out):
+    #    os.remove(b0_out)
 
     # Generate DTI contrasts and perform some tracking QA:
     c_string='';
@@ -129,44 +148,18 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000)
     for contrast in ["fa0", "rd", "ad", "md"]:
         real_file=largerfile(os.path.join(work_dir,f"*.fib.gz.{contrast}{ext}"))  # It will be fun times if we ever have more than one match to this pattern...
         contrast=contrast.replace("0","")
-        linked_file=os.path.join(work_dir,f"{id}_{contrast}{ext}")
+        linked_file=os.path.join(shortcut_dir,f"{id}_{contrast}{ext}")
         # We need to make sure that we didn't accidentally link to a non-existent file.
-        if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
-            os.unlink(linked_file)
-
-        if not os.path.islink(linked_file) and os.path.isfile(real_file):
-            real_file_name=os.path.basename(real_file)
-            link_cmd=f"ln -s ./{real_file_name} {linked_file}"
-            os.system(link_cmd)
+        buildlink(linked_file, real_file)
 
     if os.path.exists(dwi_out):
         os.remove(dwi_out)
-    linked_file=dwi_out
-    real_file=tmp_dwi_out
-    if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
-        os.unlink(linked_file)
-    if not os.path.islink(linked_file) and os.path.isfile(real_file):
-        real_file_name=os.path.basename(real_file)
-        link_cmd=f"ln -s ./{real_file_name} {linked_file}"
-        os.system(link_cmd)
+    dwi_link=os.path.join(shortcut_dir,f"{id}_dwi{ext}")
+    buildlink(dwi_link, tmp_dwi_out)
+    buildlink(b0_out_link, b0_out)
 
-    linked_file=b0_out
-    real_file=tmp_b0_out
-    if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
-        os.unlink(linked_file)
-    if not os.path.islink(linked_file) and os.path.isfile(real_file):
-        real_file_name=os.path.basename(real_file)
-        link_cmd=f"ln -s ./{real_file_name} {linked_file}"
-        os.system(link_cmd)
+    buildlink(mask_link, tmp_mask)
 
-    linked_file=mask
-    real_file=tmp_mask
-    if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
-        os.unlink(linked_file)
-    if not os.path.islink(linked_file) and os.path.isfile(real_file):
-        real_file_name=os.path.basename(real_file)
-        link_cmd=f"ln -s ./{real_file_name} {linked_file}"
-        os.system(link_cmd)
     # This should prevent linking to a non-existent file in the future.
         #if os.path.islink(linked_file) and os.path.exists(real_file):
         #    ln -s "./{real_file##*/}" {linked_file};
@@ -181,7 +174,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000)
 
     # Enforce header consistency, based on mask--no, scratch that--based on fa from DSI Studio
     # No scratch that--fa doesn't necessarily have a consistent center of mass!
-    md=f"{work_dir}/{id}_md{ext}";
+    md=f"{shortcut_dir}/{id}_md{ext}";
 
     # I'm not going to say specifically why, but, we only need to compare orientations between the mask and the md.
     # This only works on clean runs, and won't catch b0s or dwis that have been previously incorrectly turned.
@@ -222,7 +215,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000)
                 shutil.move(img_in,img_out)
 
     # Turning off the following code block for now...
-    """         
+    """
     if (( 0 ));then
     file=${work_dir} / ${id}_mask.${ext};
     orient_test=f"( / Users / alex / bass / gitfolder / gunnies / find_relative_orientation_by_CoM.bash {md} {file});
@@ -245,17 +238,18 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000)
     fi
     fi
     """
+    """
     mddata, mdaffine = load_nifti(md)
     for contrast in ["dwi", "b0", "mask"]:
-        file=os.path.join(work_dir,f"{id}_{contrast}{ext}")
-        olddata, oldaffine=load_nifti(file)
+        file=os.path.join(shortcut_dir,f"{id}_{contrast}{ext}")
+        olddata, oldaffine=load_nifti(dwi_link)
         save_nifti(file, olddata, mdaffine)
         #cmd = os.path.join(gunniespath,"nifti_header_splicer.bash")+f" {md} {file} {file}";
         #os.system(cmd)
 
 
     # Apply updated mask to dwi and b0.
-    mask=os.path.join(work_dir,f"{id}_mask{ext}")
+    #mask=os.path.join(work_dir,f"{id}_mask{ext}")
 
     # for contrast in dwi b0;do
     #    file=${work_dir}/${id}_${contrast}.${ext};
@@ -270,3 +264,4 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000)
 
     #if cleanup and os.path.exists(tmp_b0_out) and os.path.exists(b0_out):
     #    os.remove(tmp_b0_out);
+    """
