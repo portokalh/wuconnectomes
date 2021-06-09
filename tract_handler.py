@@ -21,7 +21,7 @@ from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
 from time import time
 from functools import wraps
 import pandas as pd
-from BIAC_tools import isempty
+from BIAC_tools import isempty, send_mail
 from dipy.tracking.streamline import Streamlines
 from dipy.io.utils import create_tractogram_header
 from tract_save import save_trk_heavy_duty
