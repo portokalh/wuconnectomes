@@ -37,10 +37,11 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
 
     #nii_name =${raw_nii  ##*/};
     nii_name=os.path.split(raw_nii)[1]
+    niifolder = os.path.dirname(raw_nii)
     ext = ".nii.gz"
     nii_ext=getext(nii_name)
     bxheader = nii_name.replace(nii_ext,".bxh")
-
+    bxheader = os.path.join(niifolder, bxheader)
     bvecs = os.path.join(work_dir, id+"_bvecs.txt")
     bvals =bvecs.replace("bvecs","bvals");
 
@@ -53,6 +54,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         os.system(bvec_cmd)
 
     # Make dwi for mask generation purposes.
+    orient_string = os.path.join(work_dir,'relative_orientation.txt')
     tmp_mask = os.path.join(work_dir,f"{id}_tmp_mask{ext}")
     mask_link=os.path.join(shortcut_dir,f"{id}_mask{ext}");
     raw_dwi = os.path.join(work_dir,f"{id}_raw_dwi.nii.gz")
@@ -88,6 +90,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     if tempcheck:
         from basic_LPCA_denoise import basic_LPCA_denoise_func
         basic_LPCA_denoise_func(id,masked_nii,bvecs,work_dir)
+
     if not os.path.exists(denoised_nii):
         if not os.path.exists(masked_nii):
             fsl_cmd = f"fslmaths {raw_nii} -mas {tmp_mask} {masked_nii} -odt 'input'";
@@ -128,20 +131,21 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     #    os.remove(tmp_dwi_out)
 
     # Generate tmp B0:
-    b0_out=os.path.join(work_dir,f"{id}_tmp_b0{ext}")
+    b0_out_tmp=os.path.join(work_dir,f"{id}_tmp_b0{ext}")
     b0_out_link=os.path.join(shortcut_dir,f"{id}_b0{ext}")
     if not os.path.exists(b0_out_link):
-        if not os.path.exists(b0_out):
-            cmd=f"select_dwi_vols {coreg_nii} {bvals} {b0_out} 0  -m;"
+        if not os.path.exists(b0_out_tmp):
+            cmd=f"select_dwi_vols {coreg_nii} {bvals} {b0_out_tmp} 0  -m;"
             os.system(cmd)
-    #elif cleanup and os.path.exists(b0_out):
-    #    os.remove(b0_out)
+    elif cleanup and os.path.exists(b0_out_tmp):
+        os.remove(b0_out_tmp)
 
     # Generate DTI contrasts and perform some tracking QA:
     c_string='';
     if cleanup:
         c_string=' --cleanup '
-
+    else:
+        c_string=''
     cmd = os.path.join(gunniespath,"dti_qa_with_dsi_studio.bash")+f" {coreg_nii} {bvecs} {tmp_mask} {work_dir} {c_string}";
     os.system(cmd)
     # Create RELATIVE links to DSI_studio outputs:
@@ -152,20 +156,8 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         # We need to make sure that we didn't accidentally link to a non-existent file.
         buildlink(linked_file, real_file)
 
-    if os.path.exists(dwi_out):
+    if os.path.exists(dwi_out) and cleanup:
         os.remove(dwi_out)
-    dwi_link=os.path.join(shortcut_dir,f"{id}_dwi{ext}")
-    buildlink(dwi_link, tmp_dwi_out)
-    buildlink(b0_out_link, b0_out)
-
-    buildlink(mask_link, tmp_mask)
-
-    # This should prevent linking to a non-existent file in the future.
-        #if os.path.islink(linked_file) and os.path.exists(real_file):
-        #    ln -s "./{real_file##*/}" {linked_file};
-
-    # For Whitson data (at least) we empirically know that we need to move the data from LAS to RAS:
-    # Enforce header consistency, based on fa from DSI Studio before reorienting data (will break if there's an affine xform in header)
 
     # Hopefully the new auto-detect-orientation code will work...
 
@@ -215,6 +207,13 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
                 shutil.move(img_in,img_out)
 
     # Turning off the following code block for now...
+
+
+    dwi_link=os.path.join(shortcut_dir,f"{id}_dwi{ext}")
+    buildlink(dwi_link, tmp_dwi_out)
+    buildlink(b0_out_link, b0_out)
+    buildlink(mask_link, tmp_mask)
+
     """
     if (( 0 ));then
     file=${work_dir} / ${id}_mask.${ext};

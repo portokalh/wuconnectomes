@@ -27,7 +27,7 @@ import tract_save
 from tract_handler import get_trk_params, get_tract_params
 import glob
 from dipy.tracking.stopping_criterion import BinaryStoppingCriterion, ThresholdStoppingCriterion
-
+from dipy.reconst.csdeconv import ConstrainedSphericalDeconvModel
 #from dipy.denoise.localpca import mppca
 #import dipy.tracking.life as life
 #import dipy.reconst.dti as dti

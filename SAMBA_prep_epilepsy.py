@@ -121,7 +121,7 @@ else:
         subjectpath = glob.glob(os.path.join(os.path.join(dwipath, "*" + subject + "*")))[0]
         max_file=largerfile(subjectpath)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        launch_preprocessing(subject, max_file, outpath, nominal_bval=800, shortcutpath=shortcutpath, bonusniftipath = bonusniftipath)
+        launch_preprocessing(subject, max_file, outpath, nominal_bval=800, shortcutpath=shortcutpath, bonusniftipath = None)
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
 """
