@@ -58,6 +58,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     tmp_mask = os.path.join(work_dir,f"{id}_tmp_mask{ext}")
     mask_link=os.path.join(shortcut_dir,f"{id}_mask{ext}");
     raw_dwi = os.path.join(work_dir,f"{id}_raw_dwi.nii.gz")
+    orient_string = os.path.join(work_dir,"relative_orientation.txt")
     if bonusniftipath is not None:
         raw_nii_link = os.path.join(bonusniftipath, f"{id}_rawnii{ext}")
         buildlink(raw_nii_link, raw_nii)
@@ -131,14 +132,14 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     #    os.remove(tmp_dwi_out)
 
     # Generate tmp B0:
-    b0_out_tmp=os.path.join(work_dir,f"{id}_tmp_b0{ext}")
+    tmp_b0_out=os.path.join(work_dir,f"{id}_tmp_b0{ext}")
     b0_out_link=os.path.join(shortcut_dir,f"{id}_b0{ext}")
     if not os.path.exists(b0_out_link):
-        if not os.path.exists(b0_out_tmp):
-            cmd=f"select_dwi_vols {coreg_nii} {bvals} {b0_out_tmp} 0  -m;"
+        if not os.path.exists(tmp_b0_out):
+            cmd=f"select_dwi_vols {coreg_nii} {bvals} {tmp_b0_out} 0  -m;"
             os.system(cmd)
-    elif cleanup and os.path.exists(b0_out_tmp):
-        os.remove(b0_out_tmp)
+    elif cleanup and os.path.exists(tmp_b0_out):
+        os.remove(tmp_b0_out)
 
     # Generate DTI contrasts and perform some tracking QA:
     c_string='';
@@ -171,33 +172,40 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     # I'm not going to say specifically why, but, we only need to compare orientations between the mask and the md.
     # This only works on clean runs, and won't catch b0s or dwis that have been previously incorrectly turned.
 
-    if not os.path.exists(tmp_mask):
-        for contrast in ["tmp_dwi", "tmp_b0", "tmp_mask"]:
-            file=os.path.join(work_dir,f"{id}_{contrast}{ext}")
-            if os.path.exists(file):
-                cmd=f"/Users/alex/bass/gitfolder/gunnies/nifti_header_splicer.bash {md} {file} {file}"
-                os.system(cmd)
+    if not os.path.isfile(orient_string):
+        file = os.path.join(work_dir,id+"_tmp_mask"+ext);
+        cmd = os.path.join(gunniespath,"find_relative_orientation_by_CoM.bash") + f" {md} {file}"
+        #curious, need to look at that find relative orientation code a bit later
+        #orient_test = subprocess.run([cmd], stdout=subprocess.PIPE).stdout.decode('utf-8'
+        orient_test = subprocess.getoutput(cmd)
+        with open(orient_string, 'w') as f:
+            f.write(orient_test)
+    else:
+        orient_test = open(orient_string, mode='r').read()
 
-        file=os.path.join(work_dir,f"{id}_tmp_mask{ext}")
-        orient_test=os.path.join(gunniespath, "find_relative_orientation_by_CoM.bash")+f" {md} {file}";
-        orientation_output = subprocess.check_output(orient_test, shell=True)
-        orientation_out = orientation_output.split(",")[0]
-        orientation_out = orientation_out.split(":")[1]
-        orientation_in = orientation_output.split(",")[1]
-        orientation_in = orientation_in.split(":")[1]
-        #orientation_in=$(echo ${orient_test} | cut -d ',' -f2 | cut -d ':' -f2);
-        #orientation_out=$(echo ${orient_test} | cut -d ',' -f1 | cut -d ':' -f2);
-        print(f"flexible orientation: {orientation_in}");
-        print(f"reference orientation: {orientation_out}");
 
-        for contrast in ["dwi", "b0", "mask"]:
-            img_in=os.path.join(work_dir,f"{id}_tmp_{contrast}{ext}")
-            img_out=os.path.join(work_dir,f"{id}_{contrast}{ext}")
+    for contrast in ["tmp_dwi", "tmp_b0", "tmp_mask"]:
+        file = os.path.join(work_dir, f"{id}_{contrast}{ext}")
+        if os.path.exists(file):
+            cmd = f"/Users/alex/bass/gitfolder/gunnies/nifti_header_splicer.bash {md} {file} {file}"
+            os.system(cmd)
 
+    #orientation_output = subprocess.check_output(orient_test, shell=True)
+    orientation_out = orient_test.split(",")[0]
+    orientation_out = orientation_out.split(":")[1]
+    orientation_in = orient_test.split(",")[1]
+    orientation_in = orientation_in.split(":")[1]
+    print(f"flexible orientation: {orientation_in}");
+    print(f"reference orientation: {orientation_out}");
+
+    for contrast in ["dwi", "b0", "mask"]:
+        img_in=os.path.join(work_dir,f"{id}_tmp_{contrast}{ext}")
+        img_out=os.path.join(work_dir,f"{id}_{contrast}{ext}")
+        if not os.path.isfile(img_out):
             if orientation_out != orientation_in:
                 print("TRYING TO REORIENT...b0 and dwi and mask")
                 if os.path.exists(img_in) and not os.path.exists(img_out):
-                    reorient_cmd=f"{img_xform_exec} {mat_library} {img_in} {orientation_in} {orientation_out} {img_out}"
+                    reorient_cmd=f"bash {img_xform_exec} {mat_library} {img_in} {orientation_in} {orientation_out} {img_out}"
                     os.system(reorient_cmd)
                     if os.path.exists(img_out):
                         os.remove(img_in)
@@ -205,14 +213,31 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
                     os.remove(img_in)
             else:
                 shutil.move(img_in,img_out)
+        file=os.path.join(work_dir, id+ "_" + contrast + "." + ext);
+        cmd = os.path.join(gunniespath, "nifti_header_splicer.bash" + f" {md} {file} {file}")
+        os.system(cmd)
+        #dwi_link = os.path.join(shortcut_dir, f"{id}_dwi{ext}")
+        #buildlink(dwi_link, tmp_dwi_out)
+        #buildlink(b0_out_link, b0_out)
+        #buildlink(mask_link, tmp_mask)
+
+    mask = os.path.join(work_dir,id+"_mask+ext");
+
+    if cleanup:
+        if os.path.isfile(tmp_mask) and os.path.isfile(mask_link):
+            os.path.remove(tmp_mask)
+        if os.path.isfile(tmp_dwi_out) and os.path.isfile(dwi_out):
+            os.path.remove(tmp_dwi_out)
+        if os.path.isfile(tmp_b0_out) and os.path.isfile(b0_out_link):
+            os.path.remove(tmp_b0_out)
 
     # Turning off the following code block for now...
 
-
-    dwi_link=os.path.join(shortcut_dir,f"{id}_dwi{ext}")
-    buildlink(dwi_link, tmp_dwi_out)
-    buildlink(b0_out_link, b0_out)
-    buildlink(mask_link, tmp_mask)
+    #for contrast in dwi
+    #dwi_link=os.path.join(shortcut_dir,f"{id}_dwi{ext}")
+    #buildlink(dwi_link, tmp_dwi_out)
+    #buildlink(b0_out_link, b0_out)
+    #buildlink(mask_link, tmp_mask)
 
     """
     if (( 0 ));then
@@ -263,4 +288,13 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
 
     #if cleanup and os.path.exists(tmp_b0_out) and os.path.exists(b0_out):
     #    os.remove(tmp_b0_out);
+    
+    if not os.path.exists(tmp_mask):
+    file=os.path.join(work_dir,f"{id}_tmp_mask{ext}")
+    #orient_test=os.path.join(gunniespath, "find_relative_orientation_by_CoM.bash")+f" {md} {file}";
+    #orientation_in=$(echo ${orient_test} | cut -d ',' -f2 | cut -d ':' -f2);
+    #orientation_out=$(echo ${orient_test} | cut -d ',' -f1 | cut -d ':' -f2);
+    print(f"flexible orientation: {orientation_in}");
+    print(f"reference orientation: {orientation_out}");
+
     """
