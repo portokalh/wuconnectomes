@@ -14,9 +14,8 @@ def buildlink(linked_file, real_file):
         link_cmd=f"ln -s ./{relpath} {linked_file}"
         os.system(link_cmd)
 
-def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000, shortcutpath=None, bonusniftipath=None):
+def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000, shortcutpath=None, bonusniftipath=None, gunniespath="~/gunnies/", matlabpath="/mnt/clustertmp/common/rja20_dev/"):
 
-    gunniespath = "/Users/alex/bass/gitfolder/gunnies/"
     proc_name ="diffusion_prep_" # Not gonna call it diffusion_calc so we don't assume it does the same thing as the civm pipeline
     if shortcutpath is None:
         shortcutpath = outpath
@@ -162,8 +161,8 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
 
     # Hopefully the new auto-detect-orientation code will work...
 
-    img_xform_exec='/Users/alex/MATLAB/MATLAB_BJ/matlab_execs_for_SAMBA//img_transform_executable/run_img_transform_exec.sh';
-    mat_library='/Users/alex/MATLAB/MATLAB_BJ/MATLAB2015b_runtime/v90';
+    img_xform_exec=os.path.join(matlabpath,"matlab_execs_for_SAMBA","img_transform_executable","run_img_transform_exec.sh")
+    mat_library=os.path.join(matlabpath,"MATLAB2015b_runtime","v90")
 
     # Enforce header consistency, based on mask--no, scratch that--based on fa from DSI Studio
     # No scratch that--fa doesn't necessarily have a consistent center of mass!
@@ -174,7 +173,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
 
     if not os.path.isfile(orient_string):
         file = os.path.join(work_dir,id+"_tmp_mask"+ext);
-        cmd = os.path.join(gunniespath,"find_relative_orientation_by_CoM.bash") + f" {md} {file}"
+        cmd = "bash " + os.path.join(gunniespath,"find_relative_orientation_by_CoM.bash") + f" {md} {file}"
         #curious, need to look at that find relative orientation code a bit later
         #orient_test = subprocess.run([cmd], stdout=subprocess.PIPE).stdout.decode('utf-8'
         orient_test = subprocess.getoutput(cmd)
@@ -187,7 +186,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     for contrast in ["tmp_dwi", "tmp_b0", "tmp_mask"]:
         file = os.path.join(work_dir, f"{id}_{contrast}{ext}")
         if os.path.exists(file):
-            cmd = f"/Users/alex/bass/gitfolder/gunnies/nifti_header_splicer.bash {md} {file} {file}"
+            cmd = os.path.join(gunniespath,"nifti_header_splicer.bash")+f" {md} {file} {file}"
             os.system(cmd)
 
     #orientation_output = subprocess.check_output(orient_test, shell=True)
@@ -206,6 +205,8 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
                 print("TRYING TO REORIENT...b0 and dwi and mask")
                 if os.path.exists(img_in) and not os.path.exists(img_out):
                     reorient_cmd=f"bash {img_xform_exec} {mat_library} {img_in} {orientation_in} {orientation_out} {img_out}"
+                    print("This is the command that was requested for reorientation:\n"+reorient_cmd+"\n")
+                    print(f"double check for every variable:\n imxform: {img_xform_exec}\n matlab_lib: {mat_library}\n image1: {img_in}\n orientation_in: {orientation_out}\n orientation_out: {orientation_out}\n img_out={img_out}")
                     os.system(reorient_cmd)
                     if os.path.exists(img_out):
                         os.remove(img_in)
@@ -215,11 +216,6 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
                 shutil.move(img_in,img_out)
         file=os.path.join(work_dir, id+ "_" + contrast + "." + ext);
         cmd = os.path.join(gunniespath, "nifti_header_splicer.bash" + f" {md} {file} {file}")
-        os.system(cmd)
-        #dwi_link = os.path.join(shortcut_dir, f"{id}_dwi{ext}")
-        #buildlink(dwi_link, tmp_dwi_out)
-        #buildlink(b0_out_link, b0_out)
-        #buildlink(mask_link, tmp_mask)
 
     mask = os.path.join(work_dir,id+"_mask+ext");
 
