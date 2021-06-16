@@ -48,10 +48,12 @@ subjects = ["00393", "00490", "00560", "00613", "00680", "00699", "00795","01952
 subjects = ["02263","02432"]
 subjects = ["00393", "00490", "00560", "00680", "00699", "00795","01952","02263","02432"]
 subjects = ["02263","02432"]
+subjects = ["00393", "00490", "00560", "00680", "00699", "00795","01952","02263","02432"]
+subjects = ["00393", "00490", "00560", "00680", "00699", "00795","01952","02263","02432"]
 weirdsubjects = ["00444", "00613"]
 proc_name ="diffusion_prep_"
 
-makebtables=True
+makebtables=False
 if makebtables:
     for subject in subjects:
         #outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
@@ -63,7 +65,7 @@ if makebtables:
         fbvals, fbvecs = extractbvals(dwipath, subject, outpath=outpathsubj, writeformat=writeformat, fix=False, overwrite=overwrite)
         #fbvals, fbvecs = rewrite_subject_bvalues(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
 
-bvalfix=True
+bvalfix=False
 if bvalfix:
     subject="02432"
     slicestocut = [6,10,14,18,20,21,23,25,27,28,30,31,35,36]
@@ -121,7 +123,7 @@ else:
         subjectpath = glob.glob(os.path.join(os.path.join(dwipath, "*" + subject + "*")))[0]
         max_file=largerfile(subjectpath)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        launch_preprocessing(subject, max_file, outpath, nominal_bval=800, shortcutpath=shortcutpath, bonusniftipath = None)
+        launch_preprocessing(subject, max_file, outpath, nominal_bval=800, shortcutpath=shortcutpath, bonusniftipath = None, gunniespath="/Users/alex/bass/gitfolder/gunnies/", matlabpath="/Users/alex/MATLAB/MATLAB_BJ/")
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
 """
