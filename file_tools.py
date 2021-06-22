@@ -75,3 +75,9 @@ def getext(file):
     for i in np.arange(1,np.size(filesplit)):
         ext=ext+"."+str(filesplit[i])
     return ext
+
+def splitpath(filepath):
+    dirname, filename = os.path.split(os.path.abspath(filepath))
+    ext = getext(filename)
+    filename = filename.split('.')[0]
+    return dirname, filename, ext

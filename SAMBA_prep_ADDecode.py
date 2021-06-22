@@ -46,11 +46,15 @@ subject = "58214"
 #outpath = "/Users/alex/jacques/APOE_temp"
 outpath = "/Volumes/Data/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
 shortcutpath = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool/"
+bonusniftipath = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool_test/"
 mkcdir(outpath)
-#subjects = ["02690", "02720", "02737", "02745", "02753", "02765", "02771"]
-subjects = ["02753", "02765", "02771"]
-weirdones = ["02745", "02771"]
-subjects = ["02654"]
+subjects = ["02654", "02690", "02720", "02737", "02745", "02753", "02765", "02771", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926"]
+subjects = ["02871", "02877", "02898", "02926"]
+subjects = ["02842"]
+subjects = ["02654", "02690", "02720", "02737", "02753", "02765", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02871", "02877", "02898", "02926"]
+
+#subjects = ["02753", "02765", "02771"]
+#weirdones = ["02745", "02771", "02842"]
 proc_name ="diffusion_prep_"
 
 makebtables=False
@@ -109,7 +113,8 @@ else:
         subjectpath = glob.glob(os.path.join(os.path.join(dwipath, "*" + subject + "*")))[0]
         max_file=largerfile(subjectpath)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        launch_preprocessing(subject, max_file, outpath, nominal_bval=1000, shortcutpath=shortcutpath)
+        #max_file="/Volumes/Data/Badea/ADdecode.01/Data/Anat/20210522_02842/bia6_02842_003.nii.gz"
+        launch_preprocessing(subject, max_file, outpath, nominal_bval=1000, shortcutpath=shortcutpath, bonusniftipath = bonusniftipath, gunniespath="/Users/alex/bass/gitfolder/gunnies/", matlabpath="/Users/alex/Documents/MATLAB/")
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
 """

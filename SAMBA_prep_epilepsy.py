@@ -50,6 +50,7 @@ subjects = ["00393", "00490", "00560", "00680", "00699", "00795","01952","02263"
 subjects = ["02263","02432"]
 subjects = ["00393", "00490", "00560", "00680", "00699", "00795","01952","02263","02432"]
 subjects = ["00393", "00490", "00560", "00680", "00699", "00795","01952","02263","02432"]
+subjects = ["01952","02263","02432"]
 weirdsubjects = ["00444", "00613"]
 proc_name ="diffusion_prep_"
 
@@ -123,7 +124,7 @@ else:
         subjectpath = glob.glob(os.path.join(os.path.join(dwipath, "*" + subject + "*")))[0]
         max_file=largerfile(subjectpath)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        launch_preprocessing(subject, max_file, outpath, nominal_bval=800, shortcutpath=shortcutpath, bonusniftipath = None, gunniespath="/Users/alex/bass/gitfolder/gunnies/", matlabpath="/Users/alex/MATLAB/MATLAB_BJ/")
+        launch_preprocessing(subject, max_file, outpath, nominal_bval=800, shortcutpath=shortcutpath, bonusniftipath = None, gunniespath="/Users/alex/bass/gitfolder/gunnies/", matlabpath="/Users/alex/Documents/MATLAB/")
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
 """

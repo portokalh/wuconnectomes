@@ -4,6 +4,7 @@ import numpy as np
 import shutil
 import subprocess
 from file_tools import largerfile, mkcdir, getext, getrelativepath
+from img_transform_exec import img_transform_exec, space_transpose
 from dipy.io.image import load_nifti, save_nifti
 
 def buildlink(linked_file, real_file):
@@ -16,6 +17,8 @@ def buildlink(linked_file, real_file):
 
 def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000, shortcutpath=None, bonusniftipath=None, gunniespath="~/gunnies/", matlabpath="/mnt/clustertmp/common/rja20_dev/"):
 
+    #img_transform_exec('/Volumes/Data/Badea/Lab/human/Sinha_epilepsy/diffusion_prep_locale/diffusion_prep_00393/00393_tmp_b0.nii.gz','LPS', 'RAS',
+    #'/Volumes/Data/Badea/Lab/human/Sinha_epilepsy/diffusion_prep_locale/diffusion_prep_00393/00393_b0.nii.gz')
     proc_name ="diffusion_prep_" # Not gonna call it diffusion_calc so we don't assume it does the same thing as the civm pipeline
     if shortcutpath is None:
         shortcutpath = outpath
@@ -72,7 +75,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
 
         if not os.path.exists(tmp_mask):
             tmp=tmp_mask.replace("_mask", "")
-            bet_cmd = f"bet {raw_dwi} {tmp} -m -nii"
+            bet_cmd = f"bet {raw_dwi} {tmp} -m"
             os.system(bet_cmd)
 
     if cleanup and (os.path.exists(tmp_mask) and os.path.exists(raw_dwi)):
@@ -148,22 +151,15 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         c_string=''
     cmd = os.path.join(gunniespath,"dti_qa_with_dsi_studio.bash")+f" {coreg_nii} {bvecs} {tmp_mask} {work_dir} {c_string}";
     os.system(cmd)
-    # Create RELATIVE links to DSI_studio outputs:
-    for contrast in ["fa0", "rd", "ad", "md"]:
-        real_file=largerfile(os.path.join(work_dir,f"*.fib.gz.{contrast}{ext}"))  # It will be fun times if we ever have more than one match to this pattern...
-        contrast=contrast.replace("0","")
-        linked_file=os.path.join(shortcut_dir,f"{id}_{contrast}{ext}")
-        # We need to make sure that we didn't accidentally link to a non-existent file.
-        buildlink(linked_file, real_file)
 
     if os.path.exists(dwi_out) and cleanup:
-        os.remove(dwi_out)
+        os.remove(tmp_dwi_out)
 
     # Hopefully the new auto-detect-orientation code will work...
 
-    img_xform_exec=os.path.join(matlabpath,"matlab_execs_for_SAMBA","img_transform_executable","run_img_transform_exec.sh")
+    img_xform_exec=os.path.join(matlabpath,"img_transform_executable","run_img_transform_exec_mac.sh")
     mat_library=os.path.join(matlabpath,"MATLAB2015b_runtime","v90")
-
+    mat_library=os.path.join(matlabpath,"MyAppInstaller_web.app")
     # Enforce header consistency, based on mask--no, scratch that--based on fa from DSI Studio
     # No scratch that--fa doesn't necessarily have a consistent center of mass!
     md=f"{shortcut_dir}/{id}_md{ext}";
@@ -171,7 +167,17 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     # I'm not going to say specifically why, but, we only need to compare orientations between the mask and the md.
     # This only works on clean runs, and won't catch b0s or dwis that have been previously incorrectly turned.
 
-    if not os.path.isfile(orient_string):
+
+    for contrast in ["tmp_dwi", "tmp_b0", "tmp_mask"]:
+        file = os.path.join(work_dir, f"{id}_{contrast}{ext}")
+        if os.path.exists(file):
+            cmd = os.path.join(gunniespath,"nifti_header_splicer.bash")+f" {md} {file} {file}"
+            os.system(cmd)
+
+    overwrite=True
+    if not os.path.isfile(orient_string) or overwrite:
+        if os.path.isfile(orient_string):
+            os.remove(orient_string)
         file = os.path.join(work_dir,id+"_tmp_mask"+ext);
         cmd = "bash " + os.path.join(gunniespath,"find_relative_orientation_by_CoM.bash") + f" {md} {file}"
         #curious, need to look at that find relative orientation code a bit later
@@ -181,13 +187,6 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
             f.write(orient_test)
     else:
         orient_test = open(orient_string, mode='r').read()
-
-
-    for contrast in ["tmp_dwi", "tmp_b0", "tmp_mask"]:
-        file = os.path.join(work_dir, f"{id}_{contrast}{ext}")
-        if os.path.exists(file):
-            cmd = os.path.join(gunniespath,"nifti_header_splicer.bash")+f" {md} {file} {file}"
-            os.system(cmd)
 
     #orientation_output = subprocess.check_output(orient_test, shell=True)
     orientation_out = orient_test.split(",")[0]
@@ -204,10 +203,16 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
             if orientation_out != orientation_in:
                 print("TRYING TO REORIENT...b0 and dwi and mask")
                 if os.path.exists(img_in) and not os.path.exists(img_out):
+                    """
                     reorient_cmd=f"bash {img_xform_exec} {mat_library} {img_in} {orientation_in} {orientation_out} {img_out}"
                     print("This is the command that was requested for reorientation:\n"+reorient_cmd+"\n")
-                    print(f"double check for every variable:\n imxform: {img_xform_exec}\n matlab_lib: {mat_library}\n image1: {img_in}\n orientation_in: {orientation_out}\n orientation_out: {orientation_out}\n img_out={img_out}")
+                    print(f"double check for every variable:\n imxform: {img_xform_exec}\n matlab_lib: {mat_library}\n image1: {img_in}\n orientation_in: {orientation_out}\n orientation_out: {orientation_out}\n   img_out={img_out}")
                     os.system(reorient_cmd)
+                    """
+                    img_transform_exec(img_in, orientation_in, orientation_out, img_out)
+                    if bonusniftipath is not None:
+                        bonus_link = os.path.join(bonusniftipath, f"{id}_{contrast}{ext}")
+                        buildlink(bonus_link, img_out)
                     if os.path.exists(img_out):
                         os.remove(img_in)
                 elif os.path.exists(img_out):
@@ -218,6 +223,23 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         cmd = os.path.join(gunniespath, "nifti_header_splicer.bash" + f" {md} {file} {file}")
 
     mask = os.path.join(work_dir,id+"_mask+ext");
+
+    if bonusniftipath is not None:
+        dwi_out_blink=os.path.join(bonusniftipath,f"{id}_dwi{ext}")
+        buildlink(dwi_out_blink,dwi_out)
+    # Create RELATIVE links to DSI_studio outputs:
+    for contrast in ["fa0", "rd", "ad", "md"]:
+        real_file=largerfile(os.path.join(work_dir,f"*.fib.gz.{contrast}{ext}"))  # It will be fun times if we ever have more than one match to this pattern...
+        contrast=contrast.replace("0","")
+        linked_file=os.path.join(shortcut_dir,f"{id}_{contrast}{ext}")
+        # We need to make sure that we didn't accidentally link to a non-existent file.
+        header_fix=True
+        if header_fix:
+            space_transpose(dwi_out, real_file)
+        buildlink(linked_file, real_file)
+        if bonusniftipath is not None:
+            blinked_file = os.path.join(bonusniftipath, f"{id}_{contrast}{ext}")
+            buildlink(blinked_file, real_file)
 
     if cleanup:
         if os.path.isfile(tmp_mask) and os.path.isfile(mask_link):
