@@ -12,7 +12,7 @@ import os
 from bvec_handler import extractbvals, rewrite_subject_bvalues, fix_bvals_bvecs
 from time import time
 import shutil
-from mouse_diffusion_preprocessing import launch_preprocessing
+from diffusion_preprocessing import launch_preprocessing
 from file_tools import mkcdir, largerfile
 import shutil
 
@@ -45,13 +45,14 @@ subject = "58214"
 #outpath = None
 #outpath = "/Users/alex/jacques/APOE_temp"
 outpath = "/Volumes/Data/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
-shortcutpath = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool/"
-bonusniftipath = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool_test/"
+shortcutpath = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool_test/"
+bonusniftipath = None
 mkcdir(outpath)
 subjects = ["02654", "02690", "02720", "02737", "02745", "02753", "02765", "02771", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926"]
 subjects = ["02871", "02877", "02898", "02926"]
 subjects = ["02842"]
 subjects = ["02654", "02690", "02720", "02737", "02753", "02765", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02871", "02877", "02898", "02926"]
+subjects = ["02804"]
 
 #subjects = ["02753", "02765", "02771"]
 #weirdones = ["02745", "02771", "02842"]

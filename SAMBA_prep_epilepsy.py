@@ -6,7 +6,7 @@ import glob
 import os
 from bvec_handler import extractbvals, cut_bvals_bvecs, fix_bvals_bvecs
 from time import time
-from mouse_diffusion_preprocessing import launch_preprocessing
+from diffusion_preprocessing import launch_preprocessing
 from file_tools import mkcdir, largerfile
 import shutil
 

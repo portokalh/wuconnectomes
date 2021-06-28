@@ -5,7 +5,7 @@ import shutil
 import subprocess
 from file_tools import largerfile, mkcdir, getext, getrelativepath
 from img_transform_exec import img_transform_exec, space_transpose
-from dipy.io.image import load_nifti, save_nifti
+import nibabel as nib
 
 def buildlink(linked_file, real_file):
     if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
@@ -14,6 +14,41 @@ def buildlink(linked_file, real_file):
         relpath = getrelativepath(real_file, linked_file)
         link_cmd=f"ln -s ./{relpath} {linked_file}"
         os.system(link_cmd)
+
+def applymask_samespace(file, mask, outpath=None):
+    #note: there should definitely be a bet option which would probably end up faster, but for some insane reason there is no
+    #obvious documentation on it, so this will do for now -_-
+    img_nii= nib.load(file)
+    mask_nii = nib.load(mask)
+    img_data = img_nii.get_fdata()
+    img_data_new = img_data
+    mask_data = mask_nii.get_fdata()
+    img_shape = img_nii.shape
+    dims = np.size(img_shape)
+    if (dims == 3 or dims == 4) and mask_nii.shape[0:3] == img_nii.shape[0:3]:
+        for i in np.arange(img_shape[0]):
+            for j in np.arange(img_shape[1]):
+                for k in np.arange(img_shape[2]):
+                    if mask_data[i, j, k] == 1:
+                        if dims == 3:
+                            img_data_new[i, j, k] = img_data[i, j, k]
+                        else:
+                            for l in range(img_shape[3]):
+                                img_data_new[i, j, k, l] = img_data[i, j, k, l]
+                    else:
+                        if dims == 3:
+                            img_data_new[i, j, k] = 0
+                        else:
+                            for l in range(img_shape[3]):
+                                img_data_new[i, j, k, l] = 0
+    elif dims not in [3,4]:
+        raise TypeError("Could not interpret the dimensions of the entering image")
+    elif mask_nii.shape[0:3] != img_nii.shape[0:3]:
+        raise TypeError("The shape of the mask and the image are not equal, therefore readjustments are needed")
+    img_nii_new = nib.Nifti1Image(img_data_new, img_nii.affine, img_nii.header)
+    if outpath is None:
+        outpath = file
+    nib.save(img_nii_new, outpath)
 
 def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000, shortcutpath=None, bonusniftipath=None, gunniespath="~/gunnies/", matlabpath="/mnt/clustertmp/common/rja20_dev/"):
 
@@ -82,7 +117,6 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         os.remove(raw_dwi)
 
     # Run Local PCA Denoising algorithm on 4D nifti:
-    # Note: the LPCA python has a logical switch that will produce another, confounding mask (though arguably better). This is currently switched off, but can cause confusion and delay if switched on and not properly documented.
     denoised_nii = os.path.join(work_dir,f"LPCA_{id}_nii4D.nii.gz")
     masked_nii = os.path.join(work_dir,nii_name)
     if not "nii.gz" in masked_nii:
@@ -140,6 +174,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         if not os.path.exists(tmp_b0_out):
             cmd=f"select_dwi_vols {coreg_nii} {bvals} {tmp_b0_out} 0  -m;"
             os.system(cmd)
+
     elif cleanup and os.path.exists(tmp_b0_out):
         os.remove(tmp_b0_out)
 
@@ -157,16 +192,21 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
 
     # Hopefully the new auto-detect-orientation code will work...
 
-    img_xform_exec=os.path.join(matlabpath,"img_transform_executable","run_img_transform_exec_mac.sh")
-    mat_library=os.path.join(matlabpath,"MATLAB2015b_runtime","v90")
-    mat_library=os.path.join(matlabpath,"MyAppInstaller_web.app")
+    #img_xform_exec=os.path.join(matlabpath,"img_transform_executable","run_img_transform_exec_mac.sh")
+    #mat_library=os.path.join(matlabpath,"MATLAB2015b_runtime","v90")
+    #mat_library=os.path.join(matlabpath,"MyAppInstaller_web.app")
     # Enforce header consistency, based on mask--no, scratch that--based on fa from DSI Studio
     # No scratch that--fa doesn't necessarily have a consistent center of mass!
-    md=f"{shortcut_dir}/{id}_md{ext}";
+    md=f"{work_dir}/{id}_md{ext}";
 
     # I'm not going to say specifically why, but, we only need to compare orientations between the mask and the md.
     # This only works on clean runs, and won't catch b0s or dwis that have been previously incorrectly turned.
 
+    for contrast in ["md"]:
+        real_file=largerfile(os.path.join(work_dir,f"*.fib.gz.{contrast}{ext}"))  # It will be fun times if we ever have more than one match to this pattern...
+        contrast=contrast.replace("0","")
+        linked_file=os.path.join(work_dir,f"{id}_{contrast}{ext}")
+        buildlink(linked_file, real_file)
 
     for contrast in ["tmp_dwi", "tmp_b0", "tmp_mask"]:
         file = os.path.join(work_dir, f"{id}_{contrast}{ext}")
@@ -210,33 +250,54 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
                     os.system(reorient_cmd)
                     """
                     img_transform_exec(img_in, orientation_in, orientation_out, img_out)
-                    if bonusniftipath is not None:
-                        bonus_link = os.path.join(bonusniftipath, f"{id}_{contrast}{ext}")
-                        buildlink(bonus_link, img_out)
                     if os.path.exists(img_out):
                         os.remove(img_in)
                 elif os.path.exists(img_out):
                     os.remove(img_in)
             else:
                 shutil.move(img_in,img_out)
-        file=os.path.join(work_dir, id+ "_" + contrast + "." + ext);
-        cmd = os.path.join(gunniespath, "nifti_header_splicer.bash" + f" {md} {file} {file}")
 
-    mask = os.path.join(work_dir,id+"_mask+ext");
+        linked_file=os.path.join(shortcut_dir,f"{id}_{contrast}{ext}")
+        shutil.copyfile(img_out, linked_file)
+        #buildlink(linked_file, img_out)
+        #file=os.path.join(work_dir, id+ "_" + contrast + '_test'+ ext);
+        #cmd = os.path.join(gunniespath, "nifti_header_splicer.bash" + f" {md} {file} {file}")
+        #os.system(cmd)
+        if bonusniftipath is not None:
+            bonus_link = os.path.join(bonusniftipath, f"{id}_{contrast}{ext}")
+            buildlink(bonus_link, img_out)
+
+    mask = os.path.join(work_dir,f"{id}_mask{ext}")
+    b0 = os.path.join(work_dir,f"{id}_b0{ext}")
+    bonusmask=True
+    if bonusmask:
+        mask_new = mask.replace("_mask", "_new")
+        bet_cmd = f"bet {b0} {mask_new} -m -f 0.3"
+        os.system(bet_cmd)
+        mask_new = mask_new.replace("_new","_new_mask")
 
     if bonusniftipath is not None:
         dwi_out_blink=os.path.join(bonusniftipath,f"{id}_dwi{ext}")
         buildlink(dwi_out_blink,dwi_out)
-    # Create RELATIVE links to DSI_studio outputs:
+
+    if bonusmask:
+        applymask_samespace(dwi_out, mask_new) #(add outpath if you want to save to different location rather than overwrite)
+        b0_out=os.path.join(work_dir,f"{id}_{contrast}{ext}")
+        applymask_samespace(b0_out, mask_new)
+
     for contrast in ["fa0", "rd", "ad", "md"]:
         real_file=largerfile(os.path.join(work_dir,f"*.fib.gz.{contrast}{ext}"))  # It will be fun times if we ever have more than one match to this pattern...
+        if bonusmask:
+            applymask_samespace(real_file, mask_new)
         contrast=contrast.replace("0","")
         linked_file=os.path.join(shortcut_dir,f"{id}_{contrast}{ext}")
-        # We need to make sure that we didn't accidentally link to a non-existent file.
+        linked_file_w=os.path.join(work_dir,f"{id}_{contrast}{ext}")
         header_fix=True
         if header_fix:
             space_transpose(dwi_out, real_file)
-        buildlink(linked_file, real_file)
+
+        shutil.copyfile(real_file,linked_file)
+        buildlink(linked_file_w,real_file)
         if bonusniftipath is not None:
             blinked_file = os.path.join(bonusniftipath, f"{id}_{contrast}{ext}")
             buildlink(blinked_file, real_file)
@@ -249,70 +310,8 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         if os.path.isfile(tmp_b0_out) and os.path.isfile(b0_out_link):
             os.path.remove(tmp_b0_out)
 
-    # Turning off the following code block for now...
-
     #for contrast in dwi
     #dwi_link=os.path.join(shortcut_dir,f"{id}_dwi{ext}")
     #buildlink(dwi_link, tmp_dwi_out)
     #buildlink(b0_out_link, b0_out)
     #buildlink(mask_link, tmp_mask)
-
-    """
-    if (( 0 ));then
-    file=${work_dir} / ${id}_mask.${ext};
-    orient_test=f"( / Users / alex / bass / gitfolder / gunnies / find_relative_orientation_by_CoM.bash {md} {file});
-
-    orientation_in=$(echo ${orient_test} | cut -d ',' -f2 | cut -d ':' -f2);
-    orientation_out=$(echo ${orient_test} | cut -d ',' -f1 | cut -d ':' -f2);
-    echo "flexible orientation: ${orientation_in}";
-    echo "reference orientation: ${orientation_out}";
-    if[["${orientation_out}" != "${orientation_in}"]];then
-    echo "TRYING TO REORIENT...MASK!";
-    img_in=${work_dir} / ${id}_tmp2_mask.${ext};
-    img_out=${work_dir} / ${id}_mask.${ext};
-
-    mv $img_out $img_in;
-    reorient_cmd="${img_xform_exec} ${mat_library} ${img_in} ${orientation_in} ${orientation_out} ${img_out}";
-    ${reorient_cmd};
-    if os.path.existsimg_out}]];then
-    rm $img_in;
-    fi
-    fi
-    fi
-    """
-    """
-    mddata, mdaffine = load_nifti(md)
-    for contrast in ["dwi", "b0", "mask"]:
-        file=os.path.join(shortcut_dir,f"{id}_{contrast}{ext}")
-        olddata, oldaffine=load_nifti(dwi_link)
-        save_nifti(file, olddata, mdaffine)
-        #cmd = os.path.join(gunniespath,"nifti_header_splicer.bash")+f" {md} {file} {file}";
-        #os.system(cmd)
-
-
-    # Apply updated mask to dwi and b0.
-    #mask=os.path.join(work_dir,f"{id}_mask{ext}")
-
-    # for contrast in dwi b0;do
-    #    file=${work_dir}/${id}_${contrast}.${ext};
-    #    fslmaths ${file} -mas ${mask} ${file} -odt "input";
-    # done
-
-    #if cleanup and os.path.exists(tmp_mask) and os.path.exists(mask):
-    #    os.remove(tmp_mask)
-
-    #if cleanup and os.path.exists(tmp_dwi_out) and os.path.exists(dwi_out):
-    #    os.remove(tmp_dwi_out)
-
-    #if cleanup and os.path.exists(tmp_b0_out) and os.path.exists(b0_out):
-    #    os.remove(tmp_b0_out);
-    
-    if not os.path.exists(tmp_mask):
-    file=os.path.join(work_dir,f"{id}_tmp_mask{ext}")
-    #orient_test=os.path.join(gunniespath, "find_relative_orientation_by_CoM.bash")+f" {md} {file}";
-    #orientation_in=$(echo ${orient_test} | cut -d ',' -f2 | cut -d ':' -f2);
-    #orientation_out=$(echo ${orient_test} | cut -d ',' -f1 | cut -d ':' -f2);
-    print(f"flexible orientation: {orientation_in}");
-    print(f"reference orientation: {orientation_out}");
-
-    """
