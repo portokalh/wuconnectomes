@@ -26,7 +26,7 @@ import smtplib
 import pathlib
 from dipy.denoise.localpca import mppca
 from dif_to_trk import QCSA_tractmake
-
+from file_tools import mkcdir
 import os, re, sys, io, struct, socket, datetime
 from email.mime.text import MIMEText
 import glob
@@ -79,7 +79,7 @@ from figures_handler import shore_scalarmaps
 from tract_eval import bundle_coherence, LiFEvaluation
 from BIAC_tools import send_mail, isempty
 from tract_handler import target, prune_streamlines, get_trk_params, get_tract_params, gettrkpath, reducetractnumber, reducetractnumber_all
-from nifti_handler import getfa, getdwidata_all, getdwidata, getdwipath, getgtab, getlabelmask, move_bvals, getmask
+from nifti_handler import getfa, getdwidata_all, getdwidata, getdwipath, getgtab, getlabelmask, move_bvals, getmask, getb0s
 from diff_preprocessing import dwi_to_mask, denoise_pick, make_tensorfit
 import tract_save
 import xlrd
@@ -89,7 +89,7 @@ import shutil
 import dipy.reconst.msdki as msdki
 
 from multiprocessing import Pool
-
+from convert_atlas_mask import convert_labelmask, chassym3_converter
 #from connectivity_own import connectivity_matrix_special
 
 
@@ -336,19 +336,17 @@ def makemask_fromdiff(dwipath, subject, bvec_orient):
     return(mask)
 
 
-def connectomes_to_excel(connectome,ROI_excel,output_path):
+def connectomes_to_excel(connectome, index_to_struct, output_path):
 
-    df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
-    structure = df['Structure']
+    #df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
+    #structure = df['Structure']
 
     workbook = xlsxwriter.Workbook(output_path)
     worksheet = workbook.add_worksheet()
 
-    num = 1
-    for struct in structure:
-        worksheet.write(0, num, struct)
-        worksheet.write(num, 0, struct)
-        num += 1
+    for num in np.arange(1, np.shape(connectome)[0]):
+        worksheet.write(0, num, index_to_struct[num])
+        worksheet.write(num, 0, index_to_struct[num])
 
     row=0
     for col, data in enumerate(connectome):
@@ -359,22 +357,19 @@ def connectomes_to_excel(connectome,ROI_excel,output_path):
     return
 
 
-def grouping_to_excel(grouping,ROI_excel,output_path):
+def grouping_to_excel(grouping, index_to_struct, output_path):
 
-    df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
-    structure = df['Structure']
+    #df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
+    #structure = df['Structure']
 
     workbook = xlsxwriter.Workbook(output_path)
     worksheet = workbook.add_worksheet()
 
-    num = 1
-    for struct in structure:
-        worksheet.write(0, num, struct)
-        worksheet.write(num, 0, struct)
-        num += 1
+    for num in np.arange(1, np.shape(grouping)[0]):
+        worksheet.write(0, num, index_to_struct[num])
+        worksheet.write(num, 0, index_to_struct[num])
 
     row=0
-
     for i in np.arange(np.shape(grouping)[0]):
         for j in np.arange(np.shape(grouping)[1]):
             worksheet.write(i+1,j+1,str(grouping[i,j]))
@@ -444,12 +439,21 @@ def makedir(dir):
 
 
 def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype = "T1",
-                              inclusive = False, function_processes = 1, forcestart = False, picklesave = True,
+                              inclusive = False, function_processes = 1, forcestart = False, picklesave = True, labeltype='orig',
                               verbose = None):
 
     picklepath_connect = os.path.join(outpath, subject + str_identifier + '_connectomes.p')
     connectome_xlsxpath = os.path.join(outpath, subject + str_identifier + "_connectomes.xlsx")
+    picklepath_grouping = os.path.join(outpath, subject + str_identifier + '_grouping.p')
     grouping_xlsxpath = os.path.join(outpath, subject + str_identifier + "_grouping.xlsx")
+    picklepath_index = os.path.join(outpath, subject + str_identifier + '_index_struct.p')
+
+    test_mode=False
+    if test_mode:
+        picklepath_connect_test = os.path.join(outpath, subject + str_identifier + '_connectomes_test.p')
+
+
+    mkcdir(outpath)
 
     if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and not forcestart:
         print("The writing of pickle and excel of " + str(subject) + " is already done")
@@ -461,9 +465,16 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     mask, affinemask = getmask(dwipath,subject,masktype,verbose)
     if mask is None:         # Build Brain Mask
         if masktype == 'dwi':
-            dwi_data, dwiaffine, _, dwipath, _, _ = getdwidata(dwipath, subject, verbose)
-            outpathmask = str(pathlib.Path(dwipath).parent.absolute())
-            mask, _ = dwi_to_mask(dwi_data, subject, dwiaffine, outpathmask, makefig=False, vol_idx=[0,1,2,3], median_radius=5,
+            if verbose:
+                print("Beginning to read the dwifile of subject " + subject + " at " + dwipath)
+            dwi_data, dwiaffine, _, dwi_fpath, _, _ = getdwidata(dwipath, subject, verbose)
+            if verbose:
+                print("loaded the file " + dwi_fpath)
+            outpathmask = str(pathlib.Path(dwi_fpath).parent.absolute())
+            if verbose:
+                print("Creating mask for subject " + subject + " at " + outpathmask)
+            vol_idx = getb0s(dwipath, subject)
+            mask, _ = dwi_to_mask(dwi_data, subject, dwiaffine, outpathmask, makefig=False, vol_idx=vol_idx, median_radius=5,
                                   numpass=6, dilate=2)
     mypath = dwipath
 
@@ -475,16 +486,33 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         labelmask = labelmask[:, :, :, 0]
     print("Mask shape is " + str(np.shape(labelmask)))
     cutoff = 2
-                    
-    #labelmask = convert_labelmask(ROI_excel, labelmask)
+
+    if labeltype != 'orig':
+        converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = chassym3_converter(ROI_excel)
+        if labeltype == 'combined':
+            labeloutpath = labelpath.replace('.nii.gz','_comb.nii.gz')
+            if not os.path.isfile(labeloutpath):
+                labelmask = convert_labelmask(labelmask, converter_comb, atlas_outpath=labeloutpath,
+                                              affine_labels = labelaffine)
+            index_to_struct = index_to_struct_comb
+        if labeltype == 'lrordered':
+            labeloutpath = labelpath.replace('.nii.gz','_lr_ordered.nii.gz')
+            if not os.path.isfile(labeloutpath):
+                labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
+                                              affine_labels = labelaffine)
+            labelmask, labelaffine = load_nifti(labeloutpath)
+            index_to_struct = index_to_struct_lr
+
+    pickle.dump(index_to_struct, open(picklepath_index, "wb"))
 
     if (trkfilepath is not None and trkpruneexists is False and prunesave):
 
-        if verbose:
-            print("Beginning to read the dwifile of subject " + subject + " at "+dwipath)
-        fdwi_data, _, _, fdwipath, _, _ = getdwidata(dwipath, subject, verbose)
-        if verbose:
-            print("loaded the file " + fdwipath)
+        if 'dwi_data' not in locals():
+            if verbose:
+                print("Beginning to read the dwifile of subject " + subject + " at "+dwipath)
+            dwi_data, _, _, dwipath, _, _ = getdwidata(dwipath, subject, verbose)
+            if verbose:
+                print("loaded the file " + dwipath)
 
         if verbose:
             print("Beginning to read " + trkfilepath)
@@ -497,12 +525,11 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         trkstreamlines = trkdata.streamlines
         trkprunepath = os.path.dirname(trkfilepath) + '/' + subject + str_identifier + '_pruned.trk'
 
-
-        if np.size(np.shape(fdwi_data)) == 1:
-            fdwi_data = fdwi_data[0]
-        if np.size(np.shape(fdwi_data)) == 4:
-            fdwi_data = fdwi_data[:, :, :, 0]
-        print("Mask shape is " + str(np.shape(fdwi_data)))
+        if np.size(np.shape(dwi_data)) == 1:
+            dwi_data = dwi_data[0]
+        if np.size(np.shape(dwi_data)) == 4:
+            dwi_data = dwi_data[:, :, :, 0]
+        print("Mask shape is " + str(np.shape(dwi_data)))
 
         pruned_streamlines = prune_streamlines(list(trkstreamlines), mask, cutoff=cutoff, verbose=verbose)
         pruned_streamlines_SL = Streamlines(pruned_streamlines)
@@ -590,9 +617,18 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         M, grouping = connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask, inclusive=True, symmetric=True,
                                             return_mapping=True,
                                             mapping_as_streamlines=False)
+        n = 1
 
     if verbose:
         print("Time taken for the accelerated calculation with " + str(n) + " processes " + str(- t + time()))
+
+    if picklesave:
+        pickle.dump(M, open(picklepath_connect, "wb"))
+        pickle.dump(grouping, open(picklepath_grouping, "wb"))
+        if verbose:
+            txt = ("The connectomes were saved at "+picklepath_connect)
+            send_mail(txt, subject="Pickle save")
+            print(txt)
 
     matrix_sl = np.empty(np.shape(M), dtype=object)
     for i in np.arange(np.shape(matrix_sl)[0]):
@@ -604,7 +640,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
 
     M = np.delete(M, 0, 0)
     M = np.delete(M, 0, 1)
-    #grouping[(24, 30)]
+
     matrix_sl = np.delete(matrix_sl, 0, 0)
     matrix_sl = np.delete(matrix_sl, 0, 1)
 
@@ -613,35 +649,60 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         os.remove(connectome_xlsxpath)
         os.remove(grouping_xlsxpath)
 
-    if picklesave:
-        pickle.dump(M, open(picklepath_connect, "wb"))
-        if verbose:
-            txt = ("The connectomes were saved at "+picklepath_connect)
-            send_mail(txt, subject="Pickle save")
-            print(txt)
-
-    connectomes_to_excel(M, ROI_excel, connectome_xlsxpath)
-    grouping_to_excel(matrix_sl, ROI_excel, grouping_xlsxpath)
+    connectomes_to_excel(M, index_to_struct, connectome_xlsxpath)
+    grouping_to_excel(matrix_sl, index_to_struct, grouping_xlsxpath)
     if verbose:
         txt = ("The excelfile was saved at "+grouping_xlsxpath)
         send_mail(txt, subject="Excel save")
         print(txt)
 
-def convert_labelmask(ROI_excel, labelmask):
-    df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
-    index1 = df['index']
-    index2 = df['Index2']
-    maskdic = {}
-    labelmask2 = np.zeros(np.shape(labelmask))
-    maskdic[0] = 0
-    for i in np.arange(np.size(index1)):
-        maskdic[index2[i]] = index1[i]
-    for i in np.arange(np.shape(labelmask)[0]):
-        for j in np.arange(np.shape(labelmask)[1]):
-            for k in np.arange(np.shape(labelmask)[2]):
-                labelmask2[i, j, k] = maskdic[labelmask[i, j, k]]
 
-    return labelmask2.astype('int16')
+def tract_connectome_analysis_pickle(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype="T1",
+                              inclusive=False, function_processes=1, forcestart=False, picklesave=True,
+                              verbose=None):
+
+    picklepath_connect = os.path.join(outpath, subject + str_identifier + '_connectomes.p')
+    connectome_xlsxpath = os.path.join(outpath, subject + str_identifier + "_connectomes.xlsx")
+    grouping_xlsxpath = os.path.join(outpath, subject + str_identifier + "_grouping.xlsx")
+    picklepath_grouping = os.path.join(outpath, subject + str_identifier + '_grouping.p')
+    picklepath_connect_test = os.path.join(outpath, subject + str_identifier + '_connectomes_test.p')
+    picklepath_temp = os.path.join(outpath, subject + str_identifier + '_index_struct.p')
+    mkcdir(outpath)
+
+    with open(picklepath_connect,'rb') as f:
+        M = pickle.load(f)
+    with open(picklepath_grouping,'rb') as f:
+        grouping = pickle.load(f)
+    with open(picklepath_connect_test,'rb') as f:
+        M2 = pickle.load(f)
+    with open(picklepath_temp,'rb') as f:
+        index_to_struct = pickle.load(f)
+
+    matrix_sl = np.empty(np.shape(M), dtype=object)
+    for i in np.arange(np.shape(matrix_sl)[0]):
+        for j in np.arange(np.shape(matrix_sl)[1]):
+            matrix_sl[i, j] = []
+    for key in grouping.keys():
+        matrix_sl[key] = grouping[key]
+        matrix_sl[tuple(np.flip(key))] = grouping[key]
+
+    M = np.delete(M, 0, 0)
+    M = np.delete(M, 0, 1)
+
+    matrix_sl = np.delete(matrix_sl, 0, 0)
+    matrix_sl = np.delete(matrix_sl, 0, 1)
+
+    if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and forcestart:
+        os.remove(picklepath_connect)
+        os.remove(connectome_xlsxpath)
+        os.remove(grouping_xlsxpath)
+
+    connectomes_to_excel(M, index_to_struct, connectome_xlsxpath)
+    grouping_to_excel(matrix_sl, index_to_struct, grouping_xlsxpath)
+    if verbose:
+        txt = ("The excelfile was saved at "+grouping_xlsxpath)
+        send_mail(txt, subject="Excel save")
+        print(txt)
 
 def tract_connectome_analysis_old(dwipath, trkpath, str_identifier, outpath, subject, whitematter_labels, targetrois, labelslist, ROI_excel, bvec_orient=[1,2,3], verbose=None):
 

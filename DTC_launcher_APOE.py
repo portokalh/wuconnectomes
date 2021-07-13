@@ -30,6 +30,7 @@ l = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498']
 #l=['N57447']
 #l=['N57496']
 l = ['N57498']
+l = ['N57692']
 
 #l = ["H29410", "H29060"]
 argv = sys.argv[1:]
@@ -61,24 +62,25 @@ if 'start' not in locals():
     else:
         l = l[0:end]
 print("Will go from subject "+ l[0] + " to subject "+l[-1])
-max_processors = 1
+max_processors = 16
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 
 print("Running on ", max_processors, " processors")
 
-BIGGUS_DISKUS = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/"
-dwipath = BIGGUS_DISKUS + "/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
-dwipath_preprocessed = BIGGUS_DISKUS + "/C57_JS/diff_whiston_preprocessed/"
-dwipath = BIGGUS_DISKUS + '/DWI_RAS_40subj/'
-outtrkpath = BIGGUS_DISKUS + '/TRK_RAS_40subj/'
-figspath = BIGGUS_DISKUS + "/Figures_RAS_40subj/"
+main_folder = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/"
+main_folder = "/Users/alex/jacques/APOE_temp/"
+dwipath = main_folder + "/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
+dwipath_preprocessed = main_folder + "/C57_JS/diff_whiston_preprocessed/"
+dwipath = main_folder + '/DWI_allsubj/'
+outtrkpath = main_folder + '/TRK_allsubj/'
+figspath = main_folder + "/Figures_RAS_40subj_lr/"
 
 outpathpickle = figspath
 
-atlas_legends = BIGGUS_DISKUS + "/../atlases/IITmean_RPI/IITmean_RPI_lookup.xlsx"
-atlas_legends = BIGGUS_DISKUS + "/../atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+atlas_legends = main_folder + "/../atlases/IITmean_RPI/IITmean_RPI_lookup.xlsx"
+atlas_legends = main_folder + "/../atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 atlas_legends = "/Users/alex/jacques/connectomes_testing//atlases/CHASSSYMM3AtlasLegends.xlsx"
 
 stepsize = 2
@@ -129,21 +131,6 @@ elif len(trkroi)>1:
 #str_identifier = '_stepsize_' + str(stepsize) + saved_streamlines+ roistring
 str_identifier = '_stepsize_' + str(stepsize) + classifiertype + roistring + saved_streamlines
 
-labelslist=[]
-if targetrois and (targetrois[0]!="wholebrain" or len(targetrois) > 1):
-    df = pd.read_excel(atlas_legends, sheet_name='Sheet1')
-    df['Structure'] = df['Structure'].str.lower()
-    for roi in targetrois:
-        rslt_df = df.loc[df['Structure'] == roi.lower()]
-        if roi.lower() == "wholebrain" or roi.lower() == "brain":
-            labelslist=None
-        else:
-            labelslist=np.concatenate((labelslist, np.array(rslt_df.index)))
-print(labelslist)
-if isempty(labelslist) and roi.lower() != "wholebrain" and roi.lower() != "brain":
-    txt = "Warning: Unrecognized roi, will take whole brain as ROI. The roi specified was: " + roi
-    print(txt)
-
 bvec_orient=[1,2,-3]
 bvec_orient=[-2,1,3]
 
@@ -160,7 +147,7 @@ if verbose:
 duration1=time()
 overwrite = False
 get_params = False
-forcestart = False
+forcestart = True
 if forcestart:
     print("WARNING: FORCESTART EMPLOYED. THIS WILL COPY OVER PREVIOUS DATA")
 picklesave = True
@@ -176,11 +163,31 @@ for subject in l:
     else:
         notdonelist.append(subject)
 
-str_identifier='_wholebrain_all_stepsize_2'
+#str_identifier='_wholebrain_small_stepsize_2'
 createmask = True
 
 dwi_results = []
 vol_b0 = [0,1,2,3]
+
+labeltype = 'lrordered'
+#labelslist is only good if you want to build tracts pertaining to specific regions, not used currently
+
+"""
+labelslist=[]
+if targetrois and (targetrois[0]!="wholebrain" or len(targetrois) > 1):
+    df = pd.read_excel(atlas_legends, sheet_name='Sheet1')
+    df['Structure'] = df['Structure'].str.lower()
+    for roi in targetrois:
+        rslt_df = df.loc[df['Structure'] == roi.lower()]
+        if roi.lower() == "wholebrain" or roi.lower() == "brain":
+            labelslist=None
+        else:
+            labelslist=np.concatenate((labelslist, np.array(rslt_df.index)))
+print(labelslist)
+if isempty(labelslist) and roi.lower() != "wholebrain" and roi.lower() != "brain":
+    txt = "Warning: Unrecognized roi, will take whole brain as ROI. The roi specified was: " + roi
+    print(txt)
+"""
 
 if subject_processes>1:
     if function_processes>1:
@@ -196,7 +203,7 @@ if subject_processes>1:
     tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath_preprocessed, outtrkpath, str_identifier, figspath,
                                                                    subject, atlas_legends, bvec_orient, brainmask,
                                                                     inclusive,function_processes, forcestart,
-                                                                    picklesave, verbose) for subject in l]).get()
+                                                                    picklesave, labeltype, verbose) for subject in l]).get()
     pool.close()
 else:
     for subject in l:
@@ -207,7 +214,7 @@ else:
        #                                    verbose))
        tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject,
                                                      atlas_legends, bvec_orient, brainmask, inclusive, function_processes,
-                                                     forcestart, picklesave, verbose))
+                                                     forcestart, picklesave, labeltype, verbose))
 
 
 subject=l[0]

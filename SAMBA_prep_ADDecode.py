@@ -46,7 +46,7 @@ subject = "58214"
 #outpath = "/Users/alex/jacques/APOE_temp"
 outpath = "/Volumes/Data/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
 shortcutpath = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool_test/"
-bonusniftipath = None
+bonusshortcutfolder = None
 mkcdir(outpath)
 subjects = ["02654", "02690", "02720", "02737", "02745", "02753", "02765", "02771", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926"]
 subjects = ["02871", "02877", "02898", "02926"]
@@ -69,25 +69,7 @@ if makebtables:
         fbvals, fbvecs = extractbvals(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
         #fbvals, fbvecs = rewrite_subject_bvalues(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
 
-quickfix = True
-if quickfix:
-    bval_file="/Volumes/Data/Badea/ADdecode.01/Analysis/DWI/01912_bvals.txt"
-    bvec_file="/Volumes/Data/Badea/ADdecode.01/Analysis/DWI/01912_bvec.txt"
-    bval_file, bvec_file = fix_bvals_bvecs(bval_file, bvec_file, outpath= outpath, identifier="", format="dsi")
-    results=[]
-    copybtables=True
-    if copybtables:
-        for subject in subjects:
-            subjectpath = os.path.join(outpath, proc_name + subject)
-            mkcdir(subjectpath)
-            #subjectpath = glob.glob(os.path.join(os.path.join(outpath, "*" + subject + "*")))
-            #subjectpath = subjectpath[0]
-            new_bval_file=os.path.join(subjectpath, subject+"_bvals.txt")
-            new_bvec_file=os.path.join(subjectpath, subject+"_bvecs.txt")
-            if not os.path.exists(new_bval_file):
-                shutil.copyfile(bval_file,new_bval_file)
-            if not os.path.exists(new_bvec_file):
-                shutil.copyfile(bvec_file,new_bvec_file)
+#quickfix was here
 
 max_processors = 50
 if mp.cpu_count() < max_processors:
@@ -115,7 +97,7 @@ else:
         max_file=largerfile(subjectpath)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
         #max_file="/Volumes/Data/Badea/ADdecode.01/Data/Anat/20210522_02842/bia6_02842_003.nii.gz"
-        launch_preprocessing(subject, max_file, outpath, nominal_bval=1000, shortcutpath=shortcutpath, bonusniftipath = bonusniftipath, gunniespath="/Users/alex/bass/gitfolder/gunnies/", matlabpath="/Users/alex/Documents/MATLAB/")
+        launch_preprocessing(subject, max_file, outpath, nominal_bval=1000, shortcutpath=shortcutpath, bonusshortcutfolder = bonusshortcutfolder, gunniespath="/Users/alex/bass/gitfolder/gunnies/")
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
 """
@@ -125,4 +107,25 @@ for subj in subjectlist:
     shutil.copyfile(fbvals, fbvals_new)
     fbvecs_new = fbvals.replace("58214", subj)
     shutil.copyfile(fbvals, fbvals_new)
+    
+    
+quickfix = True
+if quickfix:
+    bval_file="/Volumes/Data/Badea/ADdecode.01/Analysis/DWI/01912_bvals.txt"
+    bvec_file="/Volumes/Data/Badea/ADdecode.01/Analysis/DWI/01912_bvec.txt"
+    bval_file, bvec_file = fix_bvals_bvecs(bval_file, bvec_file, outpath= outpath, identifier="", format="dsi")
+    results=[]
+    copybtables=True
+    if copybtables:
+        for subject in subjects:
+            subjectpath = os.path.join(outpath, proc_name + subject)
+            mkcdir(subjectpath)
+            #subjectpath = glob.glob(os.path.join(os.path.join(outpath, "*" + subject + "*")))
+            #subjectpath = subjectpath[0]
+            new_bval_file=os.path.join(subjectpath, subject+"_bvals.txt")
+            new_bvec_file=os.path.join(subjectpath, subject+"_bvecs.txt")
+            if not os.path.exists(new_bval_file):
+                shutil.copyfile(bval_file,new_bval_file)
+            if not os.path.exists(new_bvec_file):
+                shutil.copyfile(bvec_file,new_bvec_file)
 """

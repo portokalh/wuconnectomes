@@ -217,8 +217,7 @@ def getdwidata(mypath, subject, verbose=None):
 
     return dwi_data, affine, vox_size, dwi_fpath, hdr, header
 
-def getgtab(mypath, subject, bvec_orient=[1,2,3]):
-
+def get_bvals_bvecs(mypath, subject):
     try:
         fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
         fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
@@ -228,7 +227,11 @@ def getgtab(mypath, subject, bvec_orient=[1,2,3]):
         fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
     print(fbvecs)
     bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
+    return bvals, bvecs
 
+def getgtab(mypath, subject, bvec_orient=[1,2,3]):
+
+    bvals, bvecs = get_bvals_bvecs(mypath, subject)
     bvec_sign = bvec_orient/np.abs(bvec_orient)
     bvecs = np.c_[bvec_sign[0]*bvecs[:, np.abs(bvec_orient[0])-1], bvec_sign[1]*bvecs[:, np.abs(bvec_orient[1])-1],
                   bvec_sign[2]*bvecs[:, np.abs(bvec_orient[2])-1]]
@@ -237,6 +240,15 @@ def getgtab(mypath, subject, bvec_orient=[1,2,3]):
 
     return gtab
 
+def getb0s(mypath, subject):
+    bvals, _ = get_bvals_bvecs(mypath, subject)
+    b0s = []
+    i=0
+    for bval in bvals:
+        if bval < 10:
+            b0s.append(i)
+        i += 1
+    return(b0s)
 
 def getdwidata_all(mypath, subject, bvec_orient=[1,2,3], verbose=None):
 

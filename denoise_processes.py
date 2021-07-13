@@ -284,17 +284,14 @@ def genpca_parallel(arr, sigma=None, mask=None, patch_radius=2, pca_method='eig'
         print("Begin mpca denoising")
     arr_shape = arr.shape
     for kx1 in range(0, arr_shape[2] - 2 * patch_radius):
-        kx2 = kx1 + 2 * patch_radius + 1
-
         """
         kx1 = np.floor(num / ((arr_shape[1] - 2 * patch_radius) * (arr_shape[0] - 2 * patch_radius)))
         jx1 = np.floor((num % ((arr_shape[1] - 2 * patch_radius) * (arr_shape[0] - 2 * patch_radius))) / (arr_shape[0] - 2 * patch_radius))
         ix1 = np.floor((num % ((arr_shape[1] - 2 * patch_radius) * (arr_shape[0] - 2 * patch_radius)))%(arr_shape[0] - 2 * patch_radius))
-        kx2 = kx1 + 2*patch_radius + 1
         jx2 = jx1 + 2 * patch_radius + 1
         ix2 = ix1 + 2 * patch_radius + 1
         """
-
+        kx2 = kx1 + 2*patch_radius + 1
 
         jlist= list(range(arr_shape[1] - 2 * patch_radius))
 
@@ -329,9 +326,6 @@ def genpca_parallel(arr, sigma=None, mask=None, patch_radius=2, pca_method='eig'
                 if calc_sigma:
                     var[ix1:ix2, jx1:jx2, kx1:kx2] += resultslist[jj][2][ix1] * resultslist[jj][1][ix1]
                     thetavar[ix1:ix2, jx1:jx2, kx1:kx2] += resultslist[jj][1][ix1]
-                else:
-                    var = 0
-                    thetavar = 0
 
         if verbose:
             print("finished " + str(kx1) + " of " + str(arr_shape[2] - 2 * patch_radius) )
@@ -580,7 +574,7 @@ def genpca(arr, sigma=None, mask=None, patch_radius=2, pca_method='eig',
 
 
 def localpca(arr, sigma, mask=None, patch_radius=2, pca_method='eig',
-             tau_factor=2.3, out_dtype=None):
+             tau_factor=2.3, processes = 1, out_dtype=None, verbose=False):
     r""" Performs local PCA denoising according to Manjon et al. [1]_.
 
     Parameters
@@ -636,9 +630,20 @@ def localpca(arr, sigma, mask=None, patch_radius=2, pca_method='eig',
            theory. Neuroimage 142:394-406.
            doi: 10.1016/j.neuroimage.2016.08.016
     """
-    return genpca(arr, sigma=sigma, mask=mask, patch_radius=patch_radius,
-                  pca_method=pca_method, tau_factor=2.3,
-                  return_sigma=False, out_dtype=out_dtype)
+
+    if processes == 1:
+        return genpca(arr, sigma=sigma, mask=mask, patch_radius=patch_radius,
+                  pca_method=pca_method,  tau_factor=tau_factor,
+                  return_sigma=False, out_dtype=out_dtype, verbose=verbose)
+    elif processes > 1:
+        return genpca_parallel(arr, sigma=sigma, mask=mask, patch_radius=patch_radius,
+                               pca_method=pca_method,  tau_factor=tau_factor,
+                               return_sigma=False, out_dtype=out_dtype, processes=processes, verbose=verbose)
+    else:
+        print("unrecognized number of processes, run as standard genpca")
+        return genpca(arr, sigma=sigma, mask=mask, patch_radius=patch_radius,
+                      pca_method=pca_method, tau_factor=tau_factor,
+                      return_sigma=False, out_dtype=out_dtype, verbose=verbose)
 
 
 def mppca(arr, mask=None, patch_radius=2, pca_method='eig',

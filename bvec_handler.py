@@ -522,6 +522,50 @@ def writebfiles(subjectpath, subject, outpath = None, writeformat = "line", fbva
     File_object.close()
     return bval_file, bvec_file
 
+def extractbvals_research(dwipath, subject, outpath=None, writeformat="tab", fix=True, overwrite=False):
+
+    if os.path.isdir(dwipath):
+        #subjectpath = os.path.join(dwipath, subject)
+        subjectpath = glob.glob(os.path.join(os.path.join(dwipath, "diffusion*"+subject+"*")))
+        subjectpath = subjectpath[0]
+        if outpath is None:
+            outpath = subjectpath
+        fbvals = np.size(glob.glob(outpath + '*_bval*fix*'))
+        fbvecs = np.size(glob.glob(outpath + '*_bvec*fix*'))
+        if (fbvals == 0 and fbvecs == 0) or overwrite:
+            #fbvals = (glob.glob(subjectpath + '*_bval*'))
+            #fbvecs = (glob.glob(subjectpath + '*_bvec*'))
+            fbvals=(glob.glob(os.path.join(outpath, '*' + subject + '*_bvals.txt')))
+            fbvecs=(glob.glob(os.path.join(outpath, '*' + subject + '*_bvecs.txt')))
+            if (np.size(fbvals) > 0 and np.size(fbvecs) > 0) and not overwrite and fix:
+                fbvals = fbvals[0]
+                fbvecs = fbvecs[0]
+                fix_bvals_bvecs(fbvals, fbvecs)
+            else:
+                bval_file, bvec_file = writebfiles(subjectpath, subject, outpath, writeformat=writeformat)
+                if fix:
+                    fbvals, fbvecs = fix_bvals_bvecs(bval_file, bvec_file)
+        return fbvals, fbvecs
+
+    elif os.path.isfile(dwipath):
+        dwifolder = os.path.dirname(os.path.abspath(dwipath))
+        subjectpath = os.path.join(dwifolder, "*" + subject)
+        if outpath is None:
+            outpath = subjectpath
+        fbvals = np.size(glob.glob(subjectpath + '*_bval*fix*'))
+        fbvecs = np.size(glob.glob(subjectpath + '*_bvec*fix*'))
+        if fbvals == 0 and fbvecs == 0:
+            fbvals = np.size(glob.glob(subjectpath + '*_bval*'))
+            fbvecs = np.size(glob.glob(subjectpath + '*_bvec*'))
+            if (fbvals) == 0 or (fbvecs) == 0:
+                bxhpath = dwipath.replace(".nii.gz", ".bxh")
+                bxhpath = bxhpath.replace(".nii", ".bxh")
+                fbvals, fbvecs, _, _, _, _ = extractbvec_fromheader(bxhpath,
+                                                                    fileoutpath=os.path.join(dwifolder, subject),
+                                                                    save="all")
+                if fix:
+                    fix_bvals_bvecs(fbvals, fbvecs)
+
 def extractbvals(dwipath, subject, outpath=None, writeformat="tab", fix=True, overwrite=False):
 
     if os.path.isdir(dwipath):

@@ -31,7 +31,8 @@ from dipy.io.image import load_nifti, save_nifti
 from dipy.io.gradients import read_bvals_bvecs
 from dipy.core.gradients import gradient_table
 
-from dipy.denoise.localpca import localpca
+#from dipy.denoise.localpca import localpca
+from denoise_processes import localpca
 from dipy.denoise.pca_noise_estimate import pca_noise_estimate
 
 from time import time
@@ -65,7 +66,7 @@ bval_or_bvec_or_btable=sys.argv[3]
 outpath=sys.argv[4]
 """
 
-def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath):
+def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath, processes=1, verbose=False):
 
     np.seterr(divide='ignore', invalid='ignore')
 
@@ -139,7 +140,8 @@ def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath):
 
         #lpca
         t = time()
-        denoised_arr = localpca(data2, sigma=sigma1, patch_radius=2,pca_method='svd', tau_factor=2.3)
+        denoised_arr = localpca(data2, sigma=sigma1, patch_radius=2,pca_method='svd', tau_factor=2.3,
+                                processes=processes, verbose=verbose)
         save_nifti(lpca_path, denoised_arr, affine)
         print("Time taken for local PCA denoising", -t + time())
 
