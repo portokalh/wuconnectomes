@@ -212,7 +212,7 @@ if subject_processes>1:
     #tract_results = pool.starmap_async(create_tracts, [(dwipath_preprocessed, outtrkpath, subject, figspath, stepsize, function_processes,
     #                                                    str_identifier, ratio, classifiertype, labelslist, bvec_orient, doprune,
     #                                                    overwrite, get_params, verbose) for subject in l]).get()
-    tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath_preprocessed, outtrkpath, str_identifier, figspath,
+    tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath, outtrkpath, str_identifier, figspath,
                                                                    subject, atlas_legends, bvec_orient, brainmask,
                                                                     inclusive,function_processes, forcestart,
                                                                     picklesave, labeltype, verbose) for subject in l]).get()
