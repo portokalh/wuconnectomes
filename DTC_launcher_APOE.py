@@ -31,6 +31,9 @@ l = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498']
 #l=['N57496']
 l = ['N57498']
 l = ['N57692']
+l= ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504',
+    'N57513','N57515','N57518','N57520','N57522','N57546','N57548','N57550','N57552','N57554','N57559','N57580',
+    'N57582','N57584','N57587','N57590','N57692','N57694','N57700','N57500','N57702','N57709']
 
 #l = ["H29410", "H29060"]
 argv = sys.argv[1:]
@@ -77,13 +80,22 @@ dwipath = main_folder + '/DWI_allsubj/'
 outtrkpath = main_folder + '/TRK_allsubj/'
 figspath = main_folder + "/Figures_RAS_40subj_lr/"
 
+samos=True
+if samos:
+    main_folder = "/mnt/paros_MRI/jacques/APOE/"
+    dwipath_preprocessed = main_folder + "/C57_JS/diff_whiston_preprocessed/"
+    dwipath = os.path.join(main_folder, 'DWI_allsubj')
+    outtrkpath = os.path.join(main_folder,'TRK_allsubj')
+    figspath = os.path.join(main_folder,"Figures_RAS_40subj_lr")
+
 outpathpickle = figspath
 
 atlas_legends = main_folder + "/../atlases/IITmean_RPI/IITmean_RPI_lookup.xlsx"
 atlas_legends = main_folder + "/../atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-atlas_legends = "/Users/alex/jacques/connectomes_testing//atlases/CHASSSYMM3AtlasLegends.xlsx"
+atlas_legends = "/mnt/paros_MRI/jacques/atlases/CHASSSYMM3AtlasLegends.xlsx"
 
 stepsize = 2
+
 subject_processes = np.size(l)
 subject_processes = 1
 if max_processors < subject_processes:
@@ -129,8 +141,8 @@ elif len(trkroi)>1:
         roistring = roistring + roi[0:4]
     roistring = roistring #+ "_"
 #str_identifier = '_stepsize_' + str(stepsize) + saved_streamlines+ roistring
-str_identifier = '_stepsize_' + str(stepsize) + classifiertype + roistring + saved_streamlines
-
+str_identifier = '_stepsize_' + str(stepsize) + classifiertype + roistring + saved_streamlines #to be reimplemented if full calc, disabled for now
+str_identifier = roistring + saved_streamlines + 'stepsize_' + str(stepsize)
 bvec_orient=[1,2,-3]
 bvec_orient=[-2,1,3]
 

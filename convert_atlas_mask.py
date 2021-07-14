@@ -6,8 +6,7 @@ from dipy.io.image import load_nifti, save_nifti
 
 def chassym3_converter(ROI_excel):
 
-    atlas_legends = "/Users/alex/jacques/connectomes_testing/atlases/CHASSSYMM3AtlasLegends.xlsx"
-    df = pd.read_excel(atlas_legends, sheet_name='Sheet1')
+    df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
     df['Structure'] = df['Structure'].str.lower()
     index1=df['index']
     index2=df['index2']
