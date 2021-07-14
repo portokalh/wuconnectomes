@@ -313,8 +313,8 @@ def getlabelmask(mypath, subject, verbose=None):
         if verbose:
             print("Label mask taken from " + labelspath)
     else:
-        txt=('mask not found')
-        deprecation(txt)
+        txt=f"Mask for subject {subject} not found"
+        raise Exception(txt)
 
     return labels, affine_labels, labelspath
 
