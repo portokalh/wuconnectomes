@@ -4,11 +4,13 @@ import numpy as np
 import shutil
 import subprocess
 from file_tools import largerfile, mkcdir, getext, getrelativepath
-from img_transform_exec import img_transform_exec, space_transpose
+from img_transform_exec import img_transform_exec, space_transpose, header_superpose
 import nibabel as nib
 import glob
 from dipy.segment.mask import median_otsu
 from dipy.io.image import load_nifti, save_nifti
+from basic_LPCA_denoise import basic_LPCA_denoise_func
+
 
 def buildlink(linked_file, real_file):
     if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
@@ -54,7 +56,7 @@ def applymask_samespace(file, mask, outpath=None):
     nib.save(img_nii_new, outpath)
 
 
-def median_mask_make(inpath, outpath, outpathmask=None, median_radius=2, numpass=1):
+def median_mask_make(inpath, outpath, outpathmask=None, median_radius=4, numpass=4):
 
     if outpathmask is None:
         outpathmask=outpath.replace(".nii","_mask.nii")
@@ -64,7 +66,7 @@ def median_mask_make(inpath, outpath, outpathmask=None, median_radius=2, numpass
     save_nifti(outpath, data_masked.astype(np.float32), affine)
     save_nifti(outpathmask, mask.astype(np.float32), affine)
 
-def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000, bonusshortcutfolder=None, gunniespath="~/gunnies/", processes=1, verbose=False):
+def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000, bonusshortcutfolder=None, gunniespath="~/gunnies/", processes=1, atlas=None, transpose=None, overwrite=False, verbose=False):
 
     #img_transform_exec('/Volumes/Data/Badea/Lab/human/Sinha_epilepsy/diffusion_prep_locale/diffusion_prep_00393/00393_tmp_b0.nii.gz','LPS', 'RAS',
     #'/Volumes/Data/Badea/Lab/human/Sinha_epilepsy/diffusion_prep_locale/diffusion_prep_00393/00393_b0.nii.gz')
@@ -73,6 +75,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     ## 15 June 2020, BJA: I still need to figure out the best way to pull out the non-zero bval(s) from the bval file.
     ## For now, hardcoding it to 1000 to run Whitson data. # 8 September 2020, BJA: changing to 800 for Sinha data.
     work_dir=os.path.join(outpath,proc_name+id)
+
     if verbose:
         print(f"Processing diffusion data with runno/id: {id}")
         print(f"Work directory is {work_dir}")
@@ -107,26 +110,28 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
 
     if bonusshortcutfolder is not None:
         raw_nii_link = os.path.join(bonusshortcutfolder, f"{id}_rawnii{ext}")
-        if not os.path.exists(raw_nii_link):
+        if not os.path.exists(raw_nii_link) or overwrite:
             buildlink(raw_nii_link, raw_nii)
         bvecs_new = os.path.join(bonusshortcutfolder,id+"_bvecs.txt")
         bvals_new = os.path.join(bonusshortcutfolder,id+"_bvals.txt")
-        shutil.copyfile(bvecs,bvecs_new)
-        shutil.copyfile(bvals,bvals_new)
-    if not os.path.exists(tmp_mask):
-        if not os.path.exists(raw_dwi):
+        if not os.path.exists(bvecs_new) or not os.path.exists(bvals_new) or overwrite:
+            shutil.copyfile(bvecs,bvecs_new)
+            shutil.copyfile(bvals,bvals_new)
+    final_mask = os.path.join(work_dir, f'{id}_mask{ext}')
+
+    if (not os.path.exists(final_mask) and not os.path.exists(tmp_mask)) or overwrite:
+        if not os.path.exists(raw_dwi) or overwrite:
             select_cmd = f"select_dwi_vols {raw_nii} {bvals} {raw_dwi} {nominal_bval} -m"
             os.system(select_cmd)
 
-        if not os.path.exists(tmp_mask):
+        if not os.path.exists(tmp_mask) or overwrite:
             tmp = tmp_mask.replace("_mask", "")
             median_mask_make(raw_dwi, tmp, outpathmask=tmp_mask)
             #tmp=tmp_mask.replace("_mask", "")
             #bet_cmd = f"bet {raw_dwi} {tmp} -m -n"
             #os.system(bet_cmd)
-
-    if cleanup and (os.path.exists(tmp_mask) and os.path.exists(raw_dwi)):
-        os.remove(raw_dwi)
+    #if cleanup and (os.path.exists(tmp_mask) and os.path.exists(raw_dwi)):
+    #    os.remove(raw_dwi)
 
     # Run Local PCA Denoising algorithm on 4D nifti:
     denoised_nii = os.path.join(work_dir,f"LPCA_{id}_nii4D.nii.gz")
@@ -135,11 +140,10 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         masked_nii = masked_nii.replace(".nii",".nii.gz")
     masked_nii = masked_nii.replace(ext,"_masked"+ext)
 
-    if not os.path.exists(denoised_nii):
-        if not os.path.exists(masked_nii):
+    if not os.path.exists(denoised_nii) or overwrite:
+        if not os.path.exists(masked_nii) or overwrite:
             fsl_cmd = f"fslmaths {raw_nii} -mas {tmp_mask} {masked_nii} -odt 'input'";
             os.system(fsl_cmd)
-        from basic_LPCA_denoise import basic_LPCA_denoise_func
         basic_LPCA_denoise_func(id,masked_nii,bvecs,work_dir, processes=processes, verbose=False) #to improve and make multiprocessing
 
     if cleanup and os.path.exists(denoised_nii) and os.path.exists(masked_nii):
@@ -152,15 +156,16 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     coreg_nii = os.path.join(work_dir,f'Reg_{L_id}_nii4D{ext}')
     if not cleanup:
         coreg_nii=coreg_nii_old
-    if not os.path.exists(coreg_nii):
-        if not os.path.exists(coreg_nii_old):
+    if not os.path.exists(coreg_nii) or overwrite:
+        if not os.path.exists(coreg_nii_old) or overwrite:
             temp_cmd = os.path.join(gunniespath,'co_reg_4d_stack_tmpnew.bash')+f' {denoised_nii} {L_id} 0 {outpath}';
             os.system(temp_cmd)
         if cleanup:
             shutil.move(coreg_nii_old,coreg_nii)
     if bonusshortcutfolder is not None:
         coreg_link = os.path.join(bonusshortcutfolder,f'{id}_coreg{ext}')
-        buildlink(coreg_link, coreg_nii)
+        if not os.path.exists(coreg_link) or overwrite:
+            buildlink(coreg_link, coreg_nii)
 
     coreg_inputs=os.path.join(outpath,f'co_reg_{L_id}_m00-inputs')
     coreg_work=coreg_inputs.replace('-inputs','-work')
@@ -173,10 +178,11 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         shutil.rmtree(coreg_results)
 
     # Generate tmp DWI:
+
     tmp_dwi_out=os.path.join(work_dir, f'{id}_tmp_dwi{ext}')
     dwi_out=os.path.join(work_dir,f'{id}_dwi{ext}')
-    if not os.path.exists(dwi_out):
-        if not os.path.exists(tmp_dwi_out):
+    if not os.path.exists(dwi_out) or overwrite:
+        if not os.path.exists(tmp_dwi_out) or overwrite:
             cmd=f'select_dwi_vols {coreg_nii} {bvals} {tmp_dwi_out} {nominal_bval}  -m'
             os.system(cmd)
 
@@ -184,14 +190,14 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     tmp_b0_out=os.path.join(work_dir,f'{id}_tmp_b0{ext}')
     #b0_out_link=os.path.join(shortcut_dir,f'{id}_b0{ext}')
     #if not os.path.exists(b0_out_link):
-    if not os.path.exists(tmp_b0_out):
+    b0_out = os.path.join(work_dir, f'{id}_b0{ext}')
+    if (not os.path.exists(b0_out) and not os.path.exists(tmp_b0_out)) or overwrite:
         cmd=f'select_dwi_vols {coreg_nii} {bvals} {tmp_b0_out} 0  -m;'
         os.system(cmd)
     #elif cleanup and os.path.exists(tmp_b0_out):
     #    os.remove(tmp_b0_out)
 
     # Generate DTI contrasts and perform some tracking QA:
-    c_string='';
     if cleanup:
         c_string=' --cleanup '
     else:
@@ -209,25 +215,30 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         real_file=largerfile(os.path.join(work_dir,f'*.fib.gz.{contrast}{ext}'))  #Catch the 'real file' for each contrast
         #contrast=contrast.replace('0','')   #some little nonsense mostly to deal with the 'fa0' name to become 'fa', probably sohould change it
         linked_file=os.path.join(work_dir,f'{id}_{contrast}{ext}')
-        buildlink(linked_file, real_file)
+        if not os.path.exists(linked_file) or overwrite:
+            buildlink(linked_file, real_file)
         if bonusshortcutfolder is not None:
             bonus_link = os.path.join(bonusshortcutfolder, f'{id}_{contrast}{ext}')
-            buildlink(bonus_link, real_file)
+            if not os.path.exists(bonus_link) or overwrite:
+                buildlink(bonus_link, real_file)
 
     #give real header to the temp files using md as reference
     for contrast in ['tmp_dwi', 'tmp_b0', 'tmp_mask']:
         file = os.path.join(work_dir, f'{id}_{contrast}{ext}')
-        if os.path.exists(file):
-            cmd = os.path.join(gunniespath,'nifti_header_splicer.bash')+f' {md} {file} {file}'
+        if os.path.exists(file) or overwrite:
+            #cmd = os.path.join(gunniespath,'nifti_header_splicer.bash')+f' {md} {file} {file}'
+            cmd = os.path.join(gunniespath, 'nifti_header_splicer.bash') + f' {md} {file} {file}'
             os.system(cmd)
 
     #write the relative orientation file here
-    overwrite=True
+
     if not os.path.isfile(orient_string) or overwrite:
         if os.path.isfile(orient_string):
             os.remove(orient_string)
         file = os.path.join(work_dir,id+'_tmp_mask'+ext);
-        cmd = 'bash ' + os.path.join(gunniespath,'find_relative_orientation_by_CoM.bash') + f' {md} {file}'
+        if atlas is None:
+            atlas = md
+        cmd = 'bash ' + os.path.join(gunniespath,'find_relative_orientation_by_CoM.bash') + f' {atlas} {file}'
         #curious, need to look at that find relative orientation code a bit later
         #orient_test = subprocess.run([cmd], stdout=subprocess.PIPE).stdout.decode('utf-8'
         orient_relative = subprocess.getoutput(cmd)
@@ -245,11 +256,12 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         print(f'flexible orientation: {orientation_in}');
         print(f'reference orientation: {orientation_out}');
 
+    overwrite=True
     #apply the orientation modification to specified contrasts
-    for contrast in ['dwi', 'b0', 'mask']:
+    for contrast in ['dwi', 'b0', 'mask', 'md']:
         img_in=os.path.join(work_dir,f'{id}_tmp_{contrast}{ext}')
         img_out=os.path.join(work_dir,f'{id}_{contrast}{ext}')
-        if not os.path.isfile(img_out):
+        if not os.path.isfile(img_out) or overwrite:
             if orientation_out != orientation_in:
                 print('TRYING TO REORIENT...b0 and dwi and mask')
                 if os.path.exists(img_in) and not os.path.exists(img_out):
@@ -266,7 +278,8 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         #buildlink(linked_file, img_out)
         if bonusshortcutfolder is not None:
             bonus_link = os.path.join(bonusshortcutfolder, f'{id}_{contrast}{ext}')
-            buildlink(bonus_link, img_out)
+            if not os.path.exists(bonus_link) or overwrite:
+                buildlink(bonus_link, img_out)
 
     mask = os.path.join(work_dir,f'{id}_mask{ext}')
     b0 = os.path.join(work_dir,f'{id}_b0{ext}')
@@ -275,7 +288,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         os.remove(tmp_dwi_out)
 
     #refine mask (to check!!!!)
-    """
+
     bonusmask=False
     if bonusmask:
         mask_new = mask.replace('_mask', '_new')
@@ -285,14 +298,14 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
 
     if bonusshortcutfolder is not None:
         dwi_out_blink=os.path.join(bonusshortcutfolder,f'{id}_dwi{ext}')
-        buildlink(dwi_out_blink,dwi_out)
+        if not os.path.exists(dwi_out_blink) or overwrite:
+            buildlink(dwi_out_blink,dwi_out)
 
     if bonusmask:
         outpath=dwi_out.replace(".nii","_newmask.nii")
         applymask_samespace(dwi_out, mask_new, outpath) #(add outpath if you want to save to different location rather than overwrite)
         dwi_out=outpath
-        
-        b0_out=os.path.join(work_dir,f'{id}_{contrast}{ext}')
+
         outpath=b0_out.replace(".nii","_newmask.nii")
         applymask_samespace(b0_out, mask_new,outpath=outpath)
 
@@ -303,33 +316,16 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
             applymask_samespace(real_file, mask_new,outpath=real_file_new)
             real_file=real_file_new
         contrast=contrast.replace('0','')
-        linked_file=os.path.join(shortcut_dir,f'{id}_{contrast}{ext}')
+        #linked_file=os.path.join(shortcut_dir,f'{id}_{contrast}{ext}')
         linked_file_w=os.path.join(work_dir,f'{id}_{contrast}{ext}')
         header_fix=True
         if header_fix:
-            space_transpose(dwi_out, real_file)
+            outpath = linked_file_w.replace('.nii','_test.nii')
+            header_superpose(dwi_out, real_file, transpose=None,outpath=outpath)
 
-        shutil.copyfile(real_file,linked_file)
+        #shutil.copyfile(real_file,linked_file)
         buildlink(linked_file_w,real_file)
         if bonusshortcutfolder is not None:
             blinked_file = os.path.join(bonusshortcutfolder, f'{id}_{contrast}{ext}')
-            buildlink(blinked_file, real_file)
-
-    if cleanup:
-        if os.path.isfile(tmp_mask) and os.path.isfile(mask_link):
-            os.path.remove(tmp_mask)
-        #if os.path.isfile(tmp_dwi_out) and os.path.isfile(dwi_out):
-        #    os.path.remove(tmp_dwi_out)
-        #if os.path.isfile(tmp_b0_out) and os.path.isfile(b0_out_link):
-        #    os.path.remove(tmp_b0_out)
-    """
-    #for contrast in dwi
-    #dwi_link=os.path.join(shortcut_dir,f"{id}_dwi{ext}")
-    #buildlink(dwi_link, tmp_dwi_out)
-    #buildlink(b0_out_link, b0_out)
-    #buildlink(mask_link, tmp_mask)
-
-    # file=os.path.join(work_dir, id+ "_" + contrast + '_test'+ ext);
-    # cmd = os.path.join(gunniespath, "nifti_header_splicer.bash" + f" {md} {file} {file}")
-    # os.system(cmd)
-
+            if not os.path.exists(blinked_file) or overwrite:
+                buildlink(blinked_file, real_file)

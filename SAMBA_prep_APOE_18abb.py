@@ -9,7 +9,6 @@ from time import time
 import shutil
 from diffusion_preprocessing import launch_preprocessing
 from file_tools import mkcdir, largerfile
-from img_transform_exec import get_transpose
 import shutil
 
 def orient_to_str(bvec_orient):
@@ -34,7 +33,7 @@ def orient_to_str(bvec_orient):
 
 
 gunniespath = "/Users/alex/bass/gitfolder/gunnies/"
-dwipath = "/Volumes/dusom_civm-atlas/20.abb.15/research/"
+dwipath = "/Volumes/dusom_civm-atlas/18.abb.11/research/"
 #dwipath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/research/"
 subject = "58214"
 #outpath = None
@@ -67,35 +66,40 @@ subjects = ["58215","58216"]
 subjects = ["58218"]
 subjects = ["58217","58218","58219"]
 subjects = ["58222","58224","58225"]
-subjects = ["58214"]
-subjects = ["58231","58232","58633","58634","58635","58636","58649","58650","58651","58653","58654"]
-subjects = ["58215"]
-subjects = ["58216","58217","58218","58219","58221","58222","58223","58224","58225","58226","58228","58229","58230","58231","58232","58633","58634","58635","58636","58649","58650","58651","58653","58654"]
+
+subjects = ['N58408', 'N58610', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309', 'N58792', 'N58302', 'N58612', 'N58784', 'N58706', 'N58361', 'N58355', 'N58712', 'N58790', 'N58606', 'N58350', 'N58608', 'N58779', 'N58500', 'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788', 'N58305', 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512', 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396', 'N58613', 'N58732', 'N58516', 'N58813', 'N58402']
 
 cleanup = True
 
-atlas = "/Volumes/Data/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
-atlas = None
-gettranspose=False
-if gettranspose:
-    transpose = get_transpose(atlas)
-
-transpose=[-9.83984375, -6.05859375, -4.5546875]
-
-makebtables=True
-
-overwrite=True
-
+makebtables = False
+copybtables = True
 if makebtables:
     for subject in subjects:
         outpathsubj = outpath + "_" + subject
         writeformat="tab"
         writeformat="dsi"
-        overwrite_b=True
+        overwrite=True
         proc_name = "diffusion_prep_"  # Not gonna call it diffusion_calc so we don't assume it does the same thing as the civm pipeline
         outpath_subj = os.path.join(outpath,proc_name+subject)
         mkcdir(outpath_subj)
-        fbvals, fbvecs = extractbvals_research(dwipath, subject, outpath=outpath_subj, writeformat=writeformat, overwrite=overwrite_b)
+        fbvals, fbvecs = extractbvals_research(dwipath, subject, outpath=outpath_subj, writeformat=writeformat, overwrite=overwrite)
+
+
+bval_file="/Volumes/Data/Badea/Lab/jacques/APOE_series/diffusion_prep_locale/diffusion_prep_N58408/N58408_bvals.txt"
+bvec_file="/Volumes/Data/Badea/Lab/jacques/APOE_series/diffusion_prep_locale/diffusion_prep_N58408/N58408_bvecs.txt"
+proc_name ="diffusion_prep_"
+if copybtables:
+    for subject in subjects:
+        subjectpath = os.path.join(outpath, proc_name + subject)
+        mkcdir(subjectpath)
+        #subjectpath = glob.glob(os.path.join(os.path.join(outpath, "*" + subject + "*")))
+        #subjectpath = subjectpath[0]
+        new_bval_file=os.path.join(subjectpath, subject+"_bvals.txt")
+        new_bvec_file=os.path.join(subjectpath, subject+"_bvecs.txt")
+        if not os.path.exists(new_bval_file):
+            shutil.copyfile(bval_file,new_bval_file)
+        if not os.path.exists(new_bvec_file):
+            shutil.copyfile(bvec_file,new_bvec_file)
 
 max_processors = 10
 if mp.cpu_count() < max_processors:
@@ -117,8 +121,8 @@ if subject_processes>1:
 
     results = pool.starmap_async(launch_preprocessing, [(subject,
                                                          largerfile(glob.glob(os.path.join(os.path.join(dwipath, "diffusion*"+subject+"*")))[0]),
-                                                         outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                                                         gunniespath, function_processes, atlas, transpose, overwrite, verbose)
+                                                         outpath, cleanup, nominal_bval,
+                                                         bonusshortcutfolder, gunniespath, function_processes, verbose)
                                                         for subject in subjects]).get()
 else:
     for subject in subjects:
@@ -126,8 +130,7 @@ else:
         subjectpath = glob.glob(os.path.join(os.path.join(dwipath, "diffusion*"+subject+"*")))[0]
         max_file=largerfile(subjectpath)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        launch_preprocessing(subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                                                         gunniespath, function_processes, atlas, transpose, overwrite, verbose)
+        launch_preprocessing(subject, max_file, outpath, bonusshortcutfolder=bonusshortcutfolder, gunniespath=gunniespath, processes=function_processes, cleanup=cleanup)
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
 """

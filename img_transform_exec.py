@@ -5,17 +5,36 @@ import nibabel as nib
 import numpy as np
 from dipy.io.image import load_nifti, save_nifti
 
-def space_transpose(target_path, origin_path, newpath=None):
+def header_superpose(target_path, origin_path, outpath=None, transpose=None):
     target_nii=nib.load(target_path)
     origin_nii=nib.load(origin_path)
     if np.shape(target_nii._data)[0:3] != np.shape(origin_nii._data)[0:3]:
         raise TypeError('not implemented')
     else:
         target_affine=target_nii._affine
+        #added this to add a little translocation onto the atlas whenever necessary (like space_transpose). A bit convoluted
+        # but didnt want to save a nifti file over itself multiple times.
+        if transpose is not None:
+            target_affine[:3,3] = transpose
         new_nii = nib.Nifti1Image(origin_nii._data, target_affine, origin_nii._header)
-        if newpath is None:
-            newpath=origin_path
-        nib.save(new_nii, newpath)
+        if outpath is None:
+            outpath=origin_path
+        nib.save(new_nii, outpath)
+
+def space_transpose(origin_path, transpose=[0,0,0], outpath=None):
+    if outpath is None:
+        outpath = origin_path
+    origin_nii=nib.load(origin_path)
+    newaffine = origin_nii._affine
+    newaffine[:3,3] = transpose
+
+
+def get_transpose(img):
+    from nibabel import load
+    chass_sym_nii = load(img)
+    transpose = chass_sym_nii[:3, 3]
+    return transpose
+
 
 def img_transform_exec(img, current_vorder, desired_vorder, output_path=None, write_transform=0, recenter=1):
 
