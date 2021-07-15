@@ -137,7 +137,7 @@ def cut_bvals_bvecs(fbvals, fbvecs, tocut, format="classic"):
 
     return(fbvals_new)
 
-def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, identifier = "_fix", format="classic"):
+def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, identifier = "_fix", writeformat="classic"):
     """
     Read b-values and b-vectors from disk
 
@@ -215,9 +215,9 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, id
         ext=".txt"
 
     fbvals = base + identifier + ext
-    if format == "classic":
+    if writeformat == "classic":
         np.savetxt(fbvals, bvals)
-    if format=="dsi":
+    if writeformat=="dsi":
         with open(fbvals, 'w') as File_object:
             for bval in bvals:
                 if bval>10:
@@ -228,12 +228,12 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, id
     #base, ext = splitext(fbvecs)
     basevecs = base.replace("bvals","bvecs")
     fbvecs = basevecs + identifier + ext
-    if format=="classic":
+    if writeformat=="classic":
         if not os.path.isfile(fbvecs):
             np.savetxt(fbvecs, bvecs)
     #    with open(fbvecs, 'w') as f:
     #        f.write(str(bvec))
-    if format=="dsi":
+    if writeformat=="dsi":
         with open(fbvecs, 'w') as File_object:
             for i in [0,1,2]:
                 for j in np.arange(np.shape(bvecs)[0]):
@@ -389,6 +389,38 @@ def extractbvec_fromheader(source_file,fileoutpath=None,save=None,verbose=True):
 
 import shutil
 
+def read_bval_bvec(fbvals, fbvecs):
+
+    vals=[]
+    for this_fname in [fbvals, fbvecs]:
+        # If the input was None or empty string, we don't read anything and
+        # move on:
+        if this_fname is None or not this_fname:
+            vals.append(None)
+        else:
+            if isinstance(this_fname, str):
+                base, ext = splitext(this_fname)
+                if ext in ['.bvals', '.bval', '.bvecs', '.bvec', '.txt', '.eddy_rotated_bvecs', '']:
+                    with open(this_fname, 'r') as f:
+                        content = f.read()
+                    # We replace coma and tab delimiter by space
+                    with InTemporaryDirectory():
+                        tmp_fname = "tmp_bvals_bvecs.txt"
+                        with open(tmp_fname, 'w') as f:
+                            f.write(re.sub(r'(\t|,)', ' ', content))
+                        vals.append(np.squeeze(np.loadtxt(tmp_fname)))
+                elif ext == '.npy':
+                    vals.append(np.squeeze(np.load(this_fname)))
+                else:
+                    e_s = "File type %s is not recognized" % ext
+                    raise ValueError(e_s)
+            else:
+                raise ValueError('String with full path to file is required')
+    bvals, bvecs = vals[0], vals[1]
+
+    return bvals, bvecs
+
+
 def find_bval_bvecs(subjectpath, subject=""):
 
     fbtable = glob.glob(os.path.join(subjectpath,"b_table.txt"))
@@ -420,33 +452,9 @@ def find_bval_bvecs(subjectpath, subject=""):
     else:
         raise Exception("Sorry, nothing here looks like it could serve as a way to extract bvalues")
 
-    vals=[]
-    for this_fname in [fbvals, fbvecs]:
-        # If the input was None or empty string, we don't read anything and
-        # move on:
-        if this_fname is None or not this_fname:
-            vals.append(None)
-        else:
-            if isinstance(this_fname, str):
-                base, ext = splitext(this_fname)
-                if ext in ['.bvals', '.bval', '.bvecs', '.bvec', '.txt', '.eddy_rotated_bvecs', '']:
-                    with open(this_fname, 'r') as f:
-                        content = f.read()
-                    # We replace coma and tab delimiter by space
-                    with InTemporaryDirectory():
-                        tmp_fname = "tmp_bvals_bvecs.txt"
-                        with open(tmp_fname, 'w') as f:
-                            f.write(re.sub(r'(\t|,)', ' ', content))
-                        vals.append(np.squeeze(np.loadtxt(tmp_fname)))
-                elif ext == '.npy':
-                    vals.append(np.squeeze(np.load(this_fname)))
-                else:
-                    e_s = "File type %s is not recognized" % ext
-                    raise ValueError(e_s)
-            else:
-                raise ValueError('String with full path to file is required')
-    bvals, bvecs = vals[0], vals[1]
-    return bvals,bvecs
+        bvals, bvecs = read_bval_bvec(fbvals, fbvecs)
+
+        return bvals, bvecs
 
 def writebfiles(subjectpath, subject, outpath = None, writeformat = "line", fbvals=None, fbvecs=None, overwrite=False):
     if outpath is None:
@@ -467,7 +475,8 @@ def writebfiles(subjectpath, subject, outpath = None, writeformat = "line", fbva
                         pass
         """
         bvals, bvecs = find_bval_bvecs(subjectpath, subject=subject)
-
+    else:
+        bvals, bvecs = read_bval_bvec(fbvals, fbvecs)
     #bvecs = glob.glob(os.path.join(subjectpath,"*input_gradient_matrix*"))
 
     bvec_file = os.path.join(outpath, subject+"_bvecs.txt")

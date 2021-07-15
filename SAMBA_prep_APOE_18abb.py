@@ -4,7 +4,7 @@ import multiprocessing as mp
 from Daemonprocess import MyPool
 import glob
 import os
-from bvec_handler import extractbvals, extractbvals_research, rewrite_subject_bvalues, fix_bvals_bvecs
+from bvec_handler import writebfiles, extractbvals_research, rewrite_subject_bvalues, fix_bvals_bvecs
 from time import time
 import shutil
 from diffusion_preprocessing import launch_preprocessing
@@ -72,9 +72,11 @@ if copybtables:
         #subjectpath = subjectpath[0]
         new_bval_file=os.path.join(subjectpath, subject+"_bvals.txt")
         new_bvec_file=os.path.join(subjectpath, subject+"_bvecs.txt")
-        if not os.path.exists(new_bval_file):
+        #writeformat="dsi"
+        #fix_bvals_bvecs(bval_file, fbvecs=bvec_file, outpath=subjectpath, writeformat=writeformat)
+        if not os.path.exists(new_bval_file) or (overwrite and new_bval_file!=bval_file):
             shutil.copyfile(bval_file,new_bval_file)
-        if not os.path.exists(new_bvec_file):
+        if not os.path.exists(new_bvec_file) or (overwrite and new_bvec_file!=bvec_file):
             shutil.copyfile(bvec_file,new_bvec_file)
 
 max_processors = 10

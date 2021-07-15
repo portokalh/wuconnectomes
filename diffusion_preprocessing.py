@@ -146,8 +146,8 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
             os.system(fsl_cmd)
         basic_LPCA_denoise_func(id,masked_nii,bvecs,work_dir, processes=processes, verbose=False) #to improve and make multiprocessing
 
-    if cleanup and os.path.exists(denoised_nii) and os.path.exists(masked_nii):
-        os.remove(masked_nii)
+    #if cleanup and os.path.exists(denoised_nii) and os.path.exists(masked_nii):
+    #    os.remove(masked_nii)
 
     # Run coregistration/eddy current correction:
 
