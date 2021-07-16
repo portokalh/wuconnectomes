@@ -30,6 +30,31 @@ def chassym3_converter(ROI_excel):
         index_to_struct_comb[index3[i]] = structures[i]
     return converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb
 
+def IIT_converter(ROI_excel):
+
+    df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
+    df['Structure'] = df['Structure'].str.lower()
+    index1=df['index']
+    index2=df['index2']
+    structures=df['Structure']
+    hemispheres=df['Hemisphere']
+    hemispheres_new = []
+    for i in np.arange(np.size(hemispheres)-1):
+        if hemispheres[i] == "Left":
+            hemispheres_new.append('_left')
+        if hemispheres[i] == "Right":
+            hemispheres_new.append('_right')
+    converter_lr = {}
+    converter_comb = {}
+    index_to_struct_lr = {}
+    index_to_struct_comb = {}
+    for i in np.arange(np.size(index1)-1):
+        converter_lr[index2[i]] = index1[i]
+        converter_comb[index2[i]] = index3[i]
+        index_to_struct_lr[index1[i]] = structures[i] + hemispheres_new[i]
+        index_to_struct_comb[index3[i]] = structures[i]
+    return converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb
+
 def convert_labelmask(atlas, converter, atlas_outpath = None, affine_labels=None):
 
     if isinstance(atlas, str):

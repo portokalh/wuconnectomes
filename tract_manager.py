@@ -442,6 +442,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
                               inclusive = False, function_processes = 1, forcestart = False, picklesave = True, labeltype='orig',
                               verbose = None):
 
+    converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = chassym3_converter(ROI_excel)
     picklepath_connect = os.path.join(outpath, subject + str_identifier + '_connectomes.p')
     connectome_xlsxpath = os.path.join(outpath, subject + str_identifier + "_connectomes.xlsx")
     picklepath_grouping = os.path.join(outpath, subject + str_identifier + '_grouping.p')
