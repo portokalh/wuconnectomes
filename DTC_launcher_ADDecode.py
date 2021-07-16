@@ -1,6 +1,6 @@
 
 import numpy as np
-from tract_manager import create_tracts, dwi_preprocessing, tract_connectome_analysis,
+from tract_manager import create_tracts, dwi_preprocessing, tract_connectome_analysis
 from Daemonprocess import MyPool
 import multiprocessing as mp
 import os
@@ -38,6 +38,7 @@ subjects = ["02490", "02491", "02506"]
 subjects = ["01912", "02110", "02224", "02227", "02231", "02266", "02289", "02320", "02361", "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02491", "02506"]
 
 subjects = ["01912", "02110", "02224", "02227", "02231", "02266"]
+subjects = ["02224"]
 #"02230" "02490" these subjects are strange, to investigate
 
 """
@@ -87,7 +88,7 @@ elif masktype == "T1":
 stepsize = 2
 
 
-ratio = 1
+ratio = 100
 if ratio == 1:
     saved_streamlines = "_all"
 else:
@@ -131,6 +132,7 @@ make_connectomes = True
 classifiertype = "FA"
 classifiertype = "binary"
 brainmask = "dwi"
+labeltype='orig'
 
 if classifiertype == "FA":
     classifiertype = "_fa"
@@ -166,11 +168,11 @@ if subject_processes>1:
                                      createmask, vol_b0, verbose) for subject in subjects]).get()
     tract_results = pool.starmap_async(create_tracts, [(dwi_preprocessed, trkpath, subject, figspath, stepsize, function_processes,
                                                         str_identifier, ratio, masktype, classifier, labelslist, bvec_orient, doprune,
-                                                        overwrite, get_params, verbose) for subject in subjects]).get()
+                                                        overwrite, get_params,labeltype, verbose) for subject in subjects]).get()
     if make_connectomes:
         tract_results = pool.starmap_async(tract_connectome_analysis, [(dwi_preprocessed, trkpath, str_identifier, figspath,
                                                                        subject, atlas_legends, bvec_orient, inclusive,
-                                                                       function_processes, forcestart, picklesave, verbose)
+                                                                       function_processes, forcestart, picklesave, labeltype, verbose)
                                                                      for subject in subjects]).get()
     pool.close()
 else:
@@ -186,5 +188,5 @@ else:
         if make_connectomes:
             tract_results.append(tract_connectome_analysis(dwi_preprocessed, trkpath, str_identifier, figspath, subject,
                                                            atlas_legends, bvec_orient,  brainmask, inclusive,
-                                                           function_processes, forcestart, picklesave, verbose))
+                                                           function_processes, forcestart, picklesave, labeltype, verbose))
     print(tract_results)
