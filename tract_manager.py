@@ -89,7 +89,7 @@ import shutil
 import dipy.reconst.msdki as msdki
 
 from multiprocessing import Pool
-from convert_atlas_mask import convert_labelmask, chassym3_converter
+from convert_atlas_mask import convert_labelmask, atlas_converter
 #from connectivity_own import connectivity_matrix_special
 
 
@@ -442,7 +442,6 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
                               inclusive = False, function_processes = 1, forcestart = False, picklesave = True, labeltype='orig',
                               verbose = None):
 
-    converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = chassym3_converter(ROI_excel)
     picklepath_connect = os.path.join(outpath, subject + str_identifier + '_connectomes.p')
     connectome_xlsxpath = os.path.join(outpath, subject + str_identifier + "_connectomes.xlsx")
     picklepath_grouping = os.path.join(outpath, subject + str_identifier + '_grouping.p')
@@ -488,21 +487,22 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
     print("Mask shape is " + str(np.shape(labelmask)))
     cutoff = 2
 
-    if labeltype != 'orig':
-        converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = chassym3_converter(ROI_excel)
-        if labeltype == 'combined':
-            labeloutpath = labelpath.replace('.nii.gz','_comb.nii.gz')
-            if not os.path.isfile(labeloutpath):
-                labelmask = convert_labelmask(labelmask, converter_comb, atlas_outpath=labeloutpath,
-                                              affine_labels = labelaffine)
-            index_to_struct = index_to_struct_comb
-        if labeltype == 'lrordered':
-            labeloutpath = labelpath.replace('.nii.gz','_lr_ordered.nii.gz')
-            if not os.path.isfile(labeloutpath):
-                labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
-                                              affine_labels = labelaffine)
-            labelmask, labelaffine = load_nifti(labeloutpath)
-            index_to_struct = index_to_struct_lr
+    converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = atlas_converter(ROI_excel)
+    if labeltype == 'combined':
+        labeloutpath = labelpath.replace('.nii.gz','_comb.nii.gz')
+        if not os.path.isfile(labeloutpath):
+            labelmask = convert_labelmask(labelmask, converter_comb, atlas_outpath=labeloutpath,
+                                          affine_labels = labelaffine)
+        index_to_struct = index_to_struct_comb
+    elif labeltype == 'lrordered':
+        labeloutpath = labelpath.replace('.nii.gz','_lr_ordered.nii.gz')
+        if not os.path.isfile(labeloutpath):
+            labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
+                                          affine_labels = labelaffine)
+        labelmask, labelaffine = load_nifti(labeloutpath)
+        index_to_struct = index_to_struct_lr
+    else:
+        raise TypeError("Cannot recognize label type (this error raise is a THEORETICALLY a temp patch")
 
     pickle.dump(index_to_struct, open(picklepath_index, "wb"))
 

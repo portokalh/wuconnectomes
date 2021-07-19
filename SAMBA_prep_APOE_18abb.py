@@ -54,7 +54,7 @@ if makebtables:
         outpathsubj = outpath + "_" + subject
         writeformat="tab"
         writeformat="dsi"
-        overwrite=True
+        overwrite=False
         proc_name = "diffusion_prep_"  # Not gonna call it diffusion_calc so we don't assume it does the same thing as the civm pipeline
         outpath_subj = os.path.join(outpath,proc_name+subject)
         mkcdir(outpath_subj)
@@ -74,12 +74,12 @@ if copybtables:
         new_bvec_file=os.path.join(subjectpath, subject+"_bvecs.txt")
         #writeformat="dsi"
         #fix_bvals_bvecs(bval_file, fbvecs=bvec_file, outpath=subjectpath, writeformat=writeformat)
-        if not os.path.exists(new_bval_file) or (overwrite and new_bval_file!=bval_file):
+        if not os.path.exists(new_bval_file):
             shutil.copyfile(bval_file,new_bval_file)
-        if not os.path.exists(new_bvec_file) or (overwrite and new_bvec_file!=bvec_file):
+        if not os.path.exists(new_bvec_file):
             shutil.copyfile(bvec_file,new_bvec_file)
 
-max_processors = 10
+max_processors = 3
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 subject_processes = np.size(subjects)

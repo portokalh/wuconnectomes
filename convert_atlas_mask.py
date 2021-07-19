@@ -4,7 +4,7 @@ import numpy as np
 from dipy.io.image import load_nifti, save_nifti
 
 
-def chassym3_converter(ROI_excel):
+def atlas_converter(ROI_excel):
 
     df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
     df['Structure'] = df['Structure'].str.lower()
@@ -70,8 +70,10 @@ def convert_labelmask(atlas, converter, atlas_outpath = None, affine_labels=None
     for i in range(np.shape(labels)[0]):
         for j in range(np.shape(labels)[1]):
             for k in range(np.shape(labels)[2]):
-                if labels[i, j, k] > 1000:
+                try:
                     labels_new[i, j, k] = converter[labels[i, j, k]]
+                except:
+                    print('hi')
 
     save_nifti(atlas_outpath, labels_new, affine_labels)
 

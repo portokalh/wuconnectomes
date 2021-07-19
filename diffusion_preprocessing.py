@@ -256,7 +256,6 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         print(f'flexible orientation: {orientation_in}');
         print(f'reference orientation: {orientation_out}');
 
-    overwrite=True
     #apply the orientation modification to specified contrasts
     for contrast in ['dwi', 'b0', 'mask', 'md']:
         img_in=os.path.join(work_dir,f'{id}_tmp_{contrast}{ext}')
@@ -284,8 +283,8 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     mask = os.path.join(work_dir,f'{id}_mask{ext}')
     b0 = os.path.join(work_dir,f'{id}_b0{ext}')
 
-    if cleanup and os.path.exists(dwi_out) and os.path.exists(tmp_dwi_out):
-        os.remove(tmp_dwi_out)
+    #if cleanup and os.path.exists(dwi_out) and os.path.exists(tmp_dwi_out):
+    #    os.remove(tmp_dwi_out)
 
     #refine mask (to check!!!!)
 
@@ -320,11 +319,10 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         linked_file_w=os.path.join(work_dir,f'{id}_{contrast}{ext}')
         header_fix=True
         if header_fix:
-            outpath = linked_file_w.replace('.nii','_test.nii')
-            header_superpose(dwi_out, real_file, transpose=None,outpath=outpath)
+            header_superpose(dwi_out, real_file, transpose=None)
 
-        #shutil.copyfile(real_file,linked_file)
-        buildlink(linked_file_w,real_file)
+        if not os.path.isfile(linked_file) or overwrite:
+            buildlink(linked_file_w,real_file)
         if bonusshortcutfolder is not None:
             blinked_file = os.path.join(bonusshortcutfolder, f'{id}_{contrast}{ext}')
             if not os.path.exists(blinked_file) or overwrite:

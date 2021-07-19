@@ -539,17 +539,18 @@ def extractbvals_research(dwipath, subject, outpath=None, writeformat="tab", fix
         subjectpath = subjectpath[0]
         if outpath is None:
             outpath = subjectpath
-        fbvals = np.size(glob.glob(outpath + '*_bval*fix*'))
-        fbvecs = np.size(glob.glob(outpath + '*_bvec*fix*'))
+        fbvals = np.size(glob.glob(os.path.join(outpath + '*_bval*fix*')))
+        fbvecs = np.size(glob.glob(os.path.join(outpath + '*_bvec*fix*')))
         if (fbvals == 0 and fbvecs == 0) or overwrite:
             #fbvals = (glob.glob(subjectpath + '*_bval*'))
             #fbvecs = (glob.glob(subjectpath + '*_bvec*'))
             fbvals=(glob.glob(os.path.join(outpath, '*' + subject + '*_bvals.txt')))
             fbvecs=(glob.glob(os.path.join(outpath, '*' + subject + '*_bvecs.txt')))
-            if (np.size(fbvals) > 0 and np.size(fbvecs) > 0) and not overwrite and fix:
+            if ((np.size(fbvals) > 0 and np.size(fbvecs) > 0) and not overwrite):
                 fbvals = fbvals[0]
                 fbvecs = fbvecs[0]
-                fix_bvals_bvecs(fbvals, fbvecs)
+                if fix:
+                    fix_bvals_bvecs(fbvals, fbvecs)
             else:
                 bval_file, bvec_file = writebfiles(subjectpath, subject, outpath, writeformat=writeformat)
                 if fix:

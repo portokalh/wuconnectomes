@@ -132,7 +132,7 @@ make_connectomes = True
 classifiertype = "FA"
 classifiertype = "binary"
 brainmask = "dwi"
-labeltype='orig'
+labeltype='lrordered'
 
 if classifiertype == "FA":
     classifiertype = "_fa"

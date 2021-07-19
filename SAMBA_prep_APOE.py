@@ -44,36 +44,10 @@ outpath = "/Volumes/Data/Badea/Lab/jacques/APOE_series/diffusion_prep_locale/"
 
 bonusshortcutfolder = "/Volumes/Data/Badea/Lab/19abb14/"
 
-subjects = ["58302", "58303", "58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
-subjects = ["58303", "58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
-subjects = ["58303"]
-subjects = ["58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
-#subjects = ["58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
-subjects = ["58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
-#subjects = ["58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
-subjects = ["58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
-subjects = ["58612","58613","58706","58708","58712"]
-subjects = ["58606","58608","58610","58611"]
-subjects = ["58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510"]
-subjects = ["58611"]
-subjects = ["58612","58613","58706","58708","58712"]
-subjects = ["58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611"]
-subjects = ["58613","58706"]
-subjects = ["58302", "58303", "58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
-subjects = ["58613","58706","58708","58712"]
 subjects = ["58214","58215","58216","58217","58218","58219","58221","58222","58223","58224","58225","58226","58228","58229","58230","58231","58232","58633","58634","58635","58636","58649","58650","58651","58653","58654"]
-subjects = ["58214"]
-subjects = ["58215","58216"]
-subjects = ["58218"]
-subjects = ["58217","58218","58219"]
-subjects = ["58222","58224","58225"]
-subjects = ["58214"]
-subjects = ["58231","58232","58633","58634","58635","58636","58649","58650","58651","58653","58654"]
-subjects = ["58215"]
-subjects = ["58216","58217","58218","58219","58221","58222","58223","58224","58225","58226","58228","58229","58230","58231","58232","58633","58634","58635","58636","58649","58650","58651","58653","58654"]
 
+overwrite=False
 cleanup = True
-
 atlas = "/Volumes/Data/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
 atlas = None
 gettranspose=False
@@ -84,18 +58,16 @@ transpose=[-9.83984375, -6.05859375, -4.5546875]
 
 makebtables=True
 
-overwrite=True
-
 if makebtables:
     for subject in subjects:
         outpathsubj = outpath + "_" + subject
         writeformat="tab"
         writeformat="dsi"
-        overwrite_b=True
+        overwrite_b=False
         proc_name = "diffusion_prep_"  # Not gonna call it diffusion_calc so we don't assume it does the same thing as the civm pipeline
         outpath_subj = os.path.join(outpath,proc_name+subject)
         mkcdir(outpath_subj)
-        fbvals, fbvecs = extractbvals_research(dwipath, subject, outpath=outpath_subj, writeformat=writeformat, overwrite=overwrite_b)
+        fbvals, fbvecs = extractbvals_research(dwipath, subject, outpath=outpath_subj, fix=False, writeformat=writeformat, overwrite=overwrite_b)
 
 max_processors = 10
 if mp.cpu_count() < max_processors:
@@ -130,72 +102,23 @@ else:
                                                          gunniespath, function_processes, atlas, transpose, overwrite, verbose)
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
+
 """
-subjectlist = ["58215","58216","58217","58218","58219","58221","58222","58223","58224","58225","58226","58228","58229","58230","58231","58232","58633","58634","58635","58636","58649","58650","58651","58653","58654"]
-for subj in subjectlist:
-    fbvals_new = fbvals.replace("58214", subj)
-    shutil.copyfile(fbvals, fbvals_new)
-    fbvecs_new = fbvals.replace("58214", subj)
-    shutil.copyfile(fbvals, fbvals_new)
-
-
-makebtables=False
-if makebtables:
-    for subject in subjects:
-        #outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
-        outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/diffusion_prep_"+subject
-        mkcdir(outpath)
-        writeformat="tab"
-        writeformat="dsi"
-        overwrite=True
-        fbvals, fbvecs = extractbvals(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
-        #fbvals, fbvecs = rewrite_subject_bvalues(dwipath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
-
-quickfix = False
-if quickfix:
-    bval_file="/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/research/diffusionN58302dsi_studio/N58302_bvals.txt"
-    bvec_file="/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/research/diffusionN58302dsi_studio/N58302_bvecs.txt"
-    bval_file, bvec_file = fix_bvals_bvecs(bval_file, bvec_file, outpath= outpath, identifier="", format="dsi")
-
-bval_file="/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/N58302_bvals.txt"
-bvec_file="/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/research/diffusionN58302dsi_studio/N58302_bvecs.txt"
-proc_name ="diffusion_prep_"
-
-results=[]
-copybtables=False
-if copybtables:
-    for subject in subjects:
-        subjectpath = os.path.join(outpath, proc_name + subject)
-        mkcdir(subjectpath)
-        #subjectpath = glob.glob(os.path.join(os.path.join(outpath, "*" + subject + "*")))
-        #subjectpath = subjectpath[0]
-        new_bval_file=os.path.join(subjectpath, subject+"_bvals.txt")
-        new_bvec_file=os.path.join(subjectpath, subject+"_bvecs.txt")
-        if not os.path.exists(new_bval_file):
-            shutil.copyfile(bval_file,new_bval_file)
-        if not os.path.exists(new_bvec_file):
-            shutil.copyfile(bvec_file,new_bvec_file)
-            
-            
-
-quickfix = True
-if quickfix:
-    bval_file="/Volumes/Data/Badea/ADdecode.01/Analysis/DWI/01912_bvals.txt"
-    bvec_file="/Volumes/Data/Badea/ADdecode.01/Analysis/DWI/01912_bvec.txt"
-    bval_file, bvec_file = fix_bvals_bvecs(bval_file, bvec_file, outpath= outpath, identifier="", format="dsi")
-    results=[]
-    copybtables=True
-    if copybtables:
-        for subject in subjects:
-            subjectpath = os.path.join(outpath, proc_name + subject)
-            mkcdir(subjectpath)
-            #subjectpath = glob.glob(os.path.join(os.path.join(outpath, "*" + subject + "*")))
-            #subjectpath = subjectpath[0]
-            new_bval_file=os.path.join(subjectpath, subject+"_bvals.txt")
-            new_bvec_file=os.path.join(subjectpath, subject+"_bvecs.txt")
-            if not os.path.exists(new_bval_file):
-                shutil.copyfile(bval_file,new_bval_file)
-            if not os.path.exists(new_bvec_file):
-                shutil.copyfile(bvec_file,new_bvec_file)
-
+subjects = ["58302", "58303", "58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+subjects = ["58303", "58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+subjects = ["58303"]
+subjects = ["58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+#subjects = ["58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+subjects = ["58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+#subjects = ["58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+subjects = ["58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+subjects = ["58612","58613","58706","58708","58712"]
+subjects = ["58606","58608","58610","58611"]
+subjects = ["58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510"]
+subjects = ["58611"]
+subjects = ["58612","58613","58706","58708","58712"]
+subjects = ["58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611"]
+subjects = ["58613","58706"]
+subjects = ["58302", "58303", "58305", "58309", "58310", "58344","58346","58350","58355","58359","58361","58394","58396","58398","58400","58402","58404","58406","58408","58477","58500","58510","58512","58514","58516","58604","58606","58608","58610","58611","58612","58613","58706","58708","58712"]
+subjects = ["58613","58706","58708","58712"]
 """
