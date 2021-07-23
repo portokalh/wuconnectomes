@@ -53,7 +53,7 @@ for bxhfile in subjbxh:
 """
 
 outpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
-outpath-"/mnt/paros_MRI/jacques/AD_Decode/alex_res/"
+outpath="/mnt/paros_MRI/jacques/AD_Decode/alex_res/"
 figspath = os.path.join(outpath, "Figures")
 dwi_preprocessed = os.path.join(outpath, "DWI")
 trkpath = os.path.join(outpath, "TRK")
