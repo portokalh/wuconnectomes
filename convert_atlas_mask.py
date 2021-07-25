@@ -14,7 +14,7 @@ def atlas_converter(ROI_excel):
     structures=df['Structure']
     hemispheres=df['Hemisphere']
     hemispheres_new = []
-    for i in np.arange(np.size(hemispheres)-1):
+    for i in np.arange(np.size(hemispheres)):
         if hemispheres[i] == "Left":
             hemispheres_new.append('_left')
         if hemispheres[i] == "Right":
@@ -23,11 +23,16 @@ def atlas_converter(ROI_excel):
     converter_comb = {}
     index_to_struct_lr = {}
     index_to_struct_comb = {}
-    for i in np.arange(np.size(index1)-1):
-        converter_lr[index2[i]] = index1[i]
-        converter_comb[index2[i]] = index3[i]
-        index_to_struct_lr[index1[i]] = structures[i] + hemispheres_new[i]
-        index_to_struct_comb[index3[i]] = structures[i]
+    for i in np.arange(np.size(index1)):
+        if hemispheres_new[i] in ['_left','_right']:
+            converter_lr[index2[i]] = index1[i]
+            converter_comb[index2[i]] = index3[i]
+            index_to_struct_lr[index1[i]] = structures[i] + hemispheres_new[i]
+            index_to_struct_comb[index3[i]] = structures[i]
+    if 0 not in converter_lr:
+        converter_lr[0] = 0
+    if 0 not in converter_comb:
+        converter_comb[0] = 0
     return converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb
 
 def IIT_converter(ROI_excel):

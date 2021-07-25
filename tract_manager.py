@@ -492,13 +492,13 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         labeloutpath = labelpath.replace('.nii.gz','_comb.nii.gz')
         if not os.path.isfile(labeloutpath):
             labelmask = convert_labelmask(labelmask, converter_comb, atlas_outpath=labeloutpath,
-                                          affine_labels = labelaffine)
+                                          affine_labels=labelaffine)
         index_to_struct = index_to_struct_comb
     elif labeltype == 'lrordered':
         labeloutpath = labelpath.replace('.nii.gz','_lr_ordered.nii.gz')
         if not os.path.isfile(labeloutpath):
             labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
-                                          affine_labels = labelaffine)
+                                          affine_labels=labelaffine)
         labelmask, labelaffine = load_nifti(labeloutpath)
         index_to_struct = index_to_struct_lr
     else:
