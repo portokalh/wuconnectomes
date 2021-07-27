@@ -39,9 +39,10 @@ subjects = ["01912", "02110", "02224", "02227", "02231", "02266", "02289", "0232
 
 subjects = ["01912", "02110", "02224", "02227", "02231", "02266"]
 subjects = ["02224"]
-subjects = ["01912", "02110", "02224", "02227", "02230", "02231", "02266", "02289", "02320", "02361", "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02490", "02491", "02506", "02523", "02524", "02535", "02564", "02666", "02670", "02686", "02690", "02695", "02715", "02720", "02737", "02745", "02753", "02765", "02771", "02781"]
-#"02230" "02490" these subjects are strange, to investigate
+subjects = ["01912", "02110", "02224", "02227", "02231", "02266",  "02320", "02361", "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02491", "02506", "02523", "02524", "02535", "02564", "02666", "02670", "02686", "02690", "02695", "02715", "02720", "02737", "02745", "02753", "02765", "02771", "02781"]
 
+#"02230" "02490" these subjects are strange, to investigate
+#"02289"
 """
 subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]
 subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
@@ -54,7 +55,7 @@ for bxhfile in subjbxh:
 
 outpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
 outpath="/mnt/paros_MRI/jacques/AD_Decode/Analysis/"
-figspath = os.path.join(outpath, "Figures")
+figspath = os.path.join(outpath, "Figures_july2021")
 dwi_preprocessed = os.path.join(outpath, "DWI")
 trkpath = os.path.join(outpath, "TRK")
 
@@ -64,7 +65,7 @@ masktype = "T1"
 masktype = "dwi"
 
 
-max_processors = 10
+max_processors = 100
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -90,7 +91,7 @@ elif masktype == "T1":
 stepsize = 2
 
 
-ratio = 100
+ratio = 1
 if ratio == 1:
     saved_streamlines = "_all"
 else:
