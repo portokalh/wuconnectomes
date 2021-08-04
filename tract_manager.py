@@ -17,7 +17,8 @@ functions themselves. Essentially a 'transition file' between the launcher and t
 
 import nibabel as nib
 import numpy as np
-from dipy.io.streamline import load_trk
+#from dipy.io.streamline import load_trk
+from streamline_nocheck import load_trk
 from os.path import splitext
 from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
 import pickle
@@ -79,7 +80,7 @@ from figures_handler import shore_scalarmaps
 from tract_eval import bundle_coherence, LiFEvaluation
 from BIAC_tools import send_mail, isempty
 from tract_handler import target, prune_streamlines, get_trk_params, get_tract_params, gettrkpath, reducetractnumber, reducetractnumber_all
-from nifti_handler import getfa, getdwidata_all, getdwidata, getdwipath, getgtab, getlabelmask, move_bvals, getmask, getb0s
+from nifti_handler import getfa, getdiffdata_all, getdiffdata, getdiffpath, getgtab, getlabelmask, move_bvals, getmask, getb0s
 from diff_preprocessing import dwi_to_mask, denoise_pick, make_tensorfit
 import tract_save
 import xlrd
@@ -200,13 +201,13 @@ def analysis_diffusion_figures(dwipath,outpath,subject, bvec_orient=[1,2,3], ver
     if verbose:
         print('Running the ' + subject + ' file')
 
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata_all(dwipath, subject, bvec_orient)
+    diff_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdiffdata_all(dwipath, subject, bvec_orient)
     outpath_fig = outpath + subject + "SHORE_maps.png"
-    shore_scalarmaps(fdwi_data, gtab, outpath_fig, verbose = verbose)
+    shore_scalarmaps(diff_data, gtab, outpath_fig, verbose = verbose)
 
 def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetrois, labelslist, bvec_orient=[1,2,3], verbose=None):
 
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, header, hdr = getdwidata_all(dwipath, subject, bvec_orient, verbose)
+    diff_data, affine, gtab, labelmask, vox_size, fdwipath, header, hdr = getdiffdata_all(dwipath, subject, bvec_orient, verbose)
     #from dipy.data import read_stanford_labels, read_stanford_t1
     #hardi_img, gtab_hardi, labels_hardi = read_stanford_labels()
     #data = hardi_img.get_data()
@@ -227,7 +228,7 @@ def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetro
     white_matter = binary_dilation(whitemask)
     csamodel = shm.CsaOdfModel(gtab, 6)
     csapeaks = peaks.peaks_from_model(model=csamodel,
-                                      data=fdwi_data,
+                                      data=diff_data,
                                       sphere=peaks.default_sphere,
                                       relative_peak_threshold=.8,
                                       min_separation_angle=45,
@@ -263,7 +264,7 @@ def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetro
                                           opacity=0.5)
 
     #vol_actor = actor.slicer(t1_data)
-    vol_actor = actor.slicer(fdwi_data[:,:,:,0])
+    vol_actor = actor.slicer(diff_data[:,:,:,0])
 
 
     vol_actor.display(x=40)
@@ -330,7 +331,7 @@ def deprecation(message):
 
 def makemask_fromdiff(dwipath, subject, bvec_orient):
 
-    data, affine, _, mask, vox_size, fdwipath, hdr, header = getdwidata_all(dwipath, subject, bvec_orient)
+    data, affine, _, mask, vox_size, fdwipath, hdr, header = getdiffdata_all(dwipath, subject, bvec_orient)
     outpath = os.path.join(dwipath, subject)
     mask = dwi_to_mask(data, subject, affine, outpath, makefig = False)
     return(mask)
@@ -467,7 +468,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         if masktype == 'dwi':
             if verbose:
                 print("Beginning to read the dwifile of subject " + subject + " at " + dwipath)
-            dwi_data, dwiaffine, _, dwi_fpath, _, _ = getdwidata(dwipath, subject, verbose)
+            dwi_data, dwiaffine, _, dwi_fpath, _, _ = getdiffdata(dwipath, subject, verbose)
             if verbose:
                 print("loaded the file " + dwi_fpath)
             outpathmask = str(pathlib.Path(dwi_fpath).parent.absolute())
@@ -496,9 +497,9 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         index_to_struct = index_to_struct_comb
     elif labeltype == 'lrordered':
         labeloutpath = labelpath.replace('.nii.gz','_lr_ordered.nii.gz')
-        if not os.path.isfile(labeloutpath):
-            labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
-                                          affine_labels=labelaffine)
+        #if not os.path.isfile(labeloutpath):
+        labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
+                                      affine_labels=labelaffine)
         labelmask, labelaffine = load_nifti(labeloutpath)
         index_to_struct = index_to_struct_lr
     else:
@@ -511,7 +512,7 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
         if 'dwi_data' not in locals():
             if verbose:
                 print("Beginning to read the dwifile of subject " + subject + " at "+dwipath)
-            dwi_data, _, _, dwipath, _, _ = getdwidata(dwipath, subject, verbose)
+            dwi_data, _, _, dwipath, _, _ = getdiffdata(dwipath, subject, verbose)
             if verbose:
                 print("loaded the file " + dwipath)
 
@@ -905,20 +906,20 @@ def tract_connectome_analysis_old(dwipath, trkpath, str_identifier, outpath, sub
     """
 
 
-def ROI_labels_mask(fdwi_data, labelsmask, labelslist):
+def ROI_labels_mask(diff_data, labelsmask, labelslist):
 
     mask = np.zeros(np.shape(labelsmask), dtype=int)
 
     for label in labelslist:
         mask = mask + (labelsmask == label)
-    fdwi_data_masked = fdwi_data * np.repeat(mask[:, :, :, None], np.shape(fdwi_data)[3], axis=3)
+    diff_data_masked = diff_data * np.repeat(mask[:, :, :, None], np.shape(diff_data)[3], axis=3)
 
-    return(fdwi_data_masked, mask)
+    return(diff_data_masked, mask)
 
 def get_diffusionattributes(dwipath, outpath, subject, str_identifier, vol_b0, ratio, bvec_orient,
                                 createmask, overwrite, verbose):
 
-    dwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata_all(dwipath, subject, bvec_orient, verbose)
+    dwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdiffdata_all(dwipath, subject, bvec_orient, verbose)
 
     if createmask:         # Build Brain Mask
         #changes to the outpath reading, to check next time
@@ -949,9 +950,9 @@ def get_diffusionattributes(dwipath, outpath, subject, str_identifier, vol_b0, r
     MK = dki_fit.mk(0, 3)
     """
 
-def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savefa="yes",processes=1, createmask = True, vol_b0 = None, verbose = False):
+def diff_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savefa="yes",processes=1, createmask = True, vol_b0 = None, verbose = False):
 
-    dwi_fpath = getdwipath(dwipath, subject, verbose)
+    dwi_fpath = getdiffpath(dwipath, subject, verbose)
 
     """
     subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]
@@ -967,7 +968,7 @@ def dwi_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savef
     fbvals, fbvecs = move_bvals(dwipath, subject, outpath)
     gtab = getgtab(outpath, subject, bvec_orient)
 
-    dwi_data, affine, vox_size, dwi_fpath, hdr, header = getdwidata(dwi_fpath, subject, verbose)
+    dwi_data, affine, vox_size, dwi_fpath, hdr, header = getdiffdata(dwi_fpath, subject, verbose)
 
     if verbose:
         print('Running the preprocessing for subject ' + subject)
@@ -1027,8 +1028,8 @@ def check_dif_ratio(trkpath, subject, strproperty, ratio):
     #trkfilepath = gettrkpath(trkpath, subject, strproperty, verbose)
 
 def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes, strproperty = "", ratio = 1, masktype="binary",
-                      classifier="FA", labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False, get_params=False,
-                  verbose=None):
+                      classifier="FA", labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False,
+                  get_params=False, denoise="", verbose=None):
 
     outpathtrk, trkexists = gettrkpath(outpath, subject, strproperty, pruned=doprune, verbose=False)
     check_dif_ratio(outpath, subject, strproperty, ratio)
@@ -1046,7 +1047,8 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
     if verbose:
         print('Running the ' + subject + ' file')
 
-    fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata_all(dwipath, subject, bvec_orient, verbose)
+    diff_data, affine, gtab, vox_size, fdwipath, hdr, header = \
+        getdiffdata_all(dwipath, subject, bvec_orient, denoise=denoise, verbose=verbose)
 
     if masktype == "dwi":
         mask, _ = getmask(dwipath,subject, masktype, verbose)
@@ -1056,12 +1058,12 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
             mask = mask[:, :, :, 0]
         print("Mask shape is " + str(np.shape(mask)))
 
-    if np.mean(fdwi_data) == 0:
+    if np.mean(diff_data) == 0:
         print("The subject " + subject + "could not be found at " + dwipath)
         return
 
     if classifier == "FA":
-        outpathbmfa, mask = make_tensorfit(fdwi_data,mask,gtab,affine,subject,outpath=dwipath,verbose=verbose)
+        outpathbmfa, mask = make_tensorfit(diff_data,mask,gtab,affine,subject,outpath=dwipath,verbose=verbose)
 
     print(verbose)
     if verbose:
@@ -1078,11 +1080,11 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
             affine = trkdata._affine
             trkdata.to_vox()
             trkstreamlines = trkdata.streamlines
-            if np.size(np.shape(fdwi_data)) == 1:
-                fdwi_data = fdwi_data[0]
-            if np.size(np.shape(fdwi_data)) == 4:
-                fdwi_data = fdwi_data[:, :, :, 0]
-            print("Mask shape is " + str(np.shape(fdwi_data)))
+            if np.size(np.shape(diff_data)) == 1:
+                diff_data = diff_data[0]
+            if np.size(np.shape(diff_data)) == 4:
+                diff_data = diff_data[:, :, :, 0]
+            print("Mask shape is " + str(np.shape(diff_data)))
             pruned_streamlines = prune_streamlines(list(trkstreamlines), mask, cutoff=cutoff, verbose=verbose)
             pruned_streamlines_SL = Streamlines(pruned_streamlines)
             if hasattr(trkdata, 'space_attribute'):
@@ -1103,7 +1105,7 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
                 params = None
                 return subject, outpathtrk, params
 
-    outpathtrk, trkstreamlines, params = QCSA_tractmake(fdwi_data, affine, vox_size, gtab, mask, masktype, header,
+    outpathtrk, trkstreamlines, params = QCSA_tractmake(diff_data, affine, vox_size, gtab, mask, masktype, header,
                                                         step_size, peak_processes, outpathtrk, subject, ratio,
                                                         overwrite, get_params, doprune, figspath=figspath,
                                                         verbose=verbose)
@@ -1141,11 +1143,11 @@ def evaluate_coherence(dwipath,trkpath,subject,stepsize, tractsize, labelslist=N
                        outpathfig=None, processes=1, allsave=False, display=True, strproperty="", ratio=1,
                        verbose=None):
 
-    _, affine, gtab, labelmask, vox_size, fdwipath, _, _ = getdwidata_all(dwipath, subject)
+    _, affine, gtab, labelmask, vox_size, fdwipath, _, _ = getdiffdata_all(dwipath, subject)
 
     if isempty(labelslist):
         if labelmask is None:
-            roimask = (fdwi_data[:, :, :, 0] > 0)
+            roimask = (diff_data[:, :, :, 0] > 0)
         else:
             roimask = np.where(labelmask == 0, False, True)
     else:
@@ -1238,7 +1240,7 @@ def tract_getroi(trkstreamlines, affine, myheader, labelslist, labelmask, trkroi
     return trkroistreamlines, roi_sl
 
     
-def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, allsave=False, display=True, strproperty = "", verbose=None):
+def evaluate_tracts(diffpath,trkpath,subject,stepsize, tractsize, labelslist=None, outpathpickle=None, outpathfig=None, processes=1, allsave=False, display=True, strproperty = "", verbose=None):
 
     """
     fdwi = dwipath + '4Dnii/' + subject + '_nii4D_RAS.nii.gz'
@@ -1266,15 +1268,15 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     elif tractsize == "tiny":
         ratio=1000
 
-    fdwi_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdwidata_all(dwipath, subject)
+    diff_data, affine, gtab, labelmask, vox_size, fdiffpath, _, header = getdiffdata_all(diffpath, subject)
     if isempty(labelslist):
         if labelmask is None:
-            roimask = (fdwi_data[:, :, :, 0] > 0)
+            roimask = (diff_data[:, :, :, 0] > 0)
         else:
             roimask = np.where(labelmask == 0, False, True)
     else:
         if labelmask is None:
-            raise ("File not found error: labels requested but labels file could not be found at "+dwipath+ " for subject " + subject)
+            raise ("File not found error: labels requested but labels file could not be found at "+diffpath+ " for subject " + subject)
         roimask = np.zeros(np.shape(labelmask),dtype=int)
         for label in labelslist:
             roimask = roimask + (labelmask == label)
@@ -1282,7 +1284,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     if roimask.dtype == "bool":
         roimask=roimask.astype(int)
 
-    save_nifti(dwipath+"/"+subject+"_roimask.nii.gz",roimask,affine)
+    save_nifti(diffpath+"/"+subject+"_roimask.nii.gz",roimask,affine)
     if outpathpickle is None:
         outpathpickle=outpathtrk
     if outpathfig is None:
@@ -1322,7 +1324,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
             elif hasattr(trkdata, 'space_attributes'):
                 header = trkdata.space_attributes
             trkstreamlines = trkdata.streamlines
-            trkstreamlines=prune_streamlines(list(trkstreamlines), fdwi_data[:, :, :, 0], cutoff=cutoff, verbose=verbose)
+            trkstreamlines=prune_streamlines(list(trkstreamlines), diff_data[:, :, :, 0], cutoff=cutoff, verbose=verbose)
             myheader = create_tractogram_header(trkprunefile, *header)
             prune_sl = lambda: (s for s in trkstreamlines)
             tract_save.save_trk_heavy_duty(trkprunefile, streamlines=prune_sl,
@@ -1493,7 +1495,7 @@ def evaluate_tracts(dwipath,trkpath,subject,stepsize, tractsize, labelslist=None
     display = False
     duration=time()
     strproperty = tractsize + strproperty + "ratio_" + str(ratio) + "_stepsize_" +stepsize
-    model_error, mean_error = LiFEvaluation(fdwi_data, trkstreamlines, gtab, subject=subject, header=header,
+    model_error, mean_error = LiFEvaluation(diff_data, trkstreamlines, gtab, subject=subject, header=header,
                                             roimask=roimask, affine=affine,display=display, outpathpickle=outpathpickle,
                                             outpathtrk=outpathtrk, processes=processes, outpathfig=outpathfig,
                                             strproperty=strproperty, verbose=verbose)

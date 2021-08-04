@@ -28,8 +28,8 @@ def getfa(mypath, subject, bvec_orient, verbose=None):
     else:
         print("Could not find the fa file anywhere")
         print("Will attempt to create new fa file")
-        fdwi_data, affine, gtab, mask, vox_size, fdwipath, hdr, header = getdwidata(mypath, subject, bvec_orient)
-        fapath = make_tensorfit(fdwi_data, mask, gtab, affine, subject, outpath=os.path.dirname(fdwipath), strproperty="", verbose=verbose)
+        fdiff_data, affine, gtab, mask, vox_size, fdiffpath, hdr, header = getdiffdata(mypath, subject, bvec_orient)
+        fapath = make_tensorfit(fdiff_data, mask, gtab, affine, subject, outpath=os.path.dirname(fdiffpath), strproperty="", verbose=verbose)
     if verbose:
         txt = "Extracting information from the fa file located at " + fapath
         print(txt)
@@ -153,7 +153,10 @@ def get_reference_info(reference, affine = np.eye(4).astype(np.float32)):
 
     return affine, dimensions, voxel_sizes, voxel_order
 
-def getdwipath(mypath, subject, verbose):
+def getdiffpath(mypath, subject, denoise="", verbose=None):
+
+    if denoise is None:
+        denoise=""
 
     subjfolder = glob.glob(os.path.join(mypath, "*" + subject + "*/"))
     if np.size(subjfolder)==1:
@@ -162,60 +165,61 @@ def getdwipath(mypath, subject, verbose):
         subjfolder = None
 
     if os.path.isfile(mypath) and os.path.exists(mypath):
-        fdwipath = mypath
-    elif os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
-        fdwipath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
+        fdiffpath = mypath
+    elif os.path.exists(os.path.join(mypath,subject+"_"+denoise+"_diff.nii.gz")):
+        fdiffpath = (os.path.join(mypath,subject+"_"+denoise+"_diff.nii.gz"))
     elif os.path.exists(os.path.join(mypath,subject+"_rawnii.nii.gz")):
-        fdwipath = (os.path.join(mypath,subject+"_rawnii.nii.gz"))
+        fdiffpath = (os.path.join(mypath,subject+"_rawnii.nii.gz"))
     elif os.path.exists(os.path.join(mypath,subject+"_coreg.nii.gz")):
-        fdwipath = (os.path.join(mypath,subject+"_coreg.nii.gz"))
+        fdiffpath = (os.path.join(mypath,subject+"_coreg.nii.gz"))
     elif np.size(glob.glob(os.path.join(mypath,subject+"*_dwi.nii.gz"))) == 1:
-        fdwipath = glob.glob(os.path.join(mypath,subject+"*_dwi.nii.gz"))[0]
+        fdiffpath = glob.glob(os.path.join(mypath,subject+"*_dwi.nii.gz"))[0]
     elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
-        fdwipath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
+        fdiffpath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
     elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
-        fdwipath = mypath + '/nii4D_' + subject + '.nii'
+        fdiffpath = mypath + '/nii4D_' + subject + '.nii'
     elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
-        fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
+        fdiffpath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
     elif os.path.exists(mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'):
-        fdwipath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
+        fdiffpath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
     elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
-        fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
+        fdiffpath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
     elif os.path.exists(mypath + '/' + subject + '/') and np.size(glob.glob(os.path.join(subjfolder, subject + '*nii4D*.nii*'))) > 0:
-        fdwipath = glob.glob(os.path.join(subjfolder, subject + '*nii4D*.nii*'))[0]
+        fdiffpath = glob.glob(os.path.join(subjfolder, subject + '*nii4D*.nii*'))[0]
+    #elif os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
+    #    fdiffpath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
     elif os.path.exists(mypath) and np.size(glob.glob(os.path.join(subjfolder, "*.bxh"))) > 0:
         subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
         for bxhfile in subjbxh:
             bxhtype = checkbxh(bxhfile, False)
-            if bxhtype == "dwi":
-                fdwipath = bxhfile.replace(".bxh", ".nii.gz")
+            if bxhtype == "diff":
+                fdiffpath = bxhfile.replace(".bxh", ".nii.gz")
                 break
 
-    if verbose:
-        txt = "Extracting information from the dwi file located at " + fdwipath
-        print(txt)
-        send_mail(txt, subject="Begin data extraction")
-
-    if 'fdwipath' not in locals():
+    if 'fdiffpath' not in locals():
         txt = "The subject " + subject + " was not detected, exit"
         print(txt)
         send_mail(txt, subject="Error")
         return (0, 0, 0, 0, 0, 0, 0, 0)
 
-    return(fdwipath)
+    return(fdiffpath)
 
-def getdwidata(mypath, subject, verbose=None):
+def getdiffdata(mypath, subject, denoise="", verbose=None):
 
-    dwi_fpath = getdwipath(mypath, subject, verbose)
-    img = nib.load(dwi_fpath)
-    dwi_data = img.get_data()
+    diff_fpath = getdiffpath(mypath, subject, denoise=denoise, verbose=verbose)
+    if verbose:
+        txt = "Extracting information from the diff file located at " + diff_fpath
+        print(txt)
+        send_mail(txt, subject="Begin data extraction")
+    img = nib.load(diff_fpath)
+    diff_data = img.get_data()
     vox_size = img.header.get_zooms()[:3]
     affine = img.affine
     hdr = img.header
     del(img)
-    header = get_reference_info(dwi_fpath)
+    header = get_reference_info(diff_fpath)
 
-    return dwi_data, affine, vox_size, dwi_fpath, hdr, header
+    return diff_data, affine, vox_size, diff_fpath, hdr, header
 
 def get_bvals_bvecs(mypath, subject):
     try:
@@ -250,20 +254,20 @@ def getb0s(mypath, subject):
         i += 1
     return(b0s)
 
-def getdwidata_all(mypath, subject, bvec_orient=[1,2,3], verbose=None):
+def getdiffdata_all(mypath, subject, bvec_orient=[1,2,3], denoise="", verbose=None):
 
-    fdwi_data, affine, vox_size, fdwipath, hdr, header = getdwidata(mypath, subject, verbose)
-    mypath = str(pathlib.Path(fdwipath).parent.absolute())
+    fdiff_data, affine, vox_size, fdiffpath, hdr, header = getdiffdata(mypath, subject, denoise=denoise, verbose=verbose)
+    mypath = str(pathlib.Path(fdiffpath).parent.absolute())
 
     if bvec_orient is None:
-        img = nib.load(fdwipath)
-        fdwi_data = img.get_data()
+        img = nib.load(fdiffpath)
+        fdiff_data = img.get_data()
         vox_size = img.header.get_zooms()[:3]
         affine = img.affine
         hdr = img.header
-        header = get_reference_info(fdwipath)
+        header = get_reference_info(fdiffpath)
         gtab = None
-        return fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header
+        return fdiff_data, affine, gtab, vox_size, fdiffpath, hdr, header
 
     gtab = getgtab(mypath, subject, bvec_orient)
 
@@ -272,16 +276,16 @@ def getdwidata_all(mypath, subject, bvec_orient=[1,2,3], verbose=None):
 
     #bvecs = np.c_[bvecs[:, -], bvecs[:, 0], -bvecs[:, 2]] #estimated for RAS based on headfile info
 
-    img = nib.load(fdwipath)
-    fdwi_data = img.get_data()
+    img = nib.load(fdiffpath)
+    fdiff_data = img.get_data()
     vox_size = img.header.get_zooms()[:3]
     affine = img.affine
     hdr = img.header
     del(img)
 
-    header = get_reference_info(fdwipath)
+    header = get_reference_info(fdiffpath)
 
-    return fdwi_data, affine, gtab, vox_size, fdwipath, hdr, header
+    return fdiff_data, affine, gtab, vox_size, fdiffpath, hdr, header
 
 def getlabelmask(mypath, subject, verbose=None):
 
@@ -318,7 +322,7 @@ def getlabelmask(mypath, subject, verbose=None):
 
     return labels, affine_labels, labelspath
 
-def getmask(mypath, subject, masktype = "dwi", verbose=None):
+def getmask(mypath, subject, masktype = "diff", verbose=None):
     if os.path.isfile(mypath):
         if mypath.contains(masktype+'binary_mask.nii.gz'):
             mask, affine_mask = load_nifti(mypath)
@@ -346,7 +350,7 @@ def getmask(mypath, subject, masktype = "dwi", verbose=None):
         raise Warning("too many masks fitting parameters!!")
 
 
-def move_bvals(mypath, subject, dwipathnew):
+def move_bvals(mypath, subject, diffpathnew):
 
 
     subjfolder = glob.glob(os.path.join(mypath, "*" + subject + "*/"))
@@ -357,31 +361,31 @@ def move_bvals(mypath, subject, dwipathnew):
     elif np.size(subjfolder) > 1:
         raise Warning
     elif np.size(glob.glob(os.path.join(mypath,subject+"*rawnii*"))) > 0:
-        fdwipath = (glob.glob(os.path.join(mypath,subject+"*rawnii*")))[0]
+        fdiffpath = (glob.glob(os.path.join(mypath,subject+"*rawnii*")))[0]
     elif np.size(glob.glob(os.path.join(mypath,subject+"*dwi*nii*"))) > 0:
-        fdwipath = (glob.glob(os.path.join(mypath,subject+"*dwi*nii*")))[0]
+        fdiffpath = (glob.glob(os.path.join(mypath,subject+"*dwi*nii*")))[0]
     elif os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
-        fdwipath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
+        fdiffpath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
     elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
-        fdwipath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
+        fdiffpath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
     elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
-        fdwipath = mypath + '/nii4D_' + subject + '.nii'
+        fdiffpath = mypath + '/nii4D_' + subject + '.nii'
     elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
-        fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
+        fdiffpath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
     elif os.path.exists(mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'):
-        fdwipath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
+        fdiffpath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
     elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
-        fdwipath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
+        fdiffpath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
     elif os.path.exists(mypath + '/' + subject + '/'):
-        fdwipath = glob.glob(mypath + '/' + subject + '/' + subject + '*nii4D*.nii*')[0]
+        fdiffpath = glob.glob(mypath + '/' + subject + '/' + subject + '*nii4D*.nii*')[0]
 
     if os.path.isfile(mypath):
-        mypath = str(pathlib.Path(fdwipath).parent.absolute())
+        mypath = str(pathlib.Path(fdiffpath).parent.absolute())
     elif os.path.isdir(mypath):
         mypath = mypath
 
-    fbvals_new = os.path.join(dwipathnew, subject + "_bvals_fix.txt")
-    fbvec_new = os.path.join(dwipathnew, subject + "_bvec_fix.txt")
+    fbvals_new = os.path.join(diffpathnew, subject + "_bvals_fix.txt")
+    fbvec_new = os.path.join(diffpathnew, subject + "_bvec_fix.txt")
 
     if not os.path.exists(fbvals_new) and not os.path.exists(fbvec_new):
         try:

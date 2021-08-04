@@ -99,7 +99,8 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     if not os.path.exists(bvecs):
         if verbose:
             print("Extracting diff directions")
-        bvec_cmd = (f"extractdiffdirs --colvectors --writebvals --fieldsep=\t --space=RAI {bxheader} {bvecs} {bvals}")
+        #print("Bvals and bvecs not found, using extractdiffdirs, however it it NOT RELIABLE, beware!")
+        bvec_cmd = (f"extractdiffdirs --colvectors --writebvals --fieldsep='\t' --space=RAI {bxheader} {bvecs} {bvals}")
         os.system(bvec_cmd)
 
     # Make dwi for mask generation purposes.

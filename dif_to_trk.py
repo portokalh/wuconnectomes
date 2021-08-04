@@ -107,7 +107,7 @@ def QCSA_tractmake(data, affine, vox_size, gtab, mask, masktype, header, step_si
         return outpathtrk, streamlines_generator, params
 
     csa_model = CsaOdfModel(gtab, 6)
-    if peak_processes < 2:
+    if peak_processes == 1:
         parallel = False
     else:
         parallel = True

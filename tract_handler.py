@@ -307,6 +307,10 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
                         cutlist.append(vox)  # if local mask is 0, add voxel to list of voxels to cut
                         j += 1
                         num_voxel += 1
+                    if np.any(vox < 0):
+                        cutlist.append(vox)  # if local mask is 0, add voxel to list of voxels to cut
+                        j += 1
+                        num_voxel += 1
                 except:
                     cutlist.append(vox)         #if local mask is 0, add voxel to list of voxels to cut
                     j += 1
@@ -333,6 +337,18 @@ def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
                 delstream.append(idx)
                 if verbose:
                     print("Skipped stream " + str(idx) + " out of " + str(len(streamline)) + " streamlines for being too small")
+            j = 0
+            s_vox = np.round(s).astype(np.intp)
+            voxel_counter += len(s_vox)
+            cutlist=[]
+            num_voxel = 0
+            for vox in range(np.shape(s_vox)[0]):
+                if np.any(vox < 0):
+                    cutlist.append(vox)  # if local mask is 0, add voxel to list of voxels to cut
+                    j += 1
+                    num_voxel += 1
+            if num_voxel>1:
+                print("cut "+num_voxel+" for being out of bounds (bounding box issue)")
     if verbose:
         print("Obtaining fiber signal process done in " + str(time() - duration) + "s")
         if len(delstream) > 0:

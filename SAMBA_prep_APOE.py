@@ -46,9 +46,10 @@ bonusshortcutfolder = "/Volumes/Data/Badea/Lab/19abb14/"
 
 subjects = ["58214","58215","58216","58217","58218","58219","58221","58222","58223","58224","58225","58226","58228","58229","58230","58231","58232","58633","58634","58635","58636","58649","58650","58651","58653","58654"]
 
+atlas = "/Volumes/Data/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
+
 overwrite=False
 cleanup = True
-atlas = "/Volumes/Data/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
 atlas = None
 gettranspose=False
 if gettranspose:
@@ -56,9 +57,10 @@ if gettranspose:
 
 transpose=[-9.83984375, -6.05859375, -4.5546875]
 
-makebtables=True
+#btables=["extract","copy","None"]
+btables="extract"
 
-if makebtables:
+if btables=="extract":
     for subject in subjects:
         outpathsubj = outpath + "_" + subject
         writeformat="tab"

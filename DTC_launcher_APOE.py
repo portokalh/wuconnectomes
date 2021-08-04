@@ -207,8 +207,8 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    #dwi_results = pool.starmap_async(dwi_preprocessing, [(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa, function_processes,
-    #                                 createmask, vol_b0, verbose) for subject in l]).get()
+    dwi_results = pool.starmap_async(dwi_preprocessing, [(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa, function_processes,
+                                     createmask, vol_b0, verbose) for subject in l]).get()
     #tract_results = pool.starmap_async(create_tracts, [(dwipath_preprocessed, outtrkpath, subject, figspath, stepsize, function_processes,
     #                                                    str_identifier, ratio, classifiertype, labelslist, bvec_orient, doprune,
     #                                                    overwrite, get_params, verbose) for subject in l]).get()
