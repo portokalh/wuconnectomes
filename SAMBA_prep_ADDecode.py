@@ -11,17 +11,20 @@ from img_transform_exec import get_transpose
 import shutil
 
 gunniespath = "/Users/alex/bass/gitfolder/gunnies/"
-gunniespath = "~/gunnies/"
 mainpath="/Volumes/Data/Badea/ADdecode.01/"
-mainpath = "/mnt/munin6/Badea/ADdecode.01/"
-diffpath = mainpath + "Data/Anat"
 
 #outpath = "/Users/alex/jacques/APOE_temp"
 outpath = "/Volumes/Data/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
-outpath = "/mnt/munin6/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
 bonusshortcutfolder = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool/"
 bonusshortcutfolder = None
-bonusshortcutfolder = "/mnt/munin6/Badea/Lab/mouse/ADDeccode_symlink_pool/"
+
+#gunniespath = "~/gunnies/"
+#mainpath = "/mnt/munin6/Badea/ADdecode.01/"
+#outpath = "/mnt/munin6/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
+#bonusshortcutfolder = "/mnt/munin6/Badea/Lab/mouse/ADDeccode_symlink_pool/"
+
+diffpath = mainpath + "Data/Anat"
+
 mkcdir(outpath)
 subjects = ["02654", "02690", "02720", "02737", "02745", "02753", "02765", "02771", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926"]
 subjects = ["02654", "02690", "02720", "02737", "02745", "02753", "02765", "02771", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
@@ -84,7 +87,6 @@ max_processors = 10
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 subject_processes = np.size(subjects)
-subject_processes = 1
 if max_processors < subject_processes:
     subject_processes = max_processors
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
