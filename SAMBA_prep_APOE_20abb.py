@@ -41,10 +41,13 @@ subject = "58214"
 #outpath = "/Users/alex/jacques/APOE_temp"
 outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/"
 outpath = "/Volumes/Data/Badea/Lab/jacques/APOE_series/diffusion_prep_locale/"
+#outpath = "/Volumes/Data/Badea/Lab/jacques/APOE_series/diffusion_prep_locale_test/"
 
 bonusshortcutfolder = "/Volumes/Data/Badea/Lab/19abb14/"
+#bonusshortcutfolder = "/Volumes/Data/Badea/Lab/jacques/APOE_series/19abb14/"
 
-subjects = ["58214","58215","58216","58217","58218","58219","58221","58222","58223","58224","58225","58226","58228","58229","58230","58231","58232","58633","58634","58635","58636","58649","58650","58651","58653","58654"]
+subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N58222","N58223","N58224","N58225","N58226","N58228",
+            "N58229","N58230","N58231","N58232","N58633","N58634","N58635","N58636","N58649","N58650","N58651","N58653","N58654"]
 
 atlas = "/Volumes/Data/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
 
@@ -56,9 +59,11 @@ if gettranspose:
     transpose = get_transpose(atlas)
 
 transpose=[-9.83984375, -6.05859375, -4.5546875]
-
+transpose = None
 #btables=["extract","copy","None"]
 btables="extract"
+#deonise=["None","lpca"]
+denoise="None"
 
 if btables=="extract":
     for subject in subjects:
@@ -92,7 +97,8 @@ if subject_processes>1:
     results = pool.starmap_async(launch_preprocessing, [(subject,
                                                          largerfile(glob.glob(os.path.join(os.path.join(dwipath, "diffusion*"+subject+"*")))[0]),
                                                          outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                                                         gunniespath, function_processes, atlas, transpose, overwrite, verbose)
+                                                         gunniespath, function_processes, atlas, transpose,
+                                                         overwrite, denoise, verbose)
                                                         for subject in subjects]).get()
 else:
     for subject in subjects:
@@ -101,7 +107,8 @@ else:
         max_file=largerfile(subjectpath)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
         launch_preprocessing(subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                                                         gunniespath, function_processes, atlas, transpose, overwrite, verbose)
+                                                         gunniespath, function_processes, atlas, transpose,
+                             overwrite, denoise, verbose)
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
 

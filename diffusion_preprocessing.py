@@ -66,7 +66,9 @@ def median_mask_make(inpath, outpath, outpathmask=None, median_radius=4, numpass
     save_nifti(outpath, data_masked.astype(np.float32), affine)
     save_nifti(outpathmask, mask.astype(np.float32), affine)
 
-def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000, bonusshortcutfolder=None, gunniespath="~/gunnies/", processes=1, atlas=None, transpose=None, overwrite=False, verbose=False):
+def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000, bonusshortcutfolder=None,
+                         gunniespath="~/gunnies/", processes=1, atlas=None, transpose=None,
+                         overwrite=False, denoise='None', verbose=False):
 
     #img_transform_exec('/Volumes/Data/Badea/Lab/human/Sinha_epilepsy/diffusion_prep_locale/diffusion_prep_00393/00393_tmp_b0.nii.gz','LPS', 'RAS',
     #'/Volumes/Data/Badea/Lab/human/Sinha_epilepsy/diffusion_prep_locale/diffusion_prep_00393/00393_b0.nii.gz')
@@ -135,31 +137,41 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     #    os.remove(raw_dwi)
 
     # Run Local PCA Denoising algorithm on 4D nifti:
-    denoised_nii = os.path.join(work_dir,f"LPCA_{id}_nii4D.nii.gz")
-    masked_nii = os.path.join(work_dir,nii_name)
+    masked_nii = os.path.join(work_dir, nii_name)
     if not "nii.gz" in masked_nii:
-        masked_nii = masked_nii.replace(".nii",".nii.gz")
-    masked_nii = masked_nii.replace(ext,"_masked"+ext)
+        masked_nii = masked_nii.replace(".nii", ".nii.gz")
+    masked_nii = masked_nii.replace(ext, "_masked" + ext)
 
-    if not os.path.exists(denoised_nii) or overwrite:
+    if denoise=="None" or denoise is None:
+        denoised_nii = masked_nii
         if not os.path.exists(masked_nii) or overwrite:
             fsl_cmd = f"fslmaths {raw_nii} -mas {tmp_mask} {masked_nii} -odt 'input'";
             os.system(fsl_cmd)
-        basic_LPCA_denoise_func(id,masked_nii,bvecs,work_dir, processes=processes, verbose=False) #to improve and make multiprocessing
+    else:
+        denoised_nii = os.path.join(work_dir,f"LPCA_{id}_nii4D.nii.gz")
+        if not os.path.exists(denoised_nii) or overwrite:
+            if not os.path.exists(masked_nii) or overwrite:
+                fsl_cmd = f"fslmaths {raw_nii} -mas {tmp_mask} {masked_nii} -odt 'input'";
+                os.system(fsl_cmd)
+            basic_LPCA_denoise_func(id,masked_nii,bvecs,work_dir, processes=processes,
+                                    denoise=denoise, verbose=False) #to improve and make multiprocessing
 
-    #if cleanup and os.path.exists(denoised_nii) and os.path.exists(masked_nii):
+    #if cleanup and os.path.exists(denoised_nii) and os.path.exists(masked_nii) and denoised_nii!=masked_nii:
     #    os.remove(masked_nii)
 
     # Run coregistration/eddy current correction:
 
-    L_id=f'LPCA_{id}';
-    coreg_nii_old = f'{outpath}/co_reg_{L_id}_m00-results/Reg_{L_id}_nii4D{ext}';
-    coreg_nii = os.path.join(work_dir,f'Reg_{L_id}_nii4D{ext}')
+    if denoise.lower()=='lpca':
+        D_id=f'LPCA_{id}';
+    elif denoise=="None" or denoise is None:
+        D_id = f'{id}'
+    coreg_nii_old = f'{outpath}/co_reg_{D_id}_m00-results/Reg_{D_id}_nii4D{ext}';
+    coreg_nii = os.path.join(work_dir,f'Reg_{D_id}_nii4D{ext}')
     if not cleanup:
         coreg_nii=coreg_nii_old
     if not os.path.exists(coreg_nii) or overwrite:
         if not os.path.exists(coreg_nii_old) or overwrite:
-            temp_cmd = os.path.join(gunniespath,'co_reg_4d_stack_tmpnew.bash')+f' {denoised_nii} {L_id} 0 {outpath}';
+            temp_cmd = os.path.join(gunniespath,'co_reg_4d_stack_tmpnew.bash')+f' {denoised_nii} {D_id} 0 {outpath}';
             os.system(temp_cmd)
         if cleanup:
             shutil.move(coreg_nii_old,coreg_nii)
@@ -168,7 +180,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         if not os.path.exists(coreg_link) or overwrite:
             buildlink(coreg_link, coreg_nii)
 
-    coreg_inputs=os.path.join(outpath,f'co_reg_{L_id}_m00-inputs')
+    coreg_inputs=os.path.join(outpath,f'co_reg_{D_id}_m00-inputs')
     coreg_work=coreg_inputs.replace('-inputs','-work')
     coreg_results=coreg_inputs.replace('-inputs','-results')
     if cleanup and os.path.exists(coreg_nii) and os.path.isdir(coreg_inputs):
@@ -224,9 +236,10 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
                 buildlink(bonus_link, real_file)
 
     #give real header to the temp files using md as reference
-    for contrast in ['tmp_dwi', 'tmp_b0', 'tmp_mask']:
-        file = os.path.join(work_dir, f'{id}_{contrast}{ext}')
-        if os.path.exists(file) or overwrite:
+    for contrast in ['dwi', 'b0', 'mask']:
+        file=os.path.join(work_dir,f'{id}_tmp_{contrast}{ext}')
+        final_file=os.path.join(work_dir,f'{id}_{contrast}{ext}')
+        if os.path.exists(file) and (not os.path.exists(final_file) or overwrite):
             #cmd = os.path.join(gunniespath,'nifti_header_splicer.bash')+f' {md} {file} {file}'
             cmd = os.path.join(gunniespath, 'nifti_header_splicer.bash') + f' {md} {file} {file}'
             os.system(cmd)
@@ -320,7 +333,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         linked_file_w=os.path.join(work_dir,f'{id}_{contrast}{ext}')
         header_fix=True
         if header_fix:
-            header_superpose(dwi_out, real_file, transpose=None)
+            header_superpose(dwi_out, real_file, transpose=transpose)
 
         if not os.path.isfile(linked_file) or overwrite:
             buildlink(linked_file_w,real_file)

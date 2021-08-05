@@ -66,7 +66,7 @@ bval_or_bvec_or_btable=sys.argv[3]
 outpath=sys.argv[4]
 """
 
-def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath, processes=1, verbose=False):
+def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath, processes=1, denoise="LPCA", verbose=False):
 
     np.seterr(divide='ignore', invalid='ignore')
 
@@ -125,23 +125,24 @@ def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath, processes=1,
     duration1 = time() - t1
 
     # print('BIAC006'+' DTI duration %.3f' % (duration1,))
-    id=str(id)
-    lpca_path=outpath+'/LPCA_' + id + '_nii4D.nii.gz'
-    if path.exists(lpca_path):
-        print('File already exists; Skipping LPCA denoising (path: ' + lpca_path + ')' )
-    else:
-        print('Beginning LPCA denoising for: '+ id + '.  (Expected result: ' + lpca_path + ')' )
-        t = time()
 
-        print(data.shape)
-        data2=data
-        sigma1 = pca_noise_estimate(data2, gtab, correct_bias=True, smooth=1)
-        print("Sigma estimation time", time() - t)
+    if denoise.lower() == 'lpca':
+        id=str(id)
+        lpca_path=outpath+'/LPCA_' + id + '_nii4D.nii.gz'
+        if path.exists(lpca_path):
+            print('File already exists; Skipping LPCA denoising (path: ' + lpca_path + ')' )
+        else:
+            print('Beginning LPCA denoising for: '+ id + '. (Expected result: ' + lpca_path + ')' )
+            t = time()
 
-        #lpca
-        t = time()
-        denoised_arr = localpca(data2, sigma=sigma1, patch_radius=2,pca_method='svd', tau_factor=2.3,
-                                processes=processes, verbose=verbose)
-        save_nifti(lpca_path, denoised_arr, affine)
-        print("Time taken for local PCA denoising", -t + time())
+            print(data.shape)
+            data2=data
+            sigma1 = pca_noise_estimate(data2, gtab, correct_bias=True, smooth=1)
+            print("Sigma estimation time", time() - t)
 
+            #lpca
+            t = time()
+            denoised_arr = localpca(data2, sigma=sigma1, patch_radius=2,pca_method='svd', tau_factor=2.3,
+                                    processes=processes, verbose=verbose)
+            save_nifti(lpca_path, denoised_arr, affine)
+            print("Time taken for local PCA denoising", -t + time())
