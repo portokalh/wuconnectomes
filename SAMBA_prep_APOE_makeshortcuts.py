@@ -51,7 +51,6 @@ subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N582
 
 subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N58222","N58223","N58224","N58225","N58226","N58228",
             "N58229","N58230","N58231","N58232","N58633","N58634","N58635","N58636","N58649","N58650","N58651","N58653","N58654"]
-subjects = ["N58214"]
 
 atlas = "/mnt/munin6/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
 
@@ -110,6 +109,7 @@ else:
         subjectpath = glob.glob(os.path.join(os.path.join(outpath, "diffusion*"+subject+"*")))[0]
         max_file=largerfile(subjectpath)
         max_file= os.path.join(subjectpath, "nii4D_"+subject+".nii.gz")
+        print(max_file)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
         launch_preprocessing(subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
                                                          gunniespath, function_processes, atlas, transpose,

@@ -171,7 +171,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         coreg_nii=coreg_nii_old
     if not os.path.exists(coreg_nii) or overwrite:
         if not os.path.exists(coreg_nii_old) or overwrite:
-            temp_cmd = os.path.join(gunniespath,'co_reg_4d_stack_tmpnew.bash')+f' {denoised_nii} {D_id} 0 {outpath}';
+            temp_cmd = os.path.join(gunniespath,'co_reg_4d_stack_tmpnew.bash')+f' {denoised_nii} {D_id} 0 {outpath} 0';
             os.system(temp_cmd)
         if cleanup:
             shutil.move(coreg_nii_old,coreg_nii)

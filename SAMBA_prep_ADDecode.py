@@ -18,24 +18,21 @@ outpath = "/Volumes/Data/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
 bonusshortcutfolder = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool/"
 bonusshortcutfolder = None
 
-#gunniespath = "~/gunnies/"
-#mainpath = "/mnt/munin6/Badea/ADdecode.01/"
-#outpath = "/mnt/munin6/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
-#bonusshortcutfolder = "/mnt/munin6/Badea/Lab/mouse/ADDeccode_symlink_pool/"
+gunniespath = "~/gunnies/"
+mainpath = "/mnt/munin6/Badea/ADdecode.01/"
+outpath = "/mnt/munin6/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
+bonusshortcutfolder = "/mnt/munin6/Badea/Lab/mouse/ADDeccode_symlink_pool/"
 
 diffpath = mainpath + "Data/Anat"
 
 mkcdir(outpath)
-subjects = ["02654", "02690", "02720", "02737", "02745", "02753", "02765", "02771", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926"]
 subjects = ["02654", "02690", "02720", "02737", "02745", "02753", "02765", "02771", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
 
-#subjects = ["02871", "02877", "02898", "02926"]
-#subjects = ["02842"]
-#subjects = ["02654", "02690", "02720", "02737", "02753", "02765", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02871", "02877", "02898", "02926"]
-subjects = ["02654"]
+subjects = ["02654", "02690", "02720", "02737", "02753", "02765", "02781", "02802", "02804", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
+subjects = ["02842", "02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
+#02745 was not fully done, discount
+#02771, "02812" is a strange subject, to investigate
 
-#subjects = ["02753", "02765", "02771"]
-#weirdones = ["02745", "02771", "02842"]
 proc_subjn="S"
 proc_name ="diffusion_prep_"+proc_subjn
 denoise = "lpca"
@@ -83,7 +80,7 @@ elif btables=="copy":
                 shutil.copy(bvecs[0], outpathbvec)
 #quickfix was here
 
-max_processors = 10
+max_processors = 1
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 subject_processes = np.size(subjects)
