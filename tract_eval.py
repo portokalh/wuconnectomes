@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 from numpy import ravel_multi_index
 
 #import dipy.tracking.life as life
-import JSdipy.tracking.life as life
+#import JSdipy.tracking.life as life
 import dipy.core.optimize as opt
 
 from BIAC_tools import send_mail, getsize

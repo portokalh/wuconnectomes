@@ -137,6 +137,8 @@ def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath, processes=1,
 
             print(data.shape)
             data2=data
+            print(masked_path)
+            print(gtab)
             sigma1 = pca_noise_estimate(data2, gtab, correct_bias=True, smooth=1)
             print("Sigma estimation time", time() - t)
 
