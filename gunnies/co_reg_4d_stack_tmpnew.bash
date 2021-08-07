@@ -5,10 +5,8 @@ identifier=$2
 dti=$3
 outpath=$4
 
-DEFAULTVALUE=1
+DEFAULTVALUE=0
 toqsub="${5:-$DEFAULTVALUE}"
-
-
 
 ANTSPATH=/Users/alex/Ants/install/bin
 
@@ -149,7 +147,7 @@ for nn in $(eval echo "{${zero_pad}1..$XXX}");do
 	    echo "${reg_cmd}" >> ${sbatch_file};
 	    echo "${apply_cmd}" >> ${sbatch_file};
 
-	    if ! command -v qsub &> /dev/null || [ "$qsub" == "0" ]; then
+	    if ! command -v qsub &> /dev/null || [ "$toqsub" == "0" ]; then
 	    	bash ${sbatch_file};
 	    else
 	    	# cmd="qsub -terse  -b y -V ${sbatch_file}";
@@ -186,7 +184,7 @@ if [[ ! -f ${reg_nii4D} ]];then
     fi
     echo "${assemble_cmd}" >> ${sbatch_file};
 
-    if ! command -v qsub &> /dev/null || [ "$qsub" == "0" ]; then
+    if ! command -v qsub &> /dev/null || [ "$toqsub" == "0" ]; then
         bash ${sbatch_file};
     else
         ass_cmd="qsub -terse -V ${sbatch_file}";
