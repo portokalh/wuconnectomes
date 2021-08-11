@@ -1,74 +1,17 @@
 
 import os
-import numpy as np
 import shutil
 import subprocess
-from file_tools import largerfile, mkcdir, getext, getrelativepath
+from file_tools import largerfile, mkcdir, getext, buildlink
 from img_transform_exec import img_transform_exec, space_transpose, header_superpose
-import nibabel as nib
 import glob
-from dipy.segment.mask import median_otsu
-from dipy.io.image import load_nifti, save_nifti
 from basic_LPCA_denoise import basic_LPCA_denoise_func
+from mask_handler import applymask_samespace, median_mask_make
 
-
-def buildlink(linked_file, real_file):
-    if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
-        os.unlink(linked_file)
-    if not os.path.islink(linked_file) and os.path.isfile(real_file):
-        relpath = getrelativepath(real_file, linked_file)
-        link_cmd=f"ln -s ./{relpath} {linked_file}"
-        os.system(link_cmd)
-
-def applymask_samespace(file, mask, outpath=None):
-    #note: there should definitely be a bet option which would probably end up faster, but for some insane reason there is no
-    #obvious documentation on it, so this will do for now -_-
-    img_nii= nib.load(file)
-    mask_nii = nib.load(mask)
-    img_data = img_nii.get_fdata()
-    img_data_new = img_data
-    mask_data = mask_nii.get_fdata()
-    img_shape = img_nii.shape
-    dims = np.size(img_shape)
-    if (dims == 3 or dims == 4) and mask_nii.shape[0:3] == img_nii.shape[0:3]:
-        for i in np.arange(img_shape[0]):
-            for j in np.arange(img_shape[1]):
-                for k in np.arange(img_shape[2]):
-                    if mask_data[i, j, k] == 1:
-                        if dims == 3:
-                            img_data_new[i, j, k] = img_data[i, j, k]
-                        else:
-                            for l in range(img_shape[3]):
-                                img_data_new[i, j, k, l] = img_data[i, j, k, l]
-                    else:
-                        if dims == 3:
-                            img_data_new[i, j, k] = 0
-                        else:
-                            for l in range(img_shape[3]):
-                                img_data_new[i, j, k, l] = 0
-    elif dims not in [3,4]:
-        raise TypeError("Could not interpret the dimensions of the entering image")
-    elif mask_nii.shape[0:3] != img_nii.shape[0:3]:
-        raise TypeError("The shape of the mask and the image are not equal, therefore readjustments are needed")
-    img_nii_new = nib.Nifti1Image(img_data_new, img_nii.affine, img_nii.header)
-    if outpath is None:
-        outpath = file
-    nib.save(img_nii_new, outpath)
-
-
-def median_mask_make(inpath, outpath, outpathmask=None, median_radius=4, numpass=4):
-
-    if outpathmask is None:
-        outpathmask=outpath.replace(".nii","_mask.nii")
-    data, affine = load_nifti(inpath)
-    data = np.squeeze(data)
-    data_masked, mask = median_otsu(data, median_radius=median_radius, numpass=numpass)
-    save_nifti(outpath, data_masked.astype(np.float32), affine)
-    save_nifti(outpathmask, mask.astype(np.float32), affine)
 
 def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000, bonusshortcutfolder=None,
-                         gunniespath="~/gunnies/", processes=1, atlas=None, transpose=None,
-                         overwrite=False, denoise='None', verbose=False):
+                         gunniespath="~/gunnies/", processes=1, masking="bet", ref=None, transpose=None,
+                         overwrite=False, denoise='None', recenter=0, verbose=False):
 
     #img_transform_exec('/Volumes/Data/Badea/Lab/human/Sinha_epilepsy/diffusion_prep_locale/diffusion_prep_00393/00393_tmp_b0.nii.gz','LPS', 'RAS',
     #'/Volumes/Data/Badea/Lab/human/Sinha_epilepsy/diffusion_prep_locale/diffusion_prep_00393/00393_b0.nii.gz')
@@ -121,21 +64,24 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
             shutil.copyfile(bvecs,bvecs_new)
             shutil.copyfile(bvals,bvals_new)
     final_mask = os.path.join(work_dir, f'{id}_mask{ext}')
-
+    #overwrite=True
     if (not os.path.exists(final_mask) and not os.path.exists(tmp_mask)) or overwrite:
         if not os.path.exists(raw_dwi) or overwrite:
             select_cmd = f"select_dwi_vols {raw_nii} {bvals} {raw_dwi} {nominal_bval} -m"
             os.system(select_cmd)
-
         if not os.path.exists(tmp_mask) or overwrite:
-            tmp = tmp_mask.replace("_mask", "")
-            median_mask_make(raw_dwi, tmp, outpathmask=tmp_mask)
-            #tmp=tmp_mask.replace("_mask", "")
-            #bet_cmd = f"bet {raw_dwi} {tmp} -m -n"
-            #os.system(bet_cmd)
+            if masking=="median":
+                tmp = tmp_mask.replace("_mask", "")
+                median_mask_make(raw_dwi, tmp, outpathmask=tmp_mask)
+            elif masking=="bet":
+                tmp=tmp_mask.replace("_mask", "")
+                bet_cmd = f"bet {raw_dwi} {tmp} -m -n -R"
+                os.system(bet_cmd)
+            else:
+                raise Exception("Unrecognized masking type")
     #if cleanup and (os.path.exists(tmp_mask) and os.path.exists(raw_dwi)):
     #    os.remove(raw_dwi)
-
+    #overwrite=False
     # Run Local PCA Denoising algorithm on 4D nifti:
     masked_nii = os.path.join(work_dir, nii_name)
     if not "nii.gz" in masked_nii:
@@ -194,6 +140,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
 
     tmp_dwi_out=os.path.join(work_dir, f'{id}_tmp_dwi{ext}')
     dwi_out=os.path.join(work_dir,f'{id}_dwi{ext}')
+    #overwrite=True
     if not os.path.exists(dwi_out) or overwrite:
         if not os.path.exists(tmp_dwi_out) or overwrite:
             cmd=f'select_dwi_vols {coreg_nii} {bvals} {tmp_dwi_out} {nominal_bval}  -m'
@@ -207,6 +154,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     if (not os.path.exists(b0_out) and not os.path.exists(tmp_b0_out)) or overwrite:
         cmd=f'select_dwi_vols {coreg_nii} {bvals} {tmp_b0_out} 0  -m;'
         os.system(cmd)
+    #overwrite=False
     #elif cleanup and os.path.exists(tmp_b0_out):
     #    os.remove(tmp_b0_out)
 
@@ -216,7 +164,8 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
     else:
         c_string=''
 
-    if len(glob.glob(os.path.join(work_dir,f'*.fib.gz.md{ext}'))) == 0:
+    #Important note: this is what first creates the fa, md, etc
+    if len(glob.glob(os.path.join(work_dir,f'*.fib.gz.md{ext}'))) == 0 or overwrite:
         cmd = os.path.join(gunniespath,'dti_qa_with_dsi_studio.bash')+f' {coreg_nii} {bvecs} {tmp_mask} {work_dir} {c_string}';
         os.system(cmd)
 
@@ -236,26 +185,38 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
                 buildlink(bonus_link, real_file)
 
     #give real header to the temp files using md as reference
+    #overwrite=True
+
+    if ref=="md" or ref is None:
+        reference=md
+    elif ref=="coreg":
+        reference=coreg_nii
+    elif os.path.exists(ref):
+        reference=ref
+    #overwrite=True
     for contrast in ['dwi', 'b0', 'mask']:
-        file=os.path.join(work_dir,f'{id}_tmp_{contrast}{ext}')
+        tmp_file=os.path.join(work_dir,f'{id}_tmp_{contrast}{ext}')
+        tmp2_file=os.path.join(work_dir,f'{id}_tmp2_{contrast}{ext}')
         final_file=os.path.join(work_dir,f'{id}_{contrast}{ext}')
-        if os.path.exists(file) and (not os.path.exists(final_file) or overwrite):
-            #cmd = os.path.join(gunniespath,'nifti_header_splicer.bash')+f' {md} {file} {file}'
-            cmd = os.path.join(gunniespath, 'nifti_header_splicer.bash') + f' {md} {file} {file}'
-            os.system(cmd)
+        if ((not os.path.exists(tmp2_file) and not os.path.exists(final_file)) or overwrite):
+            if not os.path.exists(tmp_file):
+                raise Exception("Tmp file was not created, need to rerun previous processes")
+            else:
+                #cmd = os.path.join(gunniespath,'nifti_header_splicer.bash')+f' {md} {file} {file}'
+                cmd = os.path.join(gunniespath, 'nifti_header_splicer.bash') + f' {reference} {tmp_file} {tmp2_file}'
+                os.system(cmd)
 
     #write the relative orientation file here
-
+    #overwrite=False
     if not os.path.isfile(orient_string) or overwrite:
         if os.path.isfile(orient_string):
             os.remove(orient_string)
         file = os.path.join(work_dir,id+'_tmp_mask'+ext);
-        if atlas is None:
-            atlas = md
-        cmd = 'bash ' + os.path.join(gunniespath,'find_relative_orientation_by_CoM.bash') + f' {atlas} {file}'
+        cmd = 'bash ' + os.path.join(gunniespath,'find_relative_orientation_by_CoM.bash') + f' {reference} {file}'
         #curious, need to look at that find relative orientation code a bit later
         #orient_test = subprocess.run([cmd], stdout=subprocess.PIPE).stdout.decode('utf-8'
         orient_relative = subprocess.getoutput(cmd)
+
         with open(orient_string, 'w') as f:
             f.write(orient_relative)
     else:
@@ -270,18 +231,19 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         print(f'flexible orientation: {orientation_in}');
         print(f'reference orientation: {orientation_out}');
 
+    #overwrite=True
     #apply the orientation modification to specified contrasts
-    for contrast in ['dwi', 'b0', 'mask', 'md']:
-        img_in=os.path.join(work_dir,f'{id}_tmp_{contrast}{ext}')
+    for contrast in ['dwi', 'b0', 'mask']:
+        img_in=os.path.join(work_dir,f'{id}_tmp2_{contrast}{ext}')
         img_out=os.path.join(work_dir,f'{id}_{contrast}{ext}')
         if not os.path.isfile(img_out) or overwrite:
             if orientation_out != orientation_in:
                 print('TRYING TO REORIENT...b0 and dwi and mask')
-                if os.path.exists(img_in) and not os.path.exists(img_out):
-                    img_transform_exec(img_in, orientation_in, orientation_out, img_out)
+                if os.path.exists(img_in) and (not os.path.exists(img_out) or overwrite):
+                    img_transform_exec(img_in, orientation_in, orientation_out, img_out, recenter=recenter)
                     if os.path.exists(img_out):
                         os.remove(img_in)
-                elif os.path.exists(img_out):
+                elif os.path.exists(img_out) and cleanup:
                     os.remove(img_in)
             else:
                 shutil.move(img_in,img_out)
@@ -293,6 +255,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
             bonus_link = os.path.join(bonusshortcutfolder, f'{id}_{contrast}{ext}')
             if not os.path.exists(bonus_link) or overwrite:
                 buildlink(bonus_link, img_out)
+
 
     mask = os.path.join(work_dir,f'{id}_mask{ext}')
     b0 = os.path.join(work_dir,f'{id}_b0{ext}')

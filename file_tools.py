@@ -69,12 +69,23 @@ def getrelativepath(destination, origin):
     destination = Path(destination).resolve()
     return(os.path.relpath(destination, start=origin))
 
+
+def buildlink(linked_file, real_file):
+    if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
+        os.unlink(linked_file)
+    if not os.path.islink(linked_file) and os.path.isfile(real_file):
+        relpath = getrelativepath(real_file, linked_file)
+        link_cmd=f"ln -s ./{relpath} {linked_file}"
+        os.system(link_cmd)
+
+
 def getext(file):
     filesplit=file.split('.')
     ext=""
     for i in np.arange(1,np.size(filesplit)):
         ext=ext+"."+str(filesplit[i])
     return ext
+
 
 def splitpath(filepath):
     dirname, filename = os.path.split(os.path.abspath(filepath))

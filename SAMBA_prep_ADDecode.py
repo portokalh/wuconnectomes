@@ -18,19 +18,19 @@ outpath = "/Volumes/Data/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
 bonusshortcutfolder = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool/"
 bonusshortcutfolder = None
 
+diffpath = mainpath + "Data/Anat"
+
+
 #gunniespath = "~/gunnies/"
 #mainpath = "/mnt/munin6/Badea/ADdecode.01/"
 #outpath = "/mnt/munin6/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
 #bonusshortcutfolder = "/mnt/munin6/Badea/Lab/mouse/ADDeccode_symlink_pool/"
-
-diffpath = mainpath + "Data/Anat"
 
 mkcdir(outpath)
 subjects = ["02654", "02690", "02720", "02737", "02745", "02753", "02765", "02771", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
 
 subjects = ["02654", "02690", "02720", "02737", "02753", "02765", "02781", "02802", "02804", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
 subjects = ["02654", "02690", "02720", "02737", "02753", "02765", "02781", "02802", "02804", "02813", "02817", "02840", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03033", "03034", "03045", "03048"]
-
 #subjects = ["02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
 #02745 was not fully done, discount
 #02771, "02812", 02871 is a strange subject, to investigate
@@ -39,6 +39,7 @@ subjects = ["02654", "02690", "02720", "02737", "02753", "02765", "02781", "0280
 proc_subjn="S"
 proc_name ="diffusion_prep_"+proc_subjn
 denoise = "lpca"
+masking = "bet"
 overwrite=False
 cleanup = True
 atlas = None
@@ -48,7 +49,7 @@ nominal_bval=1000
 if gettranspose:
     transpose = get_transpose(atlas)
 
-transpose=[0, 0, 0]
+transpose=None
 
 #btables=["extract","copy","None"]
 btables="copy"
@@ -83,7 +84,7 @@ elif btables=="copy":
                 shutil.copy(bvecs[0], outpathbvec)
 #quickfix was here
 
-max_processors = 1
+max_processors = 10
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 subject_processes = np.size(subjects)
@@ -94,6 +95,7 @@ if max_processors < subject_processes:
 
 function_processes = np.int(max_processors/subject_processes)
 results=[]
+recenter=0
 if subject_processes>1:
     if function_processes>1:
         pool = MyPool(subject_processes)
@@ -103,8 +105,8 @@ if subject_processes>1:
     results = pool.starmap_async(launch_preprocessing, [(proc_subjn+subject,
                                                          largerfile(glob.glob(os.path.join(os.path.join(diffpath, "*" + subject + "*")))[0]),
                                                          outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                                                         gunniespath, function_processes, atlas, transpose,
-                                                         overwrite, denoise, verbose)
+                                                         gunniespath, function_processes, masking, atlas, transpose,
+                                                         overwrite, denoise, recenter, verbose)
                                                         for subject in subjects]).get()
 else:
     for subject in subjects:
@@ -115,7 +117,7 @@ else:
         #max_file="/Volumes/Data/Badea/ADdecode.01/Data/Anat/20210522_02842/bia6_02842_003.nii.gz"
         #launch_preprocessing(subject, max_file, outpath, nominal_bval=1000, shortcutpath=shortcutpath, bonusshortcutfolder = bonusshortcutfolder, gunniespath="/Users/alex/bass/gitfolder/gunnies/")
         launch_preprocessing(proc_subjn+subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
-         gunniespath, function_processes, atlas, transpose, overwrite, denoise, verbose)
+         gunniespath, function_processes, masking, atlas, transpose, overwrite, denoise, recenter, verbose)
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
 """

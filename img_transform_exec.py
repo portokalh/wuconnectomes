@@ -16,10 +16,11 @@ def header_superpose(target_path, origin_path, outpath=None, transpose=None):
         # but didnt want to save a nifti file over itself multiple times.
         if transpose is not None:
             target_affine[:3,3] = transpose
-        new_nii = nib.Nifti1Image(origin_nii._data, target_affine, origin_nii._header)
-        if outpath is None:
-            outpath=origin_path
-        nib.save(new_nii, outpath)
+        if np.any(target_affine != origin_nii._affine):
+            new_nii = nib.Nifti1Image(origin_nii._data, target_affine, origin_nii._header)
+            if outpath is None:
+                outpath = origin_path
+            nib.save(new_nii, outpath)
 
 def space_transpose(origin_path, transpose=[0,0,0], outpath=None):
     if outpath is None:
@@ -78,9 +79,6 @@ def img_transform_exec(img, current_vorder, desired_vorder, output_path=None, wr
     overwrite = True;
     if os.path.isfile(output_path) and not overwrite and (not write_transform or (write_transform and os.path.exists(affine_out))):
         warnings.warn('Existing output:%s, not regenerating', output_path);
-
-    if not recenter:
-        warnings.warn('This code is defficient, it will ruin your center.');
 
     orig_string = 'RLAPSI';
     flip_string = 'LRPAIS';
@@ -192,7 +190,9 @@ def img_transform_exec(img, current_vorder, desired_vorder, output_path=None, wr
         trueorigin=origin*[x_row[0],y_row[1],z_row[2]]
         trueorigin[2]=trueorigin[2]*(-1)
     else:
-        trueorigin=[]
+        origin=affine[0:3,3]
+        trueorigin=origin*[x_row[0],y_row[1],z_row[2]]
+        trueorigin[2]=trueorigin[2]*(-1)
 
     newaffine=np.zeros([4,4])
     newhdr=hdr
