@@ -207,7 +207,6 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
                 os.system(cmd)
 
     #write the relative orientation file here
-    #overwrite=False
     if not os.path.isfile(orient_string) or overwrite:
         if os.path.isfile(orient_string):
             os.remove(orient_string)
@@ -231,7 +230,6 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         print(f'flexible orientation: {orientation_in}');
         print(f'reference orientation: {orientation_out}');
 
-    #overwrite=True
     #apply the orientation modification to specified contrasts
     for contrast in ['dwi', 'b0', 'mask']:
         img_in=os.path.join(work_dir,f'{id}_tmp2_{contrast}{ext}')

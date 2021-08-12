@@ -80,6 +80,9 @@ elif btables=="copy":
         outpathsubj = os.path.join(outpath,proc_name+subject)
         outpathbval= os.path.join(outpathsubj, proc_subjn + subject+"_bvals.txt")
         outpathbvec= os.path.join(outpathsubj, proc_subjn + subject+"_bvecs.txt")
+        outpathrelative = os.path.join(outpath, "relative_orientation.txt")
+        newoutpathrelative= os.path.join(outpathsubj, "relative_orientation.txt")
+        shutil.copy(outpathrelative, newoutpathrelative)
         if not os.path.exists(outpathbval) or not os.path.exists(outpathbvec) or overwrite:
             mkcdir(outpathsubj)
             writeformat="tab"
@@ -93,7 +96,7 @@ elif btables=="copy":
 
 proc_name ="diffusion_prep_"
 
-max_processors = 6
+max_processors = 3
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 subject_processes = np.size(subjects)

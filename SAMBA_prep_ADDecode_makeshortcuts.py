@@ -51,13 +51,22 @@ gettranspose=False
 if gettranspose:
     transpose = get_transpose(atlas)
 
-transpose=[-9.83984375, -6.05859375, -4.5546875]
-transpose = None
-transpose=[0, 0, 0]
-#btables=["extract","copy","None"]
+proc_subjn="S"
+proc_name ="diffusion_prep_"+proc_subjn
+denoise = "lpca"
+masking = "bet"
+overwrite=False
+cleanup = True
+atlas = None
+recenter=0
+gettranspose=False
+verbose=True
+nominal_bval=1000
+if gettranspose:
+    transpose = get_transpose(atlas)
+ref = "md"
+
 btables="None"
-#deonise=["None","lpca"]
-denoise="None"
 
 if btables == "extract":
     for subject in subjects:
@@ -88,11 +97,11 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    results = pool.starmap_async(launch_preprocessing, [(subject,
-                                                         largerfile(glob.glob(os.path.join(os.path.join(diffpath, "diffusion*"+subject+"*")))[0]),
+    results = pool.starmap_async(launch_preprocessing, [(proc_subjn+subject,
+                                                         largerfile(glob.glob(os.path.join(os.path.join(diffpath, "*" + subject + "*")))[0]),
                                                          outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                                                         gunniespath, function_processes, atlas, transpose,
-                                                         overwrite, denoise, verbose)
+                                                         gunniespath, function_processes, masking, ref, transpose,
+                                                         overwrite, denoise, recenter, verbose)
                                                         for subject in subjects]).get()
 else:
     for subject in subjects:
