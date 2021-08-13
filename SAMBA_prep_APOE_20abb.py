@@ -58,9 +58,10 @@ verbose=True
 transpose=None
 overwrite=False
 ref="coreg"
-
 #btables=["extract","copy","None"]
 btables="copy"
+
+
 #Neither copy nor extract are fully functioning right now, for now the bvec extractor from extractdiffdirs works
 #go back to this if ANY issue with bvals/bvecs
 #extract is as the name implies here to extract the bvals/bvecs from the files around subject data
@@ -93,8 +94,6 @@ elif btables=="copy":
             if np.size(bvals)>0 and np.size(bvecs)>0:
                 shutil.copy(bvals[0], outpathbval)
                 shutil.copy(bvecs[0], outpathbvec)
-
-proc_name ="diffusion_prep_"
 
 max_processors = 3
 if mp.cpu_count() < max_processors:

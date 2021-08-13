@@ -439,7 +439,7 @@ def makedir(dir):
         os.mkdir(dir)
 
 
-def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype = "T1",
+def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype = "T1",
                               inclusive = False, function_processes = 1, forcestart = False, picklesave = True, labeltype='orig',
                               verbose = None):
 
@@ -462,22 +462,22 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
 
     trkfilepath, trkexists = gettrkpath(trkpath, subject, str_identifier, pruned = False, verbose = verbose)
     trkprunepath, trkpruneexists = gettrkpath(trkpath, subject, str_identifier, pruned = True, verbose = verbose)
-    labelmask, labelaffine, labelpath = getlabelmask(dwipath, subject, verbose)
-    mask, affinemask = getmask(dwipath,subject,masktype,verbose)
+    labelmask, labelaffine, labelpath = getlabelmask(diffpath, subject, verbose)
+    mask, affinemask = getmask(diffpath,subject,masktype,verbose)
     if mask is None:         # Build Brain Mask
         if masktype == 'dwi':
             if verbose:
-                print("Beginning to read the dwifile of subject " + subject + " at " + dwipath)
-            dwi_data, dwiaffine, _, dwi_fpath, _, _ = getdiffdata(dwipath, subject, verbose)
+                print("Beginning to read the dwifile of subject " + subject + " at " + diffpath)
+            diff_data, diffaffine, _, diff_fpath, _, _ = getdiffdata(diffpath, subject, verbose)
             if verbose:
-                print("loaded the file " + dwi_fpath)
-            outpathmask = str(pathlib.Path(dwi_fpath).parent.absolute())
+                print("loaded the file " + diff_fpath)
+            outpathmask = str(pathlib.Path(diff_fpath).parent.absolute())
             if verbose:
                 print("Creating mask for subject " + subject + " at " + outpathmask)
-            vol_idx = getb0s(dwipath, subject)
-            mask, _ = dwi_to_mask(dwi_data, subject, dwiaffine, outpathmask, makefig=False, vol_idx=vol_idx, median_radius=5,
+            vol_idx = getb0s(diffpath, subject)
+            mask, _ = dwi_to_mask(diff_data, subject, diffaffine, outpathmask, makefig=False, vol_idx=vol_idx, median_radius=5,
                                   numpass=6, dilate=2)
-    mypath = dwipath
+    mypath = diffpath
 
     import numpy as np
     prunesave = True
@@ -511,10 +511,10 @@ def tract_connectome_analysis(dwipath, trkpath, str_identifier, outpath, subject
 
         if 'dwi_data' not in locals():
             if verbose:
-                print("Beginning to read the dwifile of subject " + subject + " at "+dwipath)
-            dwi_data, _, _, dwipath, _, _ = getdiffdata(dwipath, subject, verbose)
+                print("Beginning to read the dwifile of subject " + subject + " at "+diffpath)
+            dwi_data, _, _, diffpath, _, _ = getdiffdata(diffpath, subject, verbose)
             if verbose:
-                print("loaded the file " + dwipath)
+                print("loaded the file " + diffpath)
 
         if verbose:
             print("Beginning to read " + trkfilepath)
@@ -1027,7 +1027,7 @@ def check_dif_ratio(trkpath, subject, strproperty, ratio):
                 return
     #trkfilepath = gettrkpath(trkpath, subject, strproperty, verbose)
 
-def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes, strproperty = "", ratio = 1, masktype="binary",
+def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processes, strproperty = "", ratio = 1, masktype="binary",
                       classifier="FA", labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False,
                   get_params=False, denoise="", verbose=None):
 
@@ -1047,11 +1047,11 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
     if verbose:
         print('Running the ' + subject + ' file')
 
-    diff_data, affine, gtab, vox_size, fdwipath, hdr, header = getdiffdata_all(dwipath, subject, bvec_orient, denoise=denoise, verbose=verbose)
-    #fdwipath = getdiffpath(dwipath, subject, denoise=denoise, verbose=verbose)
+    diff_data, affine, gtab, vox_size, fdiffpath, hdr, header = getdiffdata_all(diffpath, subject, bvec_orient, denoise=denoise, verbose=verbose)
+    #fdiffpath = getdiffpath(diffpath, subject, denoise=denoise, verbose=verbose)
 
     if masktype == "dwi":
-        mask, _ = getmask(dwipath,subject, masktype, verbose)
+        mask, _ = getmask(diffpath,subject, masktype, verbose)
         if np.size(np.shape(mask)) == 1:
             mask = mask[0]
         if np.size(np.shape(mask)) == 4:
@@ -1059,11 +1059,11 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
         print("Mask shape is " + str(np.shape(mask)))
 
     if np.mean(diff_data) == 0:
-        print("The subject " + subject + "could not be found at " + dwipath)
+        print("The subject " + subject + "could not be found at " + diffpath)
         return
 
     if classifier == "FA":
-        outpathbmfa, mask = make_tensorfit(diff_data,mask,gtab,affine,subject,outpath=dwipath,verbose=verbose)
+        outpathbmfa, mask = make_tensorfit(diff_data,mask,gtab,affine,subject,outpath=diffpath,verbose=verbose)
 
     print(verbose)
     if verbose:

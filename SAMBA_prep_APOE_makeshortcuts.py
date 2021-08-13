@@ -35,10 +35,10 @@ def orient_to_str(bvec_orient):
 
 gunniespath = "/mnt/clustertmp/common/rja20_dev/gunnies/"
 dwipath = "/Volumes/dusom_civm-atlas/20.abb.15/research/"
-outpath = "/mnt/munin6/Badea/Lab/jacques/APOE_series/diffusion_prep_locale/"
-
-bonusshortcutfolder = "/mnt/munin6/Badea/Lab/19abb14/"
-#bonusshortcutfolder = "/Volumes/Data/Badea/Lab/jacques/APOE_series/19abb14/"
+outpath = "/Volumes/Data/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
+#outpath = "/mnt/munin6/Badea/Lab/jacques/APOE_series/diffusion_prep_locale/"
+bonusshortcutfolder = "/Volumes/Data/Badea/Lab/jacques/APOE_series/19abb14/"
+#bonusshortcutfolder = "/mnt/munin6/Badea/Lab/19abb14/"
 
 subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N58222","N58223","N58224","N58225","N58226","N58228",
             "N58229","N58230","N58231","N58232","N58633","N58634","N58635","N58636","N58649","N58650","N58651","N58653","N58654",
@@ -55,19 +55,21 @@ subjects = ['N58408', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309'
 
 atlas = "/mnt/munin6/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
 
-overwrite=False
-cleanup = True
-atlas = None
-gettranspose=False
-if gettranspose:
-    transpose = get_transpose(atlas)
-
-transpose=[-9.83984375, -6.05859375, -4.5546875]
-transpose = None
-#btables=["extract","copy","None"]
-btables="None"
-#deonise=["None","lpca"]
+proc_subjn=""
 denoise="None"
+recenter=0
+proc_name ="diffusion_prep_"+proc_subjn
+cleanup = True
+masking = "median"
+makebtables = False
+gettranspose=False
+copybtables = True
+verbose=True
+transpose=None
+overwrite=False
+ref="coreg"
+#btables=["extract","copy","None"]
+btables="none"
 
 if btables == "extract":
     for subject in subjects:

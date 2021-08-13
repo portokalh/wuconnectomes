@@ -182,10 +182,10 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in subjects:
-        #tract_results.append(
-        #    create_tracts(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
-        #                  ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
-        #                  verbose))
+        tract_results.append(
+            create_tracts(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
+                          ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
+                          verbose))
         #get_diffusionattributes(diff_preprocessed, diff_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
         #                        createmask, overwrite, verbose)
         if make_connectomes:
