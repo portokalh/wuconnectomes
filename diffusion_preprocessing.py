@@ -126,11 +126,12 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         if not os.path.exists(coreg_link) or overwrite:
             buildlink(coreg_nii, coreg_link)
 
-    toeddy=True
+    toeddy=False
     if toeddy:
-        fsl_cmd = f"fslmaths {raw_nii} -mas {tmp_mask} {masked_nii} -odt 'input'";
-        os.system(fsl_cmd)
-        eddy_cmd = f"eddy --imain={coreg_nii} --mask=b0_brain_mask --acqp=acq_params.txt --index={os.path.join(work_dir,index.txt)} --bvecs={bvecs} --bvals={bvals} --topup=topup_results --repol --out = eddy_cor   rected_data"
+        #fsl_cmd = f"fslmaths {raw_nii} -mas {tmp_mask} {masked_nii} -odt 'input'";
+        #os.system(fsl_cmd)
+        eddy_cmd = f"eddy --imain={coreg_nii} --mask={tmp_mask} --acqp=acq_params.txt --index={os.path.join(work_dir,'index.txt')} --bvecs={bvecs} --bvals={bvals} --topup=topup_results --repol --out = {os.path.join(work_dir,f'Reg_{D_id}_nii4D_eddy{ext}')}"
+        os.system(eddy_cmd)
 
     coreg_inputs=os.path.join(outpath,f'co_reg_{D_id}_m00-inputs')
     coreg_work=coreg_inputs.replace('-inputs','-work')

@@ -42,6 +42,8 @@ subjects = ["S02224"]
 subjects = ["S02654", "S02666",  "S02670",  "S02686", "S02690", "S02695", "S02720", "S02737", "S02753", "S02765", "S02781", "S02802",
             "S02804", "S02813", "S02817", "S02840", "S02877", "S02898", "S02926", "S02938", "S02939", "S02954", "S02967", "S02987",
             "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048"]
+subjects = ["S02224"]
+
 #"S02230" "S02490" these subjects are strange, to investigate
 
 """
@@ -65,7 +67,7 @@ masktype = "T1"
 masktype = "dwi"
 
 
-max_processors = 8
+max_processors = 1
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -130,7 +132,7 @@ createmask = masktype
 inclusive = True
 denoise = "coreg"
 savefa = True
-make_connectomes = False
+make_connectomes = True
 
 classifiertype = "FA"
 classifiertype = "binary"
@@ -180,12 +182,12 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in subjects:
-        tract_results.append(
-            create_tracts(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
-                          ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
-                          verbose))
-        get_diffusionattributes(diff_preprocessed, diff_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
-                                createmask, overwrite, verbose)
+        #tract_results.append(
+        #    create_tracts(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
+        #                  ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
+        #                  verbose))
+        #get_diffusionattributes(diff_preprocessed, diff_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
+        #                        createmask, overwrite, verbose)
         if make_connectomes:
             tract_results.append(tract_connectome_analysis(diff_preprocessed, trkpath, str_identifier, figspath, subject,
                                                            atlas_legends, bvec_orient,  brainmask, inclusive,
