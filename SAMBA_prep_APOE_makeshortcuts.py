@@ -34,11 +34,12 @@ def orient_to_str(bvec_orient):
 
 
 gunniespath = "/mnt/clustertmp/common/rja20_dev/gunnies/"
-dwipath = "/Volumes/dusom_civm-atlas/20.abb.15/research/"
+diffpath = "/Volumes/dusom_civm-atlas/20.abb.15/research/"
 outpath = "/Volumes/Data/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
-#outpath = "/mnt/munin6/Badea/Lab/jacques/APOE_series/diffusion_prep_locale/"
+#outpath = "/mnt/munin6/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
 bonusshortcutfolder = "/Volumes/Data/Badea/Lab/jacques/APOE_series/19abb14/"
 #bonusshortcutfolder = "/mnt/munin6/Badea/Lab/19abb14/"
+bonusshortcutfolder = None
 
 subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N58222","N58223","N58224","N58225","N58226","N58228",
             "N58229","N58230","N58231","N58232","N58633","N58634","N58635","N58636","N58649","N58650","N58651","N58653","N58654",
@@ -100,11 +101,11 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    results = pool.starmap_async(launch_preprocessing, [(subject,
-                                                         largerfile(glob.glob(os.path.join(os.path.join(dwipath, "diffusion*"+subject+"*")))[0]),
+    results = pool.starmap_async(launch_preprocessing, [(proc_subjn+subject,
+                                                         largerfile(glob.glob(os.path.join(os.path.join(diffpath, "diffusion*" + subject + "*")))[0]),
                                                          outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                                                         gunniespath, function_processes, atlas, transpose,
-                                                         overwrite, denoise, verbose)
+                                                         gunniespath, function_processes, masking, ref, transpose,
+                                                         overwrite, denoise, recenter, verbose)
                                                         for subject in subjects]).get()
 else:
     for subject in subjects:
@@ -114,8 +115,8 @@ else:
         max_file= os.path.join(subjectpath, "nii4D_"+subject+".nii.gz")
         print(max_file)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        launch_preprocessing(subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                                                         gunniespath, function_processes, atlas, transpose,
-                             overwrite, denoise, verbose)
+        launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
+                             gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter,
+                             verbose)
         #results.append(launch_preprocessing(subject, max_file, outpath))
 

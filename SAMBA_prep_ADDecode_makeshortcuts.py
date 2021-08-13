@@ -65,7 +65,7 @@ nominal_bval=1000
 if gettranspose:
     transpose = get_transpose(atlas)
 ref = "md"
-
+transpose=None
 btables="None"
 
 if btables=="extract":
@@ -127,7 +127,7 @@ else:
         max_file= os.path.join(subjectpath, "nii4D_"+subject+".nii.gz")
         print(max_file)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        launch_preprocessing(subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
+        launch_preprocessing(proc_subjn+subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
                                                          gunniespath, function_processes, atlas, transpose,
                              overwrite, denoise, verbose)
         #results.append(launch_preprocessing(subject, max_file, outpath))
