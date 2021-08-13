@@ -70,7 +70,7 @@ def getrelativepath(destination, origin):
     return(os.path.relpath(destination, start=origin))
 
 
-def buildlink(linked_file, real_file):
+def buildlink(real_file, linked_file):
     if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
         os.unlink(linked_file)
     if not os.path.islink(linked_file) and os.path.isfile(real_file):

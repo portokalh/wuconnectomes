@@ -916,25 +916,25 @@ def ROI_labels_mask(diff_data, labelsmask, labelslist):
 
     return(diff_data_masked, mask)
 
-def get_diffusionattributes(dwipath, outpath, subject, str_identifier, vol_b0, ratio, bvec_orient,
+def get_diffusionattributes(diffpath, outpath, subject, str_identifier, vol_b0, ratio, bvec_orient,
                                 createmask, overwrite, verbose):
 
-    dwi_data, affine, gtab, vox_size, fdwipath, hdr, header = getdiffdata_all(dwipath, subject, bvec_orient, verbose)
+    diff_data, affine, gtab, vox_size, fdiffpath, hdr, header = getdiffdata_all(diffpath, subject, bvec_orient, verbose)
 
     if createmask:         # Build Brain Mask
         #changes to the outpath reading, to check next time
-        mask, _ = dwi_to_mask(dwi_data, subject, affine, outpath, makefig=False, vol_idx=vol_b0, median_radius=5,
+        mask, _ = diff_to_mask(diff_data, subject, affine, outpath, makefig=False, vol_idx=vol_b0, median_radius=5,
                               numpass=6, dilate=2)
 
-    averages = msdki.mean_signal_bvalue(dwi_data, gtab, bmag=None)
+    averages = msdki.mean_signal_bvalue(diff_data, gtab, bmag=None)
     b0 = averages[0]
-    dwi = averages[1]
+    diff = averages[1]
     b0path = os.path.join(outpath, subject + "_b0.nii.gz")
-    dwipath = os.path.join(outpath, subject + "_dwi.nii.gz")
+    diffpath = os.path.join(outpath, subject + "_diff.nii.gz")
     if not os.path.exists(b0path):
         save_nifti(b0path, b0, affine)
-    if not os.path.exists(dwipath):
-        save_nifti(dwipath, dwi, affine)
+    if not os.path.exists(diffpath):
+        save_nifti(diffpath, diff, affine)
 
     """
     msdki_model = msdki.MeanDiffusionKurtosisModel(gtab)
@@ -950,9 +950,9 @@ def get_diffusionattributes(dwipath, outpath, subject, str_identifier, vol_b0, r
     MK = dki_fit.mk(0, 3)
     """
 
-def diff_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",savefa="yes",processes=1, createmask = True, vol_b0 = None, verbose = False):
+def diff_preprocessing(diffpath,outpath,subject, bvec_orient, denoise="none",savefa="yes",processes=1, createmask = True, vol_b0 = None, verbose = False):
 
-    dwi_fpath = getdiffpath(dwipath, subject, verbose)
+    diff_fpath = getdiffpath(diffpath, subject, verbose)
 
     """
     subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]
@@ -964,27 +964,27 @@ def diff_preprocessing(dwipath,outpath,subject, bvec_orient, denoise="none",save
             break
     """
 
-    extractbvals(dwi_fpath, subject)
-    fbvals, fbvecs = move_bvals(dwipath, subject, outpath)
+    extractbvals(diff_fpath, subject)
+    fbvals, fbvecs = move_bvals(diffpath, subject, outpath)
     gtab = getgtab(outpath, subject, bvec_orient)
 
-    dwi_data, affine, vox_size, dwi_fpath, hdr, header = getdiffdata(dwi_fpath, subject, verbose)
+    diff_data, affine, vox_size, diff_fpath, hdr, header = getdiffdata(diff_fpath, subject, verbose)
 
     if verbose:
         print('Running the preprocessing for subject ' + subject)
 
     if createmask:         # Build Brain Mask
-        mask, _ = dwi_to_mask(dwi_data, subject, affine, outpath, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
+        mask, _ = diff_to_mask(diff_data, subject, affine, outpath, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6, dilate=2)
     else:
-        mask, _ = getlabelmask(dwipath, subject, verbose=True)
+        mask, _ = getlabelmask(diffpath, subject, verbose=True)
 
 
     outpathdenoise = os.path.join(outpath, subject)
-    dwi_data, outpath_denoise = denoise_pick(dwi_data, affine, hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
+    diff_data, outpath_denoise = denoise_pick(diff_data, affine, hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
 
     print(savefa)
     if savefa == "yes" or savefa == "y" or savefa == 1 or savefa is True or savefa == "all":
-        outpathbmfa = make_tensorfit(dwi_data,mask,gtab,affine,subject,outpath=outpath, verbose=verbose)
+        outpathbmfa = make_tensorfit(diff_data,mask,gtab,affine,subject,outpath=outpath, verbose=verbose)
     else:
         print('FA was not calculated')
         outpathbmfa = None
@@ -1047,8 +1047,8 @@ def create_tracts(dwipath, outpath, subject, figspath, step_size, peak_processes
     if verbose:
         print('Running the ' + subject + ' file')
 
-    diff_data, affine, gtab, vox_size, fdwipath, hdr, header = \
-        getdiffdata_all(dwipath, subject, bvec_orient, denoise=denoise, verbose=verbose)
+    diff_data, affine, gtab, vox_size, fdwipath, hdr, header = getdiffdata_all(dwipath, subject, bvec_orient, denoise=denoise, verbose=verbose)
+    #fdwipath = getdiffpath(dwipath, subject, denoise=denoise, verbose=verbose)
 
     if masktype == "dwi":
         mask, _ = getmask(dwipath,subject, masktype, verbose)

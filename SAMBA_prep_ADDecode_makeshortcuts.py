@@ -68,17 +68,33 @@ ref = "md"
 
 btables="None"
 
-if btables == "extract":
+if btables=="extract":
     for subject in subjects:
+        #outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
         outpathsubj = outpath + "_" + subject
         writeformat="tab"
         writeformat="dsi"
-        overwrite_b=False
-        proc_name = "diffusion_prep_"  # Not gonna call it diffusion_calc so we don't assume it does the same thing as the civm pipeline
-        outpath_subj = os.path.join(outpath,proc_name+subject)
-        mkcdir(outpath_subj)
-        fbvals, fbvecs = extractbvals_research(diffpath, subject, outpath=outpath_subj, fix=False, writeformat=writeformat, overwrite=overwrite_b)
+        overwrite=True
+        fbvals, fbvecs = extractbvals(diffpath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
+        #fbvals, fbvecs = rewrite_subject_bvalues(diffpath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
+elif btables=="copy":
+    for subject in subjects:
+        #outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
+        outpathsubj = os.path.join(outpath,proc_name+subject)
+        outpathbval= os.path.join(outpathsubj, proc_subjn + subject+"_bvals.txt")
+        outpathbvec= os.path.join(outpathsubj, proc_subjn + subject+"_bvecs.txt")
+        if not os.path.exists(outpathbval) or not os.path.exists(outpathbvec) or overwrite:
+            mkcdir(outpathsubj)
+            writeformat="tab"
+            writeformat="dsi"
+            overwrite=True
+            bvals = glob.glob(os.path.join(outpath, "*bvals*.txt"))
+            bvecs = glob.glob(os.path.join(outpath, "*bvec*.txt"))
+            if np.size(bvals)>0 and np.size(bvecs)>0:
+                shutil.copy(bvals[0], outpathbval)
+                shutil.copy(bvecs[0], outpathbvec)
 
+#quickfix was here
 max_processors = 1
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()

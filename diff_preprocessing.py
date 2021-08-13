@@ -15,6 +15,7 @@ from denoise_processes import mppca
 from dipy.denoise.gibbs import gibbs_removal
 from time import time
 from figures_handler import denoise_fig
+import glob
 
 #from os.path import join as pjoin
 #from dipy.data import get_fnames
@@ -81,17 +82,20 @@ def check_for_fa(outpath, subject, getdata=False):
     #Checks for fa files ('bmfa') in specified outpath folder. Returns with the path
     #whether it exists or not, and the fa nifti if specified to do so
     if os.path.isdir(outpath):
-        outpathbmfa = os.path.join(outpath, subject + '_bmfa.nii.gz')
+        outpathglobfa = os.path.join(outpath, subject + '_*fa.nii.gz')
     elif os.path.isfile(outpath):
-        outpathbmfa = os.path.join(os.path.dirname(outpath), subject + '_bmfa.nii.gz')
-    if os.path.exists(outpathbmfa):
+        outpathglobfa = os.path.join(os.path.dirname(outpath), subject + '_*fa.nii.gz')
+    outpathfa = glob.glob(outpathglobfa)
+    if np.size(outpathfa) == 1:
+        outpathfa=outpathfa[0]
         if getdata is True:
-            fa = load_nifti(outpathbmfa)
-            return outpathbmfa, True, fa
+            fa = load_nifti(outpathfa)
+            return outpathfa, True, fa
         else:
-            return outpathbmfa, True, None
-    else:
-        return outpathbmfa, False, None
+            return outpathfa, True, None
+    elif np.size(outpathfa) == 0:
+        outpathglobfa.replace("*fa","bmfa")
+        return outpathfa, False, None
 
 def make_tensorfit(data,mask,gtab,affine,subject,outpath, overwrite=False, forcestart = False, verbose=None):
     #Given dwi data, a mask, and other relevant information, creates the fa and saves it to outpath, unless

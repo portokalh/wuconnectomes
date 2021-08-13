@@ -50,6 +50,15 @@ subjects = ['N58408', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309'
             'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512', 'N58747', 'N58303',
             'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396', 'N58613', 'N58732', 'N58516', 'N58813', 'N58402']
 
+subjects = ['N58305', 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512', 'N58747', 'N58303',
+            'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396', 'N58613', 'N58732', 'N58516', 'N58813', 'N58402']
+
+subjects = ['N58712', 'N58790', 'N58606', 'N58350', 'N58608', 'N58779', 'N58500',
+            'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788']
+
+subjects = ['N58302', 'N58612'
+    , 'N58784', 'N58706', 'N58361', 'N58355',]
+
 #subject 'N58610' retired, weird? to investigate
 proc_subjn=""
 denoise="None"
@@ -119,7 +128,7 @@ if copybtables:
         if not os.path.exists(new_bvec_file):
             shutil.copyfile(bvec_file,new_bvec_file)
 
-max_processors = 1
+max_processors = 3
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 subject_processes = np.size(subjects)

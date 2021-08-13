@@ -1,6 +1,6 @@
 
 import numpy as np
-from tract_manager import create_tracts, diff_preprocessing, tract_connectome_analysis
+from tract_manager import create_tracts, diff_preprocessing, tract_connectome_analysis, get_diffusionattributes
 from Daemonprocess import MyPool
 import multiprocessing as mp
 import os
@@ -28,18 +28,21 @@ def orient_to_str(bvec_orient):
     return mystr
 
 #datapath = "/Volumes/Data/Badea/ADdecode.01/Data/Anat/"
-subjects = ["01912", "02110", "02224", "02227", "02230", "02231", "02266", "02289", "02320", "02361", "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02490", "02491", "02506"]
-#subjects = ["02227"]
-#subjects = ["02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02490", "02491", "02506"]
-#subjects = ["02402", "02410", "02421"]
-#subjects = ["02424", "02446", "02451", "02469", "02473", "02485", "02490", "02491", "02506"]
-subjects = ["02231", "02266", "02289"]
-subjects = ["02490", "02491", "02506"]
-subjects = ["01912", "02110", "02224", "02227", "02231", "02266", "02289", "02320", "02361", "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451", "02469", "02473", "02485", "02491", "02506"]
+subjects = ["S01912", "S02110", "S02224", "S02227", "S02230", "S02231", "S02266", "S02289", "S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02490", "S02491", "S02506"]
+#subjects = ["S02227"]
+#subjects = ["S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02490", "S02491", "S02506"]
+#subjects = ["S024S02", "S02410", "S02421"]
+#subjects = ["S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02490", "S02491", "S02506"]
+subjects = ["S02231", "S02266", "S02289"]
+subjects = ["S02490", "S02491", "S02506"]
+subjects = ["S01912", "S02110", "S02224", "S02227", "S02231", "S02266", "S02289", "S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02491", "S02506"]
 
-subjects = ["01912", "02110", "02224", "02227", "02231", "02266"]
-subjects = ["02224"]
-#"02230" "02490" these subjects are strange, to investigate
+subjects = ["S01912", "S02110", "S02224", "S02227", "S02231", "S02266"]
+subjects = ["S02224"]
+subjects = ["S02654", "S02666",  "S02670",  "S02686", "S02690", "S02695", "S02720", "S02737", "S02753", "S02765", "S02781", "S02802",
+            "S02804", "S02813", "S02817", "S02840", "S02877", "S02898", "S02926", "S02938", "S02939", "S02954", "S02967", "S02987",
+            "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048"]
+#"S02230" "S02490" these subjects are strange, to investigate
 
 """
 subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]
@@ -62,13 +65,12 @@ masktype = "T1"
 masktype = "dwi"
 
 
-max_processors = 10
+max_processors = 8
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
 
 subject_processes = np.size(subjects)
-subject_processes = 1
 if max_processors < subject_processes:
     subject_processes = max_processors
 function_processes = np.int(max_processors / subject_processes)
@@ -80,15 +82,15 @@ if masktype == "dwi":
     mask, _ = dwi_to_mask(data, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6,
                           dilate=2)
 elif masktype == "T1":
-    #bet bia6_02491_40006.nii.gz 02491.nii.gz -m -o -f 0.4
-    #mv 02491_mask.nii.gz 02491_T1_binary_mask.nii.gz
+    #bet bia6_S02491_40006.nii.gz S02491.nii.gz -m -o -f 0.4
+    #mv S02491_mask.nii.gz S02491_T1_binary_mask.nii.gz
     mask, affinemask = getmask(outpath,subject,"T1",verbose)
 """
 
 stepsize = 2
 
 
-ratio = 100
+ratio = 1
 if ratio == 1:
     saved_streamlines = "_all"
 else:
@@ -115,7 +117,8 @@ picklesave = True
 verbose = True
 get_params = None
 doprune = True
-classifier = "FA"
+#classifier = ["FA", "binary"]
+classifier = "binary"
 labelslist = []
 bvec_orient = [1,2,-3]
 vol_b0 = [0,1,2]
@@ -125,9 +128,9 @@ donelist = []
 notdonelist = []
 createmask = masktype
 inclusive = True
-denoise = "mpca"
+denoise = "coreg"
 savefa = True
-make_connectomes = True
+make_connectomes = False
 
 classifiertype = "FA"
 classifiertype = "binary"
@@ -164,9 +167,11 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    tract_results = pool.starmap_async(create_tracts, [(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes,
-                                                        str_identifier, ratio, masktype, classifier, labelslist, bvec_orient, doprune,
-                                                        overwrite, get_params,labeltype, verbose) for subject in subjects]).get()
+    tract_results = pool.starmap_async(create_tracts, [(diff_preprocessed, trkpath, subject, figspath, stepsize,
+                                                        function_processes, str_identifier, ratio, brainmask, classifier,
+                                                        labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
+                                                        verbose) for subject
+                                                       in subjects]).get()
     if make_connectomes:
         tract_results = pool.starmap_async(tract_connectome_analysis, [(diff_preprocessed, trkpath, str_identifier, figspath,
                                                                        subject, atlas_legends, bvec_orient, inclusive,
@@ -175,12 +180,12 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in subjects:
-        #tract_results.append(
-        #    create_tracts(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
-        #                  ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params,
-        #                  verbose))
-        #get_diffusionattributes(diff_preprocessed, diff_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
-        #                        createmask, overwrite, verbose)
+        tract_results.append(
+            create_tracts(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
+                          ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
+                          verbose))
+        get_diffusionattributes(diff_preprocessed, diff_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
+                                createmask, overwrite, verbose)
         if make_connectomes:
             tract_results.append(tract_connectome_analysis(diff_preprocessed, trkpath, str_identifier, figspath, subject,
                                                            atlas_legends, bvec_orient,  brainmask, inclusive,

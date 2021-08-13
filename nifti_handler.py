@@ -168,6 +168,8 @@ def getdiffpath(mypath, subject, denoise="", verbose=None):
         fdiffpath = mypath
     elif os.path.exists(os.path.join(mypath,subject+"_"+denoise+"_diff.nii.gz")):
         fdiffpath = (os.path.join(mypath,subject+"_"+denoise+"_diff.nii.gz"))
+    elif os.path.exists(os.path.join(mypath,subject+"_"+denoise+".nii.gz")):
+        fdiffpath = (os.path.join(mypath,subject+"_"+denoise+".nii.gz"))
     elif os.path.exists(os.path.join(mypath,subject+"_rawnii.nii.gz")):
         fdiffpath = (os.path.join(mypath,subject+"_rawnii.nii.gz"))
     elif os.path.exists(os.path.join(mypath,subject+"_coreg.nii.gz")):
@@ -334,7 +336,7 @@ def getmask(mypath, subject, masktype = "diff", verbose=None):
     subjectdir = glob.glob(os.path.join(mypath, "*" + subject + "*"))
     if np.size(subjectdir) == 1:
         mypath = subjectdir[0]
-    maskpath = glob.glob(os.path.join(mypath, subject + '*' + masktype + '_binary_mask.nii.gz'))
+    maskpath = glob.glob(os.path.join(mypath, subject + '*' + masktype + '*_mask.nii.gz'))
     if np.size(maskpath)>0:
         maskpath = maskpath[0]
 
