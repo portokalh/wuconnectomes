@@ -69,7 +69,7 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
         final_ref = os.path.join(inputsfolder, f"{subject}_coreg.nii.gz")
         if os.path.exists(final_ref):
             if Path(final_ref).is_symlink():
-                final_ref=Path('A').resolve()
+                final_ref=str(Path(final_ref).resolve())
         else:
             raise Exception("Could not find final registered subject file")
 
@@ -77,7 +77,7 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
     symbolic_ref = os.path.join(out_dir,f"{subject}_Reg_LPCA_nii4D.nii.gz")
     final_labels = os.path.join(out_dir,f"{subject}_IITmean_preprocess_labels.nii.gz")
 
-    overwrite = True
+    overwrite = False
     if not os.path.exists(final_labels) or overwrite:
         if verbose:
             print(f"Backporting labels to raw space for subject: {subject} to {final_labels}")

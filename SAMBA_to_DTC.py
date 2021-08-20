@@ -13,6 +13,7 @@ import getpass
 project = "APOE"
 
 mainpath = "/Volumes/Data/Badea/Lab/"
+#mainpath = "/mnt/munin6/Badea/Lab/"
 
 if project == "AD_Decode":
 
