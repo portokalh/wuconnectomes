@@ -12,7 +12,7 @@ import getpass
 #project = ["AD_Decode", "APOE"]
 project = "APOE"
 
-mainpath = "mnt/munin6/Badea/Lab/"
+mainpath = "/Volumes/Data/Badea/Lab/"
 
 if project == "AD_Decode":
 
@@ -38,8 +38,6 @@ if project == "AD_Decode":
                 "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048"]
 
 elif project == "APOE":
-
-    import paramiko
 
     SAMBA_mainpath = os.path.join(mainpath, "mouse")
     SAMBA_projectname = "VBM_20APOE01_chass_symmetric3_allAPOE"
@@ -70,7 +68,6 @@ elif project == "APOE":
                 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
                 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
                 'N58613', 'N58732', 'N58516', 'N58813', 'N58402']
-
 else:
     raise Exception("Unknown project name")
 
@@ -90,6 +87,7 @@ for subject in subjects:
 remote=False
 
 if "." and ":" in DTC_DWI_folder:
+    import paramiko
     if "@" in DTC_DWI_folder:
         DTC_DWI_folder_split = DTC_DWI_folder.split("@")
         username = DTC_DWI_folder_split[0]

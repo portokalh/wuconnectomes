@@ -77,12 +77,15 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
     symbolic_ref = os.path.join(out_dir,f"{subject}_Reg_LPCA_nii4D.nii.gz")
     final_labels = os.path.join(out_dir,f"{subject}_IITmean_preprocess_labels.nii.gz")
 
-    if not os.path.exists(final_labels):
+    overwrite = True
+    if not os.path.exists(final_labels) or overwrite:
         if verbose:
             print(f"Backporting labels to raw space for subject: {subject} to {final_labels}")
 
-        if not os.path.exists(preprocess_labels):
-            cmd = f"antsApplyTransforms -v 1 -d 3 -i {atlas_labels} -o {preprocess_labels} -r {preprocess_ref} -n MultiLabel[1.0x1.0x1.0,2] -t [{trans},1] [{rigid},1] [{affine},1] {MDT_to_subject} [{MDT_to_atlas_affine},1] {atlas_to_MDT}"
+        if not os.path.exists(preprocess_labels) or overwrite:
+            #Note, it used to be MultiLabel[1.0x1.0x1.0,2] but it seems like the default parameters tend to be based on the image themselves and work fine,
+            #so be careful but I removed it for now so it would work on different image sets
+            cmd = f"antsApplyTransforms -v 1 -d 3 -i {atlas_labels} -o {preprocess_labels} -r {preprocess_ref} -n MultiLabel -t [{trans},1] [{rigid},1] [{affine},1] {MDT_to_subject} [{MDT_to_atlas_affine},1] {atlas_to_MDT}"
             if verbose:
                 print(f"Runnings the Ants apply transforms to {atlas_labels}")
                 print(cmd)
