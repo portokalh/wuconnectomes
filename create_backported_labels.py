@@ -91,10 +91,10 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
                 print(cmd)
             os.system(cmd)
 
-        if os.path.exists(preprocess_labels) and not os.path.exists(fixed_preprocess_labels):
+        if os.path.exists(preprocess_labels) and not ((os.path.exists(fixed_preprocess_labels)) or overwrite):
             header_superpose(final_ref, preprocess_labels, outpath=fixed_preprocess_labels)
 
-        if os.path.exists(fixed_preprocess_labels) and not os.path.exists(coreg_labels):
+        if os.path.exists(fixed_preprocess_labels) and not (os.path.exists(coreg_labels) or overwrite):
 
             if orientation_out != orientation_in:
                 if verbose:
@@ -115,6 +115,8 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
                 print(f"Applying fsl maths to {final_labels}")
             cmd = f"fslmaths {final_labels} -add 0 {final_labels} -odt short"
             os.system(cmd)
+    else:
+        print(f"Already calculated the label file for subject {subject}")
 
     skip_making_data_package_for_tractography = True
 

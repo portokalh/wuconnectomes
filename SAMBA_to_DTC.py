@@ -69,6 +69,7 @@ elif project == "APOE":
                 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
                 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
                 'N58613', 'N58732', 'N58516', 'N58813', 'N58402']
+    # subject 'N58610' retired, back on SAMBA_prep, to investigate
 else:
     raise Exception("Unknown project name")
 
@@ -84,7 +85,7 @@ for subject in subjects:
     create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, atlas_labels, orient_string, gunniespath=gunniespath,
                            recenter=recenter)
 
-
+"""
 remote=False
 
 if "." and ":" in DTC_DWI_folder:
@@ -152,3 +153,4 @@ for subject in subjects:
 
 sftp.close()
 ssh.close()
+"""

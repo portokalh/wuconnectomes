@@ -38,7 +38,7 @@ diffpath = "/Volumes/dusom_civm-atlas/18.abb.11/research/"
 subject = "58214"
 #outpath = None
 #outpath = "/Users/alex/jacques/APOE_temp"
-outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/"
+outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/AP OE_temp/diffusion_prep_locale/"
 outpath = "/Volumes/Data/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
 
 bonusshortcutfolder = "/Volumes/Data/Badea/Lab/19abb14/"
