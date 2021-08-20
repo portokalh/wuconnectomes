@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 from file_tools import largerfile, mkcdir, getext, buildlink
-from img_transform_exec import img_transform_exec, space_transpose, header_superpose
+from img_transform_exec import img_transform_exec, space_transpose, affine_superpose
 import glob
 from basic_LPCA_denoise import basic_LPCA_denoise_func
 from mask_handler import applymask_samespace, median_mask_make
@@ -212,6 +212,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
                 #cmd = os.path.join(gunniespath,'nifti_header_splicer.bash')+f' {md} {file} {file}'
                 cmd = os.path.join(gunniespath, 'nifti_header_splicer.bash') + f' {reference} {tmp_file} {tmp2_file}'
                 os.system(cmd)
+                #header_superpose(reference, tmp_file, outpath=tmp2_file)
 
     #write the relative orientation file here
     if not os.path.isfile(orient_string) or overwrite:
@@ -301,7 +302,7 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         linked_file_w=os.path.join(work_dir,f'{id}_{contrast}{ext}')
         header_fix=True
         if header_fix:
-            header_superpose(dwi_out, real_file, transpose=transpose)
+            affine_superpose(dwi_out, real_file, transpose=transpose)
 
         if not os.path.isfile(linked_file) or overwrite:
             buildlink(real_file, linked_file_w)

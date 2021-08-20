@@ -5,7 +5,21 @@ import nibabel as nib
 import numpy as np
 from dipy.io.image import load_nifti, save_nifti
 
-def header_superpose(target_path, origin_path, outpath=None, transpose=None):
+def header_superpose(target_path, origin_path, outpath=None):
+    target_nii=nib.load(target_path)
+    origin_nii=nib.load(origin_path)
+    if np.shape(target_nii._data)[0:3] != np.shape(origin_nii._data)[0:3]:
+        raise TypeError('not implemented')
+    else:
+        target_affine=target_nii._affine
+        target_header = target_nii._header
+        if np.any(target_affine != origin_nii._affine) or np.any(target_header != origin_nii._header):
+            new_nii = nib.Nifti1Image(origin_nii._data, target_affine, target_header)
+            if outpath is None:
+                outpath = origin_path
+            nib.save(new_nii, outpath)
+
+def affine_superpose(target_path, origin_path, outpath=None, transpose=None):
     target_nii=nib.load(target_path)
     origin_nii=nib.load(origin_path)
     if np.shape(target_nii._data)[0:3] != np.shape(origin_nii._data)[0:3]:

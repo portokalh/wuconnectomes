@@ -9,6 +9,7 @@ import os
 import glob
 import numpy as np
 from pathlib import Path
+import warnings
 
 def mkcdir(folderpaths):
     #creates new folder only if it doesnt already exists
@@ -29,6 +30,33 @@ def file_rename(folder, initstring, finalstring, identifier_string="*"):
         newfile = file.replace(initstring, finalstring)
         if newfile!=file:
             os.rename(file, newfile)
+
+def check_files(files):
+    exists=[]
+    newfiles = []
+    for file in files:
+        if "*" in file:
+            testfile = glob.glob(file)
+            if np.size(testfile) == 1:
+                exists.append(1)
+                newfiles.append(testfile[0])
+            elif np.size(testfile) == 0:
+                print(f"{file} does not exist")
+                exists.append(0)
+                newfiles.append("")
+            else:
+                raise warnings.warn('Too many files of similar names, will take first one but might cause problems!!!')
+                exists.append(np.size())
+                newfiles.append(testfile[0])
+        else:
+            if not os.path.exists(file):
+                print(f"{file} does not exist")
+                exists.append(0)
+                newfiles.append("")
+            else:
+                exists.append(1)
+                newfiles.append(file)
+    return newfiles, exists
 
 
 def largerfile(path, identifier=""):
