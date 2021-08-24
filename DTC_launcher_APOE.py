@@ -11,39 +11,32 @@ from time import time
 import numpy as np
 import os
 import multiprocessing as mp
-import pickle
-from tract_manager import create_tracts, tract_connectome_analysis, dwi_preprocessing
-from bvec_handler import extractbvec_fromheader
+from tract_manager import create_tracts, tract_connectome_analysis, diff_preprocessing
 from BIAC_tools import send_mail
 from Daemonprocess import MyPool
+import sys, getopt
+from file_tools import mkcdir
 
+import pickle
 import pandas as pd
 from pandas import ExcelWriter
 from pandas import ExcelFile
 from BIAC_tools import isempty
+from bvec_handler import extractbvec_fromheader
 
-import sys, getopt
-
-
-l = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498']
-#l = ['N57446', 'N57447','N57449','N57451','N57496','N57498']
-#l=['N57447']
-#l=['N57496']
-l = ['N57498']
-l = ['N57692']
-l= ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504',
-    'N57513','N57515','N57518','N57520','N57522','N57546','N57548','N57550','N57552','N57554','N57559','N57580',
-    'N57582','N57584','N57587','N57590','N57692','N57694','N57700','N57500','N57702','N57709']
-l = ["N58214", "N58215", "N58216", "N58217", "N58218", "N58219", "N58221", "N58222", "N58223", "N58224",
-                "N58225", "N58226", "N58228",
-                "N58229", "N58230", "N58231", "N58232", "N58633", "N58634", "N58635", "N58636", "N58649", "N58650",
-                "N58651", "N58653", "N58654",
-                'N58408', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309', 'N58792', 'N58302',
-                'N58784', 'N58706', 'N58361', 'N58355', 'N58712', 'N58790', 'N58606', 'N58350', 'N58608',
-                'N58779', 'N58500', 'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788', 'N58305',
-                'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
-                'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
-                'N58613', 'N58732', 'N58516', 'N58402']
+#First set
+#l=['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504', 'N57513',
+# 'N57515','N57518','N57520','N57522','N57546','N57548','N57550','N57552','N57554','N57559','N57580','N57582','N57584',
+# 'N57587','N57590','N57692','N57694','N57700','N57500','N57702','N57709']
+#Second set, August update
+#l = ["N58214", "N58215", "N58216", "N58217", "N58218", "N58219", "N58221", "N58222", "N58223", "N58224",
+# "N58225", "N58226", "N58228", "N58229", "N58230", "N58231", "N58232", "N58633", "N58634", "N58635", "N58636", "N58649",
+# "N58650", "N58651", "N58653", "N58654", 'N58408', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309',
+# 'N58792', 'N58302', 'N58784', 'N58706', 'N58361', 'N58355', 'N58712', 'N58790', 'N58606', 'N58350', 'N58608',
+# 'N58779', 'N58500', 'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788', 'N58305',
+# 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
+# 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
+# 'N58613', 'N58732', 'N58516', 'N58402']
 
 l = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504',
     'N57513','N57515','N57518','N57520','N57522','N57546','N57548','N57550','N57552','N57554','N57559','N57580',
@@ -58,6 +51,7 @@ l = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498',
                 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
                 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
                 'N58613', 'N58732', 'N58516', 'N58402']
+l = ["N58214"]
 argv = sys.argv[1:]
 try:
     opts, args = getopt.getopt(argv, "hb:e:", ["first=", "last="])
@@ -94,21 +88,20 @@ if mp.cpu_count() < max_processors:
 
 print("Running on ", max_processors, " processors")
 
-main_folder = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/"
-main_folder = "/Users/alex/jacques/APOE_temp/"
-dwipath = main_folder + "/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
-dwipath_preprocessed = main_folder + "/C57_JS/diff_whiston_preprocessed/"
-dwipath = main_folder + '/DWI_allsubj/'
-outtrkpath = main_folder + '/TRK_allsubj/'
-figspath = main_folder + "/Figures_RAS_40subj_lr/"
+#main_folder = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/"
+#dwipath = main_folder + "/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
 
-samos=True
+main_folder = "/Users/alex/jacques/APOE_temp/"
+samos = False
 if samos:
     main_folder = "/mnt/paros_MRI/jacques/APOE/"
-    dwipath_preprocessed = main_folder + "/C57_JS/diff_whiston_preprocessed/"
-    dwipath = os.path.join(main_folder, 'DWI_allsubj')
-    outtrkpath = os.path.join(main_folder,'TRK_allsubj')
-    figspath = os.path.join(main_folder,"Figures_RAS_40subj_lr")
+
+dwipath_preprocessed = os.path.join(main_folder,"diff_whiston_preprocessed")
+dwipath = os.path.join(main_folder,'DWI_allsubj')
+outtrkpath = os.path.join(main_folder + 'TRK_allsubj')
+figspath = os.path.join(main_folder + "Figures_RAS_allsubj_lr")
+
+mkcdir([outtrkpath,figspath])
 
 outpathpickle = figspath
 
@@ -137,17 +130,20 @@ else:
 savefa="yes"
 verbose=True
 denoise='none'
-#denoise=None
+denoise='coreg'
 savedenoise=True
 display=False
 savefig=False
 doprune = True
 inclusive=False
 allsave=True
+labelslist=None
 
+brainmask = "dwi"
 classifiertype = "FA"
 classifiertype = "binary"
 brainmask = "dwi"
+labeltype = "lrordered"
 
 if classifiertype == "FA":
     classifiertype = "_fa"
@@ -181,8 +177,8 @@ if verbose:
 duration1=time()
 overwrite = False
 get_params = False
-forcestart = True
-if forcestart:
+overwrite = True
+if overwrite:
     print("WARNING: FORCESTART EMPLOYED. THIS WILL COPY OVER PREVIOUS DATA")
 picklesave = True
 
@@ -228,27 +224,25 @@ if subject_processes>1:
         pool = MyPool(subject_processes)
     else:
         pool = mp.Pool(subject_processes)
-
-    dwi_results = pool.starmap_async(dwi_preprocessing, [(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa, function_processes,
-                                     createmask, vol_b0, verbose) for subject in l]).get()
-    #tract_results = pool.starmap_async(create_tracts, [(dwipath_preprocessed, outtrkpath, subject, figspath, stepsize, function_processes,
-    #                                                    str_identifier, ratio, classifiertype, labelslist, bvec_orient, doprune,
-    #                                                    overwrite, get_params, verbose) for subject in l]).get()
+    tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, figspath, stepsize, function_processes,
+                                                        str_identifier, ratio, brainmask, classifiertype, labelslist, bvec_orient, doprune,
+                                                        overwrite, get_params, denoise, verbose) for subject in l]).get()
     tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath, outtrkpath, str_identifier, figspath,
                                                                    subject, atlas_legends, bvec_orient, brainmask,
-                                                                    inclusive,function_processes, forcestart,
+                                                                    inclusive,function_processes, overwrite,
                                                                     picklesave, labeltype, verbose) for subject in l]).get()
     pool.close()
 else:
     for subject in l:
-       #dwi_results.append(dwi_preprocessing(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa,
-       #                                  function_processes, createmask, vol_b0, verbose))
-       #tract_results.append(create_tracts(dwipath_preprocessed, outtrkpath, subject, figspath, stepsize, function_processes, str_identifier,
-       #                                       ratio, classifiertype, labelslist, bvec_orient, doprune, overwrite, get_params,
-       #                                    verbose))
+       tract_results.append(create_tracts(dwipath, outtrkpath, subject, figspath, stepsize, function_processes, str_identifier,
+                                              ratio, brainmask, classifiertype, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
+                                           verbose))
        tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject,
                                                      atlas_legends, bvec_orient, brainmask, inclusive, function_processes,
-                                                     forcestart, picklesave, labeltype, verbose))
+                                                     overwrite, picklesave, labeltype, verbose))
 
 
 subject=l[0]
+
+# dwi_results.append(dwi_preprocessing(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa,
+#                                  function_processes, createmask, vol_b0, verbose))
