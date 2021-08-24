@@ -10,6 +10,7 @@ import glob
 import numpy as np
 from pathlib import Path
 import warnings
+import subprocess, pipes
 
 def mkcdir(folderpaths):
     #creates new folder only if it doesnt already exists
@@ -20,6 +21,16 @@ def mkcdir(folderpaths):
         for folderpath in folderpaths:
             if not os.path.exists(folderpath):
                 os.mkdir(folderpath)
+
+def exists_remote(host, path):
+    """Test if a file exists at path on a host accessible with SSH."""
+    status = subprocess.call(
+        ['ssh', host, 'test -f {}'.format(pipes.quote(path))])
+    if status == 0:
+        return True
+    if status == 1:
+        return False
+    raise Exception('SSH failed')
 
 
 def file_rename(folder, initstring, finalstring, identifier_string="*"):

@@ -11,7 +11,7 @@ import getpass
 
 #project = ["AD_Decode", "APOE"]
 project = "APOE"
-
+verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
 
@@ -22,11 +22,11 @@ if project == "AD_Decode":
     gunniespath = "~/gunnies/"
     recenter = 0
     #SAMBA_prep_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-inputs")
-    SAMBA_prep_folder =  os.path.join(mainpath, "mouse","ADDeccode_symlink_pool")
-    atlas_labels =  os.path.join(mainpath, "atlas","IITmean_RPI","IITmean_RPI_labels.nii.gz")
+    SAMBA_prep_folder = os.path.join(mainpath, "mouse","ADDeccode_symlink_pool")
+    atlas_labels = os.path.join(mainpath, "atlas","IITmean_RPI","IITmean_RPI_labels.nii.gz")
 
-    DTC_DWI_folder =  os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
-    DTC_labels_folder =  os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
+    DTC_DWI_folder = os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
+    DTC_labels_folder = os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
 
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-results", "connectomics")
     orient_string = os.path.join(SAMBA_prep_folder,"relative_orientation.txt")
@@ -63,29 +63,20 @@ elif project == "APOE":
                 "N58225", "N58226", "N58228",
                 "N58229", "N58230", "N58231", "N58232", "N58633", "N58634", "N58635", "N58636", "N58649", "N58650",
                 "N58651", "N58653", "N58654",
-                'N58408', 'N58610', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309', 'N58792', 'N58302',
-                'N58612', 'N58784', 'N58706', 'N58361', 'N58355', 'N58712', 'N58790', 'N58606', 'N58350', 'N58608',
+                'N58408', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309', 'N58792', 'N58302',
+                'N58784', 'N58706', 'N58361', 'N58355', 'N58712', 'N58790', 'N58606', 'N58350', 'N58608',
                 'N58779', 'N58500', 'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788', 'N58305',
                 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
                 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
-                'N58613', 'N58732', 'N58516', 'N58813', 'N58402']
-    # subject 'N58610' retired, back on SAMBA_prep, to investigate
+                'N58613', 'N58732', 'N58516', 'N58402']
+    # subject 'N58610' 'N58612' 'N58813' retired, back on SAMBA_prep, to investigate
 else:
     raise Exception("Unknown project name")
-
-# bash_label_maker = "/Volumes/Data/Badea/Lab/mouse/create_backported_labels_for_fiber_looper.bash"
-# mainpath = "/Volumes/Data/Badea/Lab/mouse/"
-# gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
-# project_name = "VBM_21ADDecode03_IITmean_RPI_fullrun"
-# atlas_labels = "/Volumes/Data/Badea/Lab/atlas/IITmean_RPI/IITmean_RPI_labels.nii.gz"
-
-#copytype = [shortcut, truecopy]
 
 for subject in subjects:
     create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, atlas_labels, orient_string, gunniespath=gunniespath,
                            recenter=recenter)
 
-"""
 remote=False
 
 if "." and ":" in DTC_DWI_folder:
@@ -106,11 +97,9 @@ if "." and ":" in DTC_DWI_folder:
     ssh.connect(server, username=username, password=password)
     DTC_labels_folder = DTC_DWI_folder
     remote=True
-    #sftp.put(localpath, remotepath)
-    #sftp.close()
-    #ssh.close()
 
 sftp = ssh.open_sftp()
+
 for filename in os.listdir(SAMBA_prep_folder):
     if any(x in filename for x in file_ids) and any(x in filename for x in subjects):
         filepath=os.path.join(SAMBA_prep_folder,filename)
@@ -125,10 +114,16 @@ for filename in os.listdir(SAMBA_prep_folder):
                     buildlink(filepath, filenewpath)
             elif copytype=="truecopy":
                 if remote:
-                    sftp.put(filepath, filenewpath)
+                    try:
+                        sftp.stat(filenewpath)
+                        if verbose:
+                            print(f'file at {filenewpath} exists')
+                    except IOError:
+                        if verbose:
+                            print(f'copying file {filepath} to {filenewpath}')
+                        sftp.put(filepath, filenewpath)
                 else:
                     shutil.copy(filepath, filenewpath)
-
 
 for subject in subjects:
     subjectpath = glob.glob(os.path.join(SAMBA_label_folder, f'{subject}/'))
@@ -147,10 +142,25 @@ for subject in subjects:
     newlabelspath = os.path.join(DTC_labels_folder,f'{subject}_labels.nii.gz')
     if not os.path.exists(newlabelspath) or overwrite:
         if remote:
-            sftp.put(filepath, filenewpath)
+            try:
+                sftp.stat(newlabelspath)
+                if verbose:
+                    print(f'file at {newlabelspath} exists')
+            except IOError:
+                if verbose:
+                    print(f'copying file {labelspath} to {newlabelspath}')
+                sftp.put(labelspath, newlabelspath)
         else:
             shutil.copy(labelspath, newlabelspath)
 
 sftp.close()
 ssh.close()
-"""
+
+
+# bash_label_maker = "/Volumes/Data/Badea/Lab/mouse/create_backported_labels_for_fiber_looper.bash"
+# mainpath = "/Volumes/Data/Badea/Lab/mouse/"
+# gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
+# project_name = "VBM_21ADDecode03_IITmean_RPI_fullrun"
+# atlas_labels = "/Volumes/Data/Badea/Lab/atlas/IITmean_RPI/IITmean_RPI_labels.nii.gz"
+
+#copytype = [shortcut, truecopy]
