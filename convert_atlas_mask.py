@@ -23,7 +23,7 @@ def atlas_converter(ROI_excel):
     converter_comb = {}
     index_to_struct_lr = {}
     index_to_struct_comb = {}
-    for i in np.arange(np.size(index1)):
+    for i in np.arange(np.size(hemispheres_new)):
         if hemispheres_new[i] in ['_left','_right']:
             converter_lr[index2[i]] = index1[i]
             converter_comb[index2[i]] = index3[i]
