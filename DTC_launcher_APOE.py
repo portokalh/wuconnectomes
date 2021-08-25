@@ -51,7 +51,7 @@ l = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498',
                 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
                 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
                 'N58613', 'N58732', 'N58516', 'N58402']
-l = ["N58214"]
+#l = ["N58214"]
 argv = sys.argv[1:]
 try:
     opts, args = getopt.getopt(argv, "hb:e:", ["first=", "last="])
@@ -81,7 +81,7 @@ if 'start' not in locals():
     else:
         l = l[0:end]
 print("Will go from subject "+ l[0] + " to subject "+l[-1])
-max_processors = 16
+max_processors = 20
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -92,7 +92,7 @@ print("Running on ", max_processors, " processors")
 #dwipath = main_folder + "/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
 
 main_folder = "/Users/alex/jacques/APOE_temp/"
-samos = False
+samos = True
 if samos:
     main_folder = "/mnt/paros_MRI/jacques/APOE/"
 
@@ -177,7 +177,7 @@ if verbose:
 duration1=time()
 overwrite = False
 get_params = False
-overwrite = True
+
 if overwrite:
     print("WARNING: FORCESTART EMPLOYED. THIS WILL COPY OVER PREVIOUS DATA")
 picklesave = True
@@ -218,7 +218,7 @@ if isempty(labelslist) and roi.lower() != "wholebrain" and roi.lower() != "brain
     txt = "Warning: Unrecognized roi, will take whole brain as ROI. The roi specified was: " + roi
     print(txt)
 """
-
+make_connectomes=True
 if subject_processes>1:
     if function_processes>1:
         pool = MyPool(subject_processes)
@@ -227,7 +227,8 @@ if subject_processes>1:
     tract_results = pool.starmap_async(create_tracts, [(dwipath, outtrkpath, subject, figspath, stepsize, function_processes,
                                                         str_identifier, ratio, brainmask, classifiertype, labelslist, bvec_orient, doprune,
                                                         overwrite, get_params, denoise, verbose) for subject in l]).get()
-    tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath, outtrkpath, str_identifier, figspath,
+    if make_connectomes:
+        tract_results = pool.starmap_async(tract_connectome_analysis, [(dwipath, outtrkpath, str_identifier, figspath,
                                                                    subject, atlas_legends, bvec_orient, brainmask,
                                                                     inclusive,function_processes, overwrite,
                                                                     picklesave, labeltype, verbose) for subject in l]).get()
@@ -237,7 +238,8 @@ else:
        tract_results.append(create_tracts(dwipath, outtrkpath, subject, figspath, stepsize, function_processes, str_identifier,
                                               ratio, brainmask, classifiertype, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
                                            verbose))
-       tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject,
+       if make_connectomes:
+            tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject,
                                                      atlas_legends, bvec_orient, brainmask, inclusive, function_processes,
                                                      overwrite, picklesave, labeltype, verbose))
 
