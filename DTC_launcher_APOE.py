@@ -38,9 +38,11 @@ from bvec_handler import extractbvec_fromheader
 # 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
 # 'N58613', 'N58732', 'N58516', 'N58402']
 
-l = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504',
-    'N57513','N57515','N57518','N57520','N57522','N57546','N57548','N57550','N57552','N57554','N57559','N57580',
-    'N57582','N57584','N57587','N57590','N57692','N57694','N57700','N57500','N57702','N57709', "N58214", "N58215",
+
+#'N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504', 'N57513',
+# 'N57515','N57518','N57520','N57522','N57546','N57548','N57550','N57552','N57554','N57559','N57580','N57582',
+# 'N57584','N57587','N57590','N57692','N57694','N57700',
+l = ['N57500','N57702','N57709', "N58214", "N58215",
      "N58216", "N58217", "N58218", "N58219", "N58221", "N58222", "N58223", "N58224",
                 "N58225", "N58226", "N58228",
                 "N58229", "N58230", "N58231", "N58232", "N58633", "N58634", "N58635", "N58636", "N58649", "N58650",
@@ -51,7 +53,7 @@ l = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498',
                 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
                 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
                 'N58613', 'N58732', 'N58516', 'N58402']
-#l = ["N58214"]
+l = ["N58634"]
 argv = sys.argv[1:]
 try:
     opts, args = getopt.getopt(argv, "hb:e:", ["first=", "last="])
@@ -81,7 +83,7 @@ if 'start' not in locals():
     else:
         l = l[0:end]
 print("Will go from subject "+ l[0] + " to subject "+l[-1])
-max_processors = 20
+max_processors = 10
 
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
@@ -92,9 +94,11 @@ print("Running on ", max_processors, " processors")
 #dwipath = main_folder + "/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
 
 main_folder = "/Users/alex/jacques/APOE_temp/"
-samos = True
+atlas_legends = "/Volumes/Data/Badea/Lab/atlases/CHASSSYMM3AtlasLegends.xlsx"
+samos = False
 if samos:
     main_folder = "/mnt/paros_MRI/jacques/APOE/"
+    atlas_legends = "/mnt/paros_MRI/jacques/atlases/CHASSSYMM3AtlasLegends.xlsx"
 
 dwipath_preprocessed = os.path.join(main_folder,"diff_whiston_preprocessed")
 dwipath = os.path.join(main_folder,'DWI_allsubj')
@@ -104,10 +108,6 @@ figspath = os.path.join(main_folder + "Figures_RAS_allsubj_lr")
 mkcdir([outtrkpath,figspath])
 
 outpathpickle = figspath
-
-atlas_legends = main_folder + "/../atlases/IITmean_RPI/IITmean_RPI_lookup.xlsx"
-atlas_legends = main_folder + "/../atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-atlas_legends = "/mnt/paros_MRI/jacques/atlases/CHASSSYMM3AtlasLegends.xlsx"
 
 stepsize = 2
 
@@ -121,11 +121,11 @@ if max_processors < subject_processes:
 function_processes = np.int(max_processors/subject_processes)
 
 targetrois = ["Cerebellum"]
-ratio = 1
+ratio = 10
 if ratio == 1:
     saved_streamlines = "_all_"
 else:
-    saved_streamlines = "_ratio_" + str(ratio)
+    saved_streamlines = "_ratio_" + str(ratio) + '_'
 
 savefa="yes"
 verbose=True

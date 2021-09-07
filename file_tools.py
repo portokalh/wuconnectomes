@@ -22,6 +22,20 @@ def mkcdir(folderpaths):
             if not os.path.exists(folderpath):
                 os.mkdir(folderpath)
 
+def check_for_duplicates(checklist,checklist2):
+    lenlist = np.size(checklist)
+    lenlist2 = np.size(checklist)
+    samelist=False
+    if np.all(checklist==checklist2):
+        samelist=True
+    for i in np.arange(lenlist):
+        for j in np.arange(lenlist2):
+            if checklist[i]==checklist2[j] and (i!=j or not samelist):
+                if samelist:
+                    print(f"Found the value {checklist[i]} at {i} and {j}")
+                else:
+                    print(f"Found the value {checklist[i]} in first list at {i} and second list at {j}")
+
 def exists_remote(host, path):
     """Test if a file exists at path on a host accessible with SSH."""
     status = subprocess.call(

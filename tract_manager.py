@@ -1007,11 +1007,12 @@ def check_dif_ratio(trkpath, subject, strproperty, ratio):
         trkpaths = glob.glob(filepath)
         if trkpaths:
             trkfile = trkpaths[0]
+            trkname = os.path.basename(trkfile)
             trknewpath = os.path.join(trkpath, subject + strproperty + '.trk')
-            ratiostart = strproperty.find("ratio")
+            ratiostart = trkname.find("ratio")
             if os.path.exists(trknewpath):
                 return
-            elif strproperty.find("all"):
+            elif trkname.find("all") != -1:
                 if ratio==1:
                     return
                 elif ratio>1:
@@ -1019,11 +1020,12 @@ def check_dif_ratio(trkpath, subject, strproperty, ratio):
                     return
                 else:
                     raise Warning("Error with the input ratio")
-            elif ratiostart:
-                temp = re.findall(r'\d+', strproperty[ratiostart:])
+            elif ratiostart != -1:
+                temp = re.findall(r'\d+', trkname[ratiostart:])
                 res = list(map(int, temp))
                 newratio = ratio/res[0]
-                reducetractnumber(trkfile,trknewpath, getdata=False, ratio=newratio, return_affine=False, verbose=True)
+                if newratio>1:
+                    reducetractnumber(trkfile,trknewpath, getdata=False, ratio=newratio, return_affine=False, verbose=True)
                 return
     #trkfilepath = gettrkpath(trkpath, subject, strproperty, verbose)
 

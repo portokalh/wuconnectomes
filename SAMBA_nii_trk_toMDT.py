@@ -5,7 +5,7 @@ from file_tools import buildlink
 import glob
 import numpy as np
 import warnings
-from create_backported_labels import create_backport_labels
+from create_backported_labels import create_backport_labels, convert_images_templatespace
 import os
 import getpass
 
@@ -24,6 +24,8 @@ if project == "AD_Decode":
     #SAMBA_prep_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-inputs")
     SAMBA_prep_folder = os.path.join(mainpath, "mouse","ADDeccode_symlink_pool")
     atlas_labels = os.path.join(mainpath, "atlas","IITmean_RPI","IITmean_RPI_labels.nii.gz")
+
+    SAMBA_inputs_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-inputs")
 
     DTC_DWI_folder = os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
     DTC_labels_folder = os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
@@ -74,96 +76,6 @@ else:
     raise Exception("Unknown project name")
 
 for subject in subjects:
-    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, atlas_labels, orient_string, gunniespath=gunniespath,
+    subject_input = os.path.join(SAMBA_inputs_folder,f"{subject}_fa.nii.gz")
+    convert_images_templatespace(subject, SAMBA_mainpath, SAMBA_projectname, subject_input, orient_string, gunniespath=gunniespath,
                            recenter=recenter)
-
-remote=False
-
-if "." and ":" in DTC_DWI_folder:
-    import paramiko
-    if "@" in DTC_DWI_folder:
-        DTC_DWI_folder_split = DTC_DWI_folder.split("@")
-        username = DTC_DWI_folder_split[0]
-        server = DTC_DWI_folder_split[1].split(".")[0]
-        password = getpass.getpass()
-    else:
-        server = DTC_DWI_folder.split(".")[0]
-        username = getpass.getuser()
-        password = getpass.getpass()
-        DTC_DWI_folder_split = username + "@" + DTC_DWI_folder
-    DTC_DWI_folder = DTC_DWI_folder.split(":")[1]
-    ssh = paramiko.SSHClient()
-    ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
-    ssh.connect(server, username=username, password=password)
-    DTC_labels_folder = DTC_DWI_folder
-    remote=True
-
-if remote:
-    sftp = ssh.open_sftp()
-
-for filename in os.listdir(SAMBA_prep_folder):
-    if any(x in filename for x in file_ids) and any(x in filename for x in subjects):
-        filepath=os.path.join(SAMBA_prep_folder,filename)
-        if Path(filepath).is_symlink():
-            filename=Path('A').resolve()
-        filenewpath = os.path.join(DTC_DWI_folder, filename)
-        if not os.path.isfile(filenewpath) or overwrite:
-            if copytype=="shortcut":
-                if remote:
-                    raise Exception("Can't build shortcut to remote path")
-                else:
-                    buildlink(filepath, filenewpath)
-            elif copytype=="truecopy":
-                if remote:
-                    try:
-                        sftp.stat(filenewpath)
-                        if verbose:
-                            print(f'file at {filenewpath} exists')
-                    except IOError:
-                        if verbose:
-                            print(f'copying file {filepath} to {filenewpath}')
-                        sftp.put(filepath, filenewpath)
-                else:
-                    shutil.copy(filepath, filenewpath)
-
-for subject in subjects:
-    subjectpath = glob.glob(os.path.join(SAMBA_label_folder, f'{subject}/'))
-    if np.size(subjectpath) == 1:
-        subjectpath = subjectpath[0]
-    elif np.size(subjectpath) > 1:
-        raise Exception('Too many subject folders')
-    else:
-        subjectpath = SAMBA_label_folder
-
-    labelspath = glob.glob(os.path.join(subjectpath, f'{subject}*_preprocess_labels.nii*'))
-    if np.size(labelspath) == 1:
-        labelspath = labelspath[0]
-    else:
-        raise Exception(f"Could not find file at {os.path.join(subjectpath, f'{subject}*_labels.nii*')}")
-    newlabelspath = os.path.join(DTC_labels_folder,f'{subject}_labels.nii.gz')
-    if not os.path.exists(newlabelspath) or overwrite:
-        if remote:
-            try:
-                sftp.stat(newlabelspath)
-                if verbose:
-                    print(f'file at {newlabelspath} exists')
-            except IOError:
-                if verbose:
-                    print(f'copying file {labelspath} to {newlabelspath}')
-                sftp.put(labelspath, newlabelspath)
-        else:
-            shutil.copy(labelspath, newlabelspath)
-    else:
-        print(f"File already exists at {newlabelspath}")
-if remote:
-    sftp.close()
-    ssh.close()
-
-
-# bash_label_maker = "/Volumes/Data/Badea/Lab/mouse/create_backported_labels_for_fiber_looper.bash"
-# mainpath = "/Volumes/Data/Badea/Lab/mouse/"
-# gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
-# project_name = "VBM_21ADDecode03_IITmean_RPI_fullrun"
-# atlas_labels = "/Volumes/Data/Badea/Lab/atlas/IITmean_RPI/IITmean_RPI_labels.nii.gz"
-
-#copytype = [shortcut, truecopy]

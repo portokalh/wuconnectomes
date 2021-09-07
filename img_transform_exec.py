@@ -3,7 +3,11 @@ import warnings
 from file_tools import splitpath, mkcdir
 import nibabel as nib
 import numpy as np
+from streamline_nocheck import load_trk, save_trk
 from dipy.io.image import load_nifti, save_nifti
+from dipy.io.utils import create_tractogram_header
+from tract_save import save_trk_heavy_duty
+from shutil import copy as copyfile
 
 def header_superpose(target_path, origin_path, outpath=None):
     target_nii=nib.load(target_path)
@@ -18,6 +22,73 @@ def header_superpose(target_path, origin_path, outpath=None):
             if outpath is None:
                 outpath = origin_path
             nib.save(new_nii, outpath)
+
+def transform_image(target_path, origin_path, outpath=None):
+    target_nii=nib.load(target_path)
+    origin_nii=nib.load(origin_path)
+    if np.shape(target_nii._data)[0:3] != np.shape(origin_nii._data)[0:3]:
+        raise TypeError('not implemented')
+    else:
+        target_affine=target_nii._affine
+        target_header = target_nii._header
+        if np.any(target_affine != origin_nii._affine) or np.any(target_header != origin_nii._header):
+            new_nii = nib.Nifti1Image(origin_nii._data, target_affine, target_header)
+            if outpath is None:
+                outpath = origin_path
+            nib.save(new_nii, outpath)
+
+def header_superpose_trk(target_path, origin_path, outpath=None):
+    if not isinstance(origin_path, str):
+        origin_trk = origin_path
+    else:
+        origin_trk = load_trk(origin_path)
+    target_nii=nib.load(target_path)
+
+    target_affine=target_nii._affine
+    target_header = target_nii._header
+
+    if outpath is None:
+        if isinstance(origin_path, str):
+            warnings.warn("Will copy over old trkfile, if this what you want?")
+            permission = input("enter yes or y if you are ok with this")
+            if permission.lower() == "yes" or permission.lower() == "y":
+                outpath = origin_trk
+            else:
+                raise Exception("Will not copy over old trk file")
+        else:
+            raise Exception("Need to specify a output path of some kind")
+
+    trk_header = origin_trk.space_attributes
+    trk_affine = origin_trk._affine
+    trkstreamlines = origin_trk.streamlines
+    if np.any(trk_header[1][0:3] != np.shape(target_nii._data)[0:3]):
+        raise TypeError('Size of the originating matrix are difference, recalculation not implemented')
+    if np.any(trk_affine != target_affine):
+        first_test=True
+        if first_test:
+            trk_header = list(trk_header)
+            trk_header[0] = target_affine
+            trk_header = tuple(trk_header)
+            myheader = create_tractogram_header(outpath, *trk_header)
+            trk_sl = lambda: (s for s in trkstreamlines)
+            save_trk_heavy_duty(outpath, streamlines=trk_sl,
+                                           affine=target_affine, header=myheader)
+        else:
+            transform_matrix = (np.inverse(np.transpose(trk_affine)*trk_affine)*np.transpose(trk_affine))* target_affine
+            from dipy.tracking.streamline import transform_streamlines
+            myheader = create_tractogram_header(outpath, *trk_header)
+            new_streamlines = transform_streamlines(trkstreamlines, transform_matrix)
+            trk_sl = lambda: (s for s in new_streamlines)
+            save_trk_heavy_duty(outpath, streamlines=trkstreamlines,
+                                           affine=trk_affine, header=myheader)
+    else:
+        print("No need to change affine, bring to new path")
+        if isinstance(origin_path, str):
+            copyfile(origin_path, outpath)
+        else:
+            myheader = create_tractogram_header(outpath, *trk_header)
+            save_trk_heavy_duty(outpath, streamlines=trkstreamlines,
+                                affine=target_affine, header=myheader)
 
 def affine_superpose(target_path, origin_path, outpath=None, transpose=None):
     target_nii=nib.load(target_path)

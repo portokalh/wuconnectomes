@@ -30,12 +30,16 @@ mkcdir(outpath)
 subjects = ["02654", "02690", "02720", "02737", "02745", "02753", "02765", "02771", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
 
 subjects = ["02654", "02690", "02720", "02737", "02753", "02765", "02781", "02802", "02804", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
-subjects = ["02654", "02666", "02670", "02686", "02690", "02695", "02720", "02737", "02753", "02765", "02781", "02802", "02804", "02813", "02817", "02840", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03033", "03034", "03045", "03048"]
-subjects = ["02666", "02670", "02686", "02695"]
-subjects = ["02666"]
+subjects = ["02654", "02666", "02670", "02686", "02690", "02695", "02715", "02720", "02737", "02753", "02765", "02771", "02781", "02802", "02804", "02813", "02817", "02840", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03033", "03034", "03045", "03048"]
+#subjects = ["02812"]
+#subjects = ["02871"]
+subjects = ["02842", "02812", "02871", "02715", "02771","03069"]
+subjects = ["03069"]
+
 #subjects = ["02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
 #02745 was not fully done, discount
-#02771, "02812", 02871 is a strange subject, to investigate
+#02771 has 21 images in 4D space even though there should be 23?
+#"02812", 02871 is a strange subject, to investigate
 #02842, 03028 has apparently a 92 stack ? to investigate
 
 proc_subjn="S"
@@ -119,6 +123,7 @@ else:
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
         #max_file="/Volumes/Data/Badea/ADdecode.01/Data/Anat/20210522_02842/bia6_02842_003.nii.gz"
         #launch_preprocessing(subject, max_file, outpath, nominal_bval=1000, shortcutpath=shortcutpath, bonusshortcutfolder = bonusshortcutfolder, gunniespath="/Users/alex/bass/gitfolder/gunnies/")
+        #max_file = '/Volumes/Data/Badea/ADdecode.01/Data/Anat/20210522_02842/bia6_02842_003.nii.gz'
         launch_preprocessing(proc_subjn+subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
          gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter, verbose)
         #results.append(launch_preprocessing(subject, max_file, outpath))
