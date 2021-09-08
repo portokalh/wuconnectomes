@@ -10,6 +10,7 @@ import shutil
 from diffusion_preprocessing import launch_preprocessing
 from file_tools import mkcdir, largerfile
 import shutil
+from argument_tools import parse_arguments
 
 def orient_to_str(bvec_orient):
     mystr="_"
@@ -44,6 +45,8 @@ outpath = "/Volumes/Data/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
 subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N58222","N58223","N58224","N58225","N58226","N58228",
             "N58229","N58230","N58231","N58232","N58633","N58634","N58635","N58636","N58649","N58650","N58651","N58653","N58654"]
 #atlas = "/Volumes/Data/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
+
+subject_processes, function_processes = parse_arguments(sys.argv, l)
 
 proc_subjn=""
 denoise="None"
@@ -95,17 +98,10 @@ elif btables=="copy":
                 shutil.copy(bvals[0], outpathbval)
                 shutil.copy(bvecs[0], outpathbvec)
 
-max_processors = 3
-if mp.cpu_count() < max_processors:
-    max_processors = mp.cpu_count()
-subject_processes = np.size(subjects)
-if max_processors < subject_processes:
-    subject_processes = max_processors
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
 # "none" or None variable for neither and "both" for both of them
 nominal_bval=4000
 verbose=True
-function_processes = np.int(max_processors/subject_processes)
 results=[]
 if subject_processes>1:
     if function_processes>1:

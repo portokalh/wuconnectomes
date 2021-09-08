@@ -217,11 +217,11 @@ def getdiffdata(mypath, subject, denoise="", verbose=None):
     diff_data = img.get_data()
     vox_size = img.header.get_zooms()[:3]
     affine = img.affine
-    hdr = img.header
+    header = img.header
     del(img)
-    header = get_reference_info(diff_fpath)
+    ref_info = get_reference_info(diff_fpath)
 
-    return diff_data, affine, vox_size, diff_fpath, hdr, header
+    return diff_data, affine, vox_size, diff_fpath, header, ref_info
 
 def get_bvals_bvecs(mypath, subject):
     try:
@@ -258,7 +258,7 @@ def getb0s(mypath, subject):
 
 def getdiffdata_all(mypath, subject, bvec_orient=[1,2,3], denoise="", verbose=None):
 
-    fdiff_data, affine, vox_size, fdiffpath, hdr, header = getdiffdata(mypath, subject, denoise=denoise, verbose=verbose)
+    fdiff_data, affine, vox_size, fdiffpath, header, ref_info = getdiffdata(mypath, subject, denoise=denoise, verbose=verbose)
     mypath = str(pathlib.Path(fdiffpath).parent.absolute())
 
     if bvec_orient is None:
@@ -278,16 +278,7 @@ def getdiffdata_all(mypath, subject, bvec_orient=[1,2,3], denoise="", verbose=No
 
     #bvecs = np.c_[bvecs[:, -], bvecs[:, 0], -bvecs[:, 2]] #estimated for RAS based on headfile info
 
-    img = nib.load(fdiffpath)
-    fdiff_data = img.get_data()
-    vox_size = img.header.get_zooms()[:3]
-    affine = img.affine
-    hdr = img.header
-    del(img)
-
-    header = get_reference_info(fdiffpath)
-
-    return fdiff_data, affine, gtab, vox_size, fdiffpath, hdr, header
+    return fdiff_data, affine, gtab, vox_size, fdiffpath, header, ref_info
 
 def getlabelmask(mypath, subject, verbose=None):
 

@@ -16,7 +16,7 @@ from tract_manager import create_tracts, tract_connectome_analysis, dwi_preproce
 from bvec_handler import extractbvec_fromheader
 from BIAC_tools import send_mail
 from Daemonprocess import MyPool
-
+from argument_tools import parse_arguments
 import pandas as pd
 from pandas import ExcelWriter
 from pandas import ExcelFile
@@ -44,20 +44,8 @@ l = ["H26966", "H26637","H29410", "H29060"]
 l = ["H29060"]
 
 #l = ["H29410", "H29060"]
-argv = sys.argv[1:]
-try:
-    opts, args = getopt.getopt(argv, "hb:e:", ["first=", "last="])
-except getopt.GetoptError:
-    print('test.py -i <inputfile> -o <outputfile>')
-    sys.exit(2)
-for opt, arg in opts:
-    if opt == '-h':
-        print('test.py -b first -s last')
-        sys.exit()
-    elif opt in ("-b", "--first"):
-        start = arg
-    elif opt in ("-e", "--last"):
-        end = arg
+
+
 """
 l = ["H21593", "H21729"]
 l = ["H21729"]
@@ -71,27 +59,9 @@ l = ['H22102', 'H27841', 'H22101',
  'H28857', 'H29013', 'H29025']
 """
 
-
-if 'start' in locals():
-    del(start, end)
-if 'start' in locals():
-    start = int(start)
-    if 'end' in locals():
-        l = l[int(start):int(end)+1]
-    else:
-        l = l[start:]
-if 'start' not in locals():
-    if 'end' not in locals():
-        l = l
-    else:
-        l = l[0:end]
 print("Will go from subject "+ l[0] + " to subject "+l[-1])
-max_processors = 50
 
-if mp.cpu_count() < max_processors:
-    max_processors = mp.cpu_count()
-
-print("Running on ", max_processors, " processors")
+subject_processes, function_processes = parse_arguments(sys.argv, l)
 
 BIGGUS_DISKUS = "/Volumes/Data/Badea/Lab/mouse"
 dwipath = BIGGUS_DISKUS + "/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
@@ -105,14 +75,9 @@ atlas_legends = BIGGUS_DISKUS + "/../atlases/IITmean_RPI/IITmean_RPI_lookup.xlsx
 atlas_legends = BIGGUS_DISKUS + "/../atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 
 stepsize = 2
-subject_processes = np.size(l)
-subject_processes = 1
-if max_processors < subject_processes:
-    subject_processes = max_processors
+
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
 # "none" or None variable for neither and "both" for both of them
-
-function_processes = np.int(max_processors/subject_processes)
 
 targetrois = ["Cerebellum"]
 ratio = 100

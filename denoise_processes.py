@@ -236,7 +236,7 @@ def genpca_parallel(arr, sigma=None, mask=None, patch_radius=2, pca_method='eig'
 
     patch_size = 2 * patch_radius + 1
 
-    if return_sigma is True and sigma is None:
+    if return_sigma is True or sigma is None:
         calc_sigma = True
     else:
         calc_sigma = False

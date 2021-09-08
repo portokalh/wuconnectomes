@@ -79,6 +79,12 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
                 os.system(bet_cmd)
             else:
                 raise Exception("Unrecognized masking type")
+
+    if bonusshortcutfolder is not None:
+        mask_subj_link = os.path.join(bonusshortcutfolder,f'{id}_mask_subjspace{ext}')
+        if not os.path.exists(mask_subj_link) or overwrite:
+            buildlink(tmp_mask, mask_subj_link)
+
     #if cleanup and (os.path.exists(tmp_mask) and os.path.exists(raw_dwi)):
     #    os.remove(raw_dwi)
     #overwrite=False
@@ -88,18 +94,25 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
         masked_nii = masked_nii.replace(".nii", ".nii.gz")
     masked_nii = masked_nii.replace(ext, "_masked" + ext)
 
+    if denoise.lower()=='lpca':
+        D_id=f'LPCA_{id}';
+    elif denoise.lower()=='mpca':
+        D_id=f'MPCA_{id}';
+    elif denoise=="None" or denoise is None:
+        D_id = f'{id}'
+
     if denoise=="None" or denoise is None:
         denoised_nii = masked_nii
         if not os.path.exists(masked_nii) or overwrite:
             fsl_cmd = f"fslmaths {raw_nii} -mas {tmp_mask} {masked_nii} -odt 'input'";
             os.system(fsl_cmd)
     else:
-        denoised_nii = os.path.join(work_dir,f"LPCA_{id}_nii4D.nii.gz")
+        denoised_nii = os.path.join(work_dir,f"{D_id}_nii4D.nii.gz")
         if not os.path.exists(denoised_nii) or overwrite:
             if not os.path.exists(masked_nii) or overwrite:
                 fsl_cmd = f"fslmaths {raw_nii} -mas {tmp_mask} {masked_nii} -odt 'input'";
                 os.system(fsl_cmd)
-            basic_LPCA_denoise_func(id,masked_nii,bvecs,work_dir, processes=processes,
+            basic_LPCA_denoise_func(id,masked_nii,bvecs,denoised_nii, processes=processes,
                                     denoise=denoise, verbose=False) #to improve and make multiprocessing
 
     #if cleanup and os.path.exists(denoised_nii) and os.path.exists(masked_nii) and denoised_nii!=masked_nii:
@@ -107,10 +120,6 @@ def launch_preprocessing(id, raw_nii, outpath, cleanup=False, nominal_bval=4000,
 
     # Run coregistration/eddy current correction:
 
-    if denoise.lower()=='lpca':
-        D_id=f'LPCA_{id}';
-    elif denoise=="None" or denoise is None:
-        D_id = f'{id}'
     coreg_nii_old = f'{outpath}/co_reg_{D_id}_m00-results/Reg_{D_id}_nii4D{ext}';
     coreg_nii = os.path.join(work_dir,f'Reg_{D_id}_nii4D{ext}')
     if not cleanup:

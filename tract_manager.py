@@ -58,7 +58,6 @@ import multiprocessing.pool
 
 
 from dipy.reconst import shm
-
 from scipy.ndimage.morphology import binary_dilation
 from dipy.tracking import utils
 from dipy.tracking.stopping_criterion import BinaryStoppingCriterion, ThresholdStoppingCriterion
@@ -201,13 +200,13 @@ def analysis_diffusion_figures(dwipath,outpath,subject, bvec_orient=[1,2,3], ver
     if verbose:
         print('Running the ' + subject + ' file')
 
-    diff_data, affine, gtab, labelmask, vox_size, fdwipath, _, header = getdiffdata_all(dwipath, subject, bvec_orient)
+    diff_data, affine, gtab, labelmask, vox_size, fdwipath, _, ref_info = getdiffdata_all(dwipath, subject, bvec_orient)
     outpath_fig = outpath + subject + "SHORE_maps.png"
     shore_scalarmaps(diff_data, gtab, outpath_fig, verbose = verbose)
 
 def dwiconnectome_analysis(dwipath,outpath,subject, whitematter_labels, targetrois, labelslist, bvec_orient=[1,2,3], verbose=None):
 
-    diff_data, affine, gtab, labelmask, vox_size, fdwipath, header, hdr = getdiffdata_all(dwipath, subject, bvec_orient, verbose)
+    diff_data, affine, gtab, labelmask, vox_size, fdwipath, header, ref_info = getdiffdata_all(dwipath, subject, bvec_orient, verbose)
     #from dipy.data import read_stanford_labels, read_stanford_t1
     #hardi_img, gtab_hardi, labels_hardi = read_stanford_labels()
     #data = hardi_img.get_data()
@@ -331,7 +330,7 @@ def deprecation(message):
 
 def makemask_fromdiff(dwipath, subject, bvec_orient):
 
-    data, affine, _, mask, vox_size, fdwipath, hdr, header = getdiffdata_all(dwipath, subject, bvec_orient)
+    data, affine, _, mask, vox_size, fdwipath, header, ref_info = getdiffdata_all(dwipath, subject, bvec_orient)
     outpath = os.path.join(dwipath, subject)
     mask = dwi_to_mask(data, subject, affine, outpath, makefig = False)
     return(mask)
@@ -919,7 +918,7 @@ def ROI_labels_mask(diff_data, labelsmask, labelslist):
 def get_diffusionattributes(diffpath, outpath, subject, str_identifier, vol_b0, ratio, bvec_orient,
                                 createmask, overwrite, verbose):
 
-    diff_data, affine, gtab, vox_size, fdiffpath, hdr, header = getdiffdata_all(diffpath, subject, bvec_orient, verbose)
+    diff_data, affine, gtab, vox_size, fdiffpath, header, ref_info = getdiffdata_all(diffpath, subject, bvec_orient, verbose)
 
     if createmask:         # Build Brain Mask
         #changes to the outpath reading, to check next time
@@ -968,7 +967,7 @@ def diff_preprocessing(diffpath,outpath,subject, bvec_orient, denoise="none",sav
     fbvals, fbvecs = move_bvals(diffpath, subject, outpath)
     gtab = getgtab(outpath, subject, bvec_orient)
 
-    diff_data, affine, vox_size, diff_fpath, hdr, header = getdiffdata(diff_fpath, subject, verbose)
+    diff_data, affine, vox_size, diff_fpath, header, ref_info = getdiffdata(diff_fpath, subject, verbose)
 
     if verbose:
         print('Running the preprocessing for subject ' + subject)
@@ -980,7 +979,7 @@ def diff_preprocessing(diffpath,outpath,subject, bvec_orient, denoise="none",sav
 
 
     outpathdenoise = os.path.join(outpath, subject)
-    diff_data, outpath_denoise = denoise_pick(diff_data, affine, hdr, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
+    diff_data, outpath_denoise = denoise_pick(diff_data, affine, header, outpathdenoise, mask, denoise, processes=processes, verbose=verbose) #accepts mpca, gibbs, all, none
 
     print(savefa)
     if savefa == "yes" or savefa == "y" or savefa == 1 or savefa is True or savefa == "all":
@@ -1049,16 +1048,20 @@ def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processe
     if verbose:
         print('Running the ' + subject + ' file')
 
-    diff_data, affine, gtab, vox_size, fdiffpath, hdr, header = getdiffdata_all(diffpath, subject, bvec_orient, denoise=denoise, verbose=verbose)
+    diff_data, affine, gtab, vox_size, fdiffpath, header, ref_info = getdiffdata_all(diffpath, subject, bvec_orient, denoise=denoise, verbose=verbose)
     #fdiffpath = getdiffpath(diffpath, subject, denoise=denoise, verbose=verbose)
 
     if masktype == "dwi":
         mask, _ = getmask(diffpath,subject, masktype, verbose)
-        if np.size(np.shape(mask)) == 1:
-            mask = mask[0]
-        if np.size(np.shape(mask)) == 4:
-            mask = mask[:, :, :, 0]
-        print("Mask shape is " + str(np.shape(mask)))
+        if mask is None:
+            warnings.warn(f'Did not find mask, assuming that the diffusion path {fdiffpath} is already masked')
+            mask,_ = dwi_to_mask(diff_data, subject, affine, diffpath, masking='extract', makefig=False, header=header, verbose=True)
+        else:
+            if np.size(np.shape(mask)) == 1:
+                mask = mask[0]
+            if np.size(np.shape(mask)) == 4:
+                mask = mask[:, :, :, 0]
+            print("Mask shape is " + str(np.shape(mask)))
 
     if np.mean(diff_data) == 0:
         print("The subject " + subject + "could not be found at " + diffpath)
@@ -1090,12 +1093,12 @@ def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processe
             pruned_streamlines = prune_streamlines(list(trkstreamlines), mask, cutoff=cutoff, verbose=verbose)
             pruned_streamlines_SL = Streamlines(pruned_streamlines)
             if hasattr(trkdata, 'space_attribute'):
-                header = trkdata.space_attribute
+                ref_info = trkdata.space_attribute
             elif hasattr(trkdata, 'space_attributes'):
-                header = trkdata.space_attributes
-            myheader = create_tractogram_header(outpathtrk, *header)
+                ref_info = trkdata.space_attributes
+            myref = create_tractogram_header(outpathtrk, *ref_info)
             prune_sl = lambda: (s for s in pruned_streamlines)
-            tract_save.save_trk_heavy_duty(outpathtrk, streamlines=prune_sl, affine=affine, header=myheader)
+            tract_save.save_trk_heavy_duty(outpathtrk, streamlines=prune_sl, affine=affine, header=myref)
             del (prune_sl, pruned_streamlines, trkdata)
             if get_params:
                 numtracts, minlength, maxlength, meanlength, stdlength = get_tract_params(outpathtrk, subject,
@@ -1107,7 +1110,7 @@ def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processe
                 params = None
                 return subject, outpathtrk, params
 
-    outpathtrk, trkstreamlines, params = QCSA_tractmake(diff_data, affine, vox_size, gtab, mask, masktype, header,
+    outpathtrk, trkstreamlines, params = QCSA_tractmake(diff_data, affine, vox_size, gtab, mask, masktype, ref_info,
                                                         step_size, peak_processes, outpathtrk, subject, ratio,
                                                         overwrite, get_params, doprune, figspath=figspath,
                                                         verbose=verbose)
@@ -1270,7 +1273,7 @@ def evaluate_tracts(diffpath,trkpath,subject,stepsize, tractsize, labelslist=Non
     elif tractsize == "tiny":
         ratio=1000
 
-    diff_data, affine, gtab, labelmask, vox_size, fdiffpath, _, header = getdiffdata_all(diffpath, subject)
+    diff_data, affine, gtab, labelmask, vox_size, fdiffpath, _, ref_info = getdiffdata_all(diffpath, subject)
     if isempty(labelslist):
         if labelmask is None:
             roimask = (diff_data[:, :, :, 0] > 0)

@@ -16,6 +16,7 @@ from BIAC_tools import send_mail
 from Daemonprocess import MyPool
 import sys, getopt
 from file_tools import mkcdir
+from argument_tools import parse_arguments
 
 import pickle
 import pandas as pd
@@ -54,41 +55,10 @@ l = ['N57500','N57702','N57709', "N58214", "N58215",
                 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
                 'N58613', 'N58732', 'N58516', 'N58402']
 l = ["N58634"]
-argv = sys.argv[1:]
-try:
-    opts, args = getopt.getopt(argv, "hb:e:", ["first=", "last="])
-except getopt.GetoptError:
-    print('test.py -i <inputfile> -o <outputfile>')
-    sys.exit(2)
-for opt, arg in opts:
-    if opt == '-h':
-        print('test.py -b first -s last')
-        sys.exit()
-    elif opt in ("-b", "--first"):
-        start = arg
-    elif opt in ("-e", "--last"):
-        end = arg
 
-if 'start' in locals():
-    del(start, end)
-if 'start' in locals():
-    start = int(start)
-    if 'end' in locals():
-        l = l[int(start):int(end)+1]
-    else:
-        l = l[start:]
-if 'start' not in locals():
-    if 'end' not in locals():
-        l = l
-    else:
-        l = l[0:end]
 print("Will go from subject "+ l[0] + " to subject "+l[-1])
-max_processors = 10
 
-if mp.cpu_count() < max_processors:
-    max_processors = mp.cpu_count()
-
-print("Running on ", max_processors, " processors")
+subject_processes, function_processes = parse_arguments(sys.argv, l)
 
 #main_folder = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/"
 #dwipath = main_folder + "/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-results/connectomics/"
@@ -111,14 +81,8 @@ outpathpickle = figspath
 
 stepsize = 2
 
-subject_processes = np.size(l)
-subject_processes = 1
-if max_processors < subject_processes:
-    subject_processes = max_processors
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
 # "none" or None variable for neither and "both" for both of them
-
-function_processes = np.int(max_processors/subject_processes)
 
 targetrois = ["Cerebellum"]
 ratio = 10

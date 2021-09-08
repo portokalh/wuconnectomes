@@ -3,9 +3,10 @@ import numpy as np
 from tract_manager import create_tracts, diff_preprocessing, tract_connectome_analysis, get_diffusionattributes
 from Daemonprocess import MyPool
 import multiprocessing as mp
-import os
+import os, sys
 from file_tools import mkcdir
 from time import time
+from argument_tools import parse_arguments
 
 def orient_to_str(bvec_orient):
     mystr="_"
@@ -42,7 +43,9 @@ subjects = ["S02224"]
 subjects = ["S02654", "S02666",  "S02670",  "S02686", "S02690", "S02695", "S02720", "S02737", "S02753", "S02765", "S02781", "S02802",
             "S02804", "S02813", "S02817", "S02840", "S02877", "S02898", "S02926", "S02938", "S02939", "S02954", "S02967", "S02987",
             "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048"]
-subjects = ["S02224"]
+subjects = ["S02654"]
+
+subject_processes, function_processes = parse_arguments(sys.argv,subjects)
 
 #"S02230" "S02490" these subjects are strange, to investigate
 
@@ -65,17 +68,6 @@ mkcdir([outpath, figspath, diff_preprocessed, trkpath])
 masktype = "FA"
 masktype = "T1"
 masktype = "dwi"
-
-
-max_processors = 1
-
-if mp.cpu_count() < max_processors:
-    max_processors = mp.cpu_count()
-
-subject_processes = np.size(subjects)
-if max_processors < subject_processes:
-    subject_processes = max_processors
-function_processes = np.int(max_processors / subject_processes)
 
 """
 if masktype == "dwi":
@@ -132,7 +124,7 @@ createmask = masktype
 inclusive = True
 denoise = "coreg"
 savefa = True
-make_connectomes = True
+make_connectomes = False
 
 classifiertype = "FA"
 classifiertype = "binary"

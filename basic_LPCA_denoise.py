@@ -32,9 +32,9 @@ from dipy.io.gradients import read_bvals_bvecs
 from dipy.core.gradients import gradient_table
 
 #from dipy.denoise.localpca import localpca
-from denoise_processes import localpca
+from denoise_processes import localpca, mppca
 from dipy.denoise.pca_noise_estimate import pca_noise_estimate
-
+import os
 from time import time
 from dipy.segment.mask import median_otsu
 """
@@ -115,7 +115,8 @@ def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath, processes=1,
         #nib.save(mask_img, 'tensor_fa.nii.gz')
         # masked_path=outpath+runno+'_nii4D_masked.nii.gz'
         save_nifti(masked_path, maskdata, affine)
-        mask_path=outpath + id +'_mask.nii.gz'
+        outdir = os.path.dirname(outpath)
+        mask_path=os.path.join(outdir,id +'_mask.nii.gz')
         save_nifti(mask_path, mask.astype(np.ubyte), affine)
 
     data=maskdata
@@ -128,11 +129,10 @@ def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath, processes=1,
 
     if denoise.lower() == 'lpca':
         id=str(id)
-        lpca_path=outpath+'/LPCA_' + id + '_nii4D.nii.gz'
-        if path.exists(lpca_path):
-            print('File already exists; Skipping LPCA denoising (path: ' + lpca_path + ')' )
+        if path.exists(outpath):
+            print('File already exists; Skipping LPCA denoising (path: ' + outpath + ')' )
         else:
-            print('Beginning LPCA denoising for: '+ id + '. (Expected result: ' + lpca_path + ')' )
+            print('Beginning LPCA denoising for: '+ id + '. (Expected result: ' + outpath + ')' )
             t = time()
 
             print(data.shape)
@@ -146,5 +146,25 @@ def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath, processes=1,
             t = time()
             denoised_arr = localpca(data2, sigma=sigma1, patch_radius=2,pca_method='svd', tau_factor=2.3,
                                     processes=processes, verbose=verbose)
-            save_nifti(lpca_path, denoised_arr, affine)
+            save_nifti(outpath, denoised_arr, affine)
             print("Time taken for local PCA denoising", -t + time())
+    elif denoise.lower() == 'mpca':
+        id=str(id)
+        #mpca_path=outpath+'/MPCA_' + id + '_nii4D.nii.gz'
+        if path.exists(outpath):
+            print('File already exists; Skipping LPCA denoising (path: ' + outpath + ')' )
+        else:
+            print('Beginning LPCA denoising for: '+ id + '. (Expected result: ' + outpath + ')' )
+            t = time()
+
+            print(data.shape)
+            data2=data
+            print(masked_path)
+            print(gtab)
+            #sigma1 = pca_noise_estimate(data2, gtab, correct_bias=True, smooth=1)
+            #print("Sigma estimation time", time() - t)
+            #lpca
+            t = time()
+            denoised_arr = mppca(data2, patch_radius=2, return_sigma=False, processes=processes, verbose=verbose)
+            save_nifti(outpath, denoised_arr, affine)
+            print("Time taken for Marcenko-Pastur denoising", -t + time())

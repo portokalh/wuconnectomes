@@ -3,13 +3,14 @@ from tract_manager import create_tracts
 import multiprocessing as mp
 from Daemonprocess import MyPool
 import glob
-import os
+import os, sys
 from bvec_handler import writebfiles, extractbvals, extractbvals_research, rewrite_subject_bvalues, fix_bvals_bvecs
 from time import time
 import shutil
 from diffusion_preprocessing import launch_preprocessing
 from file_tools import mkcdir, largerfile
 import shutil
+from argument_tools import parse_arguments
 
 def orient_to_str(bvec_orient):
     mystr="_"
@@ -57,7 +58,9 @@ subjects = ['N58712', 'N58790', 'N58606', 'N58350', 'N58608', 'N58779', 'N58500'
             'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788']
 
 subjects = ['N58302', 'N58612'
-    , 'N58784', 'N58706', 'N58361', 'N58355',]
+    , 'N58784', 'N58706', 'N58361', 'N58355']
+
+subject_processes, function_processes = parse_arguments(sys.argv, subjects)
 
 #subject 'N58610' retired, weird? to investigate
 proc_subjn=""

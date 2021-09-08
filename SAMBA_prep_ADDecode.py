@@ -4,21 +4,24 @@ from Daemonprocess import MyPool
 import multiprocessing as mp
 import glob
 import os
+import sys
 from bvec_handler import extractbvals, rewrite_subject_bvalues, fix_bvals_bvecs
 from diffusion_preprocessing import launch_preprocessing
 from file_tools import mkcdir, largerfile
 from img_transform_exec import get_transpose
 import shutil
+from argument_tools import parse_arguments
 
 gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
 mainpath="/Volumes/Data/Badea/ADdecode.01/"
 
 #outpath = "/Users/alex/jacques/APOE_temp"
-outpath = "/Volumes/Data/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
+outpath = "/Volumes/Data/Badea/Lab/human/AD_Decode/diffusion_prep_locale_mpca/"
 bonusshortcutfolder = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool/"
 bonusshortcutfolder = None
 
 diffpath = mainpath + "Data/Anat"
+
 
 
 #gunniespath = "~/gunnies/"
@@ -31,10 +34,10 @@ subjects = ["02654", "02690", "02720", "02737", "02745", "02753", "02765", "0277
 
 subjects = ["02654", "02690", "02720", "02737", "02753", "02765", "02781", "02802", "02804", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
 subjects = ["02654", "02666", "02670", "02686", "02690", "02695", "02715", "02720", "02737", "02753", "02765", "02771", "02781", "02802", "02804", "02813", "02817", "02840", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03033", "03034", "03045", "03048"]
-#subjects = ["02812"]
+#subjects = ["02666"]
 #subjects = ["02871"]
-subjects = ["02842", "02812", "02871", "02715", "02771","03069"]
-subjects = ["03069"]
+#subjects = ["02842", "02812", "02871", "02715", "02771","03069"]
+#subjects = ["02654"]
 
 #subjects = ["02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
 #02745 was not fully done, discount
@@ -42,9 +45,11 @@ subjects = ["03069"]
 #"02812", 02871 is a strange subject, to investigate
 #02842, 03028 has apparently a 92 stack ? to investigate
 
+subject_processes, function_processes = parse_arguments(sys.argv,subjects)
+
 proc_subjn="S"
 proc_name ="diffusion_prep_"+proc_subjn
-denoise = "lpca"
+denoise = "mpca"
 masking = "bet"
 overwrite=False
 cleanup = True
@@ -92,16 +97,9 @@ elif btables=="copy":
                 shutil.copy(bvecs[0], outpathbvec)
 #quickfix was here
 
-max_processors = 1
-if mp.cpu_count() < max_processors:
-    max_processors = mp.cpu_count()
-subject_processes = np.size(subjects)
-if max_processors < subject_processes:
-    subject_processes = max_processors
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
 # "none" or None variable for neither and "both" for both of them
 
-function_processes = np.int(max_processors/subject_processes)
 results=[]
 if subject_processes>1:
     if function_processes>1:

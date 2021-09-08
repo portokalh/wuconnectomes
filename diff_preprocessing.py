@@ -16,6 +16,8 @@ from dipy.denoise.gibbs import gibbs_removal
 from time import time
 from figures_handler import denoise_fig
 import glob
+from mask_handler import applymask_array
+import nibabel as nib
 
 #from os.path import join as pjoin
 #from dipy.data import get_fnames
@@ -38,18 +40,34 @@ def string_inclusion(string_option,allowed_strings,option_name):
     if string_option == "none":
         print(option_name + " stated as None value, option will not be implemented")
 
-def dwi_to_mask(data, subject, affine, outpath, makefig=False, vol_idx=None, median_radius = 5, numpass=6, dilate = 2, forcestart = False, verbose = False):
+def dwi_to_mask(data, subject, affine, outpath, masking='median', makefig=False, vol_idx=None, median_radius = 5, numpass=6, dilate = 2, forcestart = False, header = None, verbose = False):
 
     data = np.squeeze(data)
-    binarymask = os.path.join(outpath, subject + '_dwi_binary_mask.nii.gz')
-    maskeddwi = os.path.join(outpath, subject + '_dwi_mask.nii.gz')
-    if not os.path.exists(binarymask) and not os.path.exists(maskeddwi) and not forcestart:
-        b0_mask, mask = median_otsu(data, vol_idx=vol_idx, median_radius=median_radius, numpass=numpass, dilate = dilate)
+    binarymask_path = os.path.join(outpath, subject + '_dwi_binary_mask.nii.gz')
+    maskeddwi_path = os.path.join(outpath, subject + '_dwi_mask.nii.gz')
+    if not os.path.exists(binarymask_path) and not os.path.exists(maskeddwi_path) and not forcestart:
+        if masking == 'median':
+            b0_mask, mask = median_otsu(data, vol_idx=vol_idx, median_radius=median_radius, numpass=numpass,
+                                        dilate=dilate)
+        if masking == 'extract':
+            if np.size(np.shape(data)) == 3:
+                mask=data>0
+            if np.size(np.shape(data)) == 4:
+                mask=data[:,:,:,0]>0
+            mask = mask.astype(np.float32)
+            b0_mask = applymask_array(data,mask)
+
         if verbose:
-            txt = "Creating binarymask at " + binarymask
+            txt = f"Creating binarymask at {binarymask_path} and masked data at {maskeddwi_path}"
             print(txt)
-        save_nifti(binarymask, mask.astype(np.float32), affine)
-        save_nifti(maskeddwi, b0_mask.astype(np.float32), affine)
+        if header is None:
+            save_nifti(binarymask_path, mask, affine)
+            save_nifti(maskeddwi_path, b0_mask.astype(np.float32), affine)
+        else:
+            binarymask_nii = nib.Nifti1Image(mask, affine, header)
+            nib.save(binarymask_nii, binarymask_path)
+            maskeddwi_nii = nib.Nifti1Image(b0_mask, affine, header)
+            nib.save(maskeddwi_nii, maskeddwi_path)
     else:
         mask = load_nifti(binarymask)
         mask = mask[0]
