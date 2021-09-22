@@ -1,5 +1,6 @@
 
-from img_transform_exec import img_transform_exec, space_transpose, header_superpose
+from transform_handler import img_transform_exec, space_transpose, header_superpose
+import os, re, sys, io, struct, socket, datetime
 from pathlib import Path
 import os
 from file_tools import mkcdir, check_files
@@ -8,7 +9,40 @@ import warnings
 import shutil
 
 
-def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient_string, preppath = None, gunniespath="/Users/alex/bass/gitfolder/wuconnectomes/gunnies/", recenter=0, verbose=True):
+def get_info_SAMBA_headfile(SAMBA_headfile, verbose=False):
+
+    if os.path.exists(SAMBA_headfile):
+        with open(SAMBA_headfile, 'rb') as source:
+            if verbose: print('INFO    : Extracting acquisition parameters')
+            header_size = source.read(4)
+            header_size = struct.unpack('I', header_size)
+            if verbose: print('INFO    : Header size = ', int(header_size[0]))
+            i = 0
+            stopsign = 200
+            for line in source:
+                pattern1 = 'original_study_orientation'
+                rx1 = re.compile(pattern1, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+                pattern2 = 'working_image_orientation'
+                rx2 = re.compile(pattern2, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+                discount = re.compile('#', re.IGNORECASE | re.MULTILINE | re.DOTALL)
+                i += 1
+                if i == stopsign:
+                    print("hi")
+                for a in rx1.findall(str(line)):
+                    if len(discount.findall(str(line))) == 0:
+                        orig_orientation = str(line).split('=')[1]
+                        orig_orientation = orig_orientation.split('\\')[0]
+                for a in rx2.findall(str(line)):
+                    if len(discount.findall(str(line))) == 0:
+                        working_orientation = str(line).split('=')[1]
+                        working_orientation = working_orientation.split('\\')[0]
+    else:
+        raise Exception('Cannot find SAMBA_headfile')
+
+    return orig_orientation, working_orientation
+
+
+def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient_string, preppath = None, headfile=None, overwrite=False, verbose=True):
 
     #mainpath = "/Volumes/Data/Badea/Lab/mouse/"
     #gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
@@ -46,6 +80,12 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
         orientation_in = "LPS"
         orientation_out = "RAS"
 
+    if headfile is not None:
+        SAMBA_orientation_in, SAMBA_orientation_out = get_info_SAMBA_headfile(headfile)
+    else:
+        SAMBA_orientation_in, SAMBA_orientation_out = 'RAS', 'RAS'
+
+
     trans = os.path.join(work_dir,"preprocess","base_images","translation_xforms",f"{subject}_0DerivedInitialMovingTranslation.mat")
     rigid =os.path.join(work_dir,"dwi",f"{subject}_rigid.mat")
     affine = os.path.join(work_dir,"dwi",f"{subject}_affine.mat")
@@ -62,6 +102,7 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
     preprocess_labels = os.path.join(dirty_dir,f"{subject}_preprocess_labels.nii.gz")
     fixed_preprocess_labels = os.path.join(dirty_dir,f"{subject}_fixed_preprocess_labels.nii.gz")
     coreg_labels = os.path.join(dirty_dir,f"{subject}_{orientation_in}_labels.nii.gz")
+    coreg_reorient_labels = os.path.join(dirty_dir,f"{subject}_{SAMBA_orientation_in}_labels.nii.gz")
 
     # final_ref="/mnt/munin6/Badea/Lab/mouse/co_reg_LPCA_${subject:1:5}_m00-results/Reg_LPCA_${subject:1:5}_nii4D.nii.gz";
     if preppath is None:
@@ -76,12 +117,11 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
 
     symbolic_ref = os.path.join(out_dir,f"{subject}_Reg_LPCA_nii4D.nii.gz")
     final_labels = os.path.join(out_dir,f"{subject}_IITmean_preprocess_labels.nii.gz")
-
-    overwrite = False
+    final_labels_backup = os.path.join(dirty_dir,f"{subject}_IITmean_preprocess_labels.nii.gz")
+    superpose=True
     if not os.path.exists(final_labels) or overwrite:
         if verbose:
             print(f"Backporting labels to raw space for subject: {subject} to {final_labels}")
-
         if not os.path.exists(preprocess_labels) or overwrite:
             #Note, it used to be MultiLabel[1.0x1.0x1.0,2] but it seems like the default parameters tend to be based on the image themselves and work fine,
             #so be careful but I removed it for now so it would work on different image sets
@@ -90,23 +130,36 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
                 print(f"Runnings the Ants apply transforms to {atlas_labels}")
                 print(cmd)
             os.system(cmd)
-
-        if os.path.exists(preprocess_labels) and not ((os.path.exists(fixed_preprocess_labels)) or overwrite):
+        if os.path.exists(preprocess_labels) and ((not os.path.exists(fixed_preprocess_labels)) or overwrite):
             header_superpose(final_ref, preprocess_labels, outpath=fixed_preprocess_labels)
 
-        if os.path.exists(fixed_preprocess_labels) and not (os.path.exists(coreg_labels) or overwrite):
+        if os.path.exists(fixed_preprocess_labels) and (not os.path.exists(coreg_labels) or overwrite):
 
             if orientation_out != orientation_in:
                 if verbose:
                     print(f"Reorientation from {orientation_out} back to {orientation_in}")
-                img_transform_exec(fixed_preprocess_labels, orientation_out, orientation_in, coreg_labels, recenter=recenter)
+                img_transform_exec(fixed_preprocess_labels, orientation_out, orientation_in, coreg_labels)
             else:
                 if verbose:
                     print(f"Orientations are the same, skipping reorientation")
                 shutil.copy(fixed_preprocess_labels, coreg_labels)
 
-        if os.path.exists(coreg_labels):
-            header_superpose(final_ref, coreg_labels, outpath=final_labels)
+        if os.path.exists(coreg_labels) and (not os.path.exists(coreg_reorient_labels) or overwrite):
+
+            if SAMBA_orientation_out != SAMBA_orientation_in:
+                if verbose:
+                    print(f"Reorientation from {SAMBA_orientation_out} back to {SAMBA_orientation_in}")
+                img_transform_exec(coreg_labels, SAMBA_orientation_out, SAMBA_orientation_in,
+                                   output_path=coreg_reorient_labels)
+            else:
+                if verbose:
+                    print(f"Orientations are the same, skipping reorientation")
+                if coreg_labels != coreg_reorient_labels:
+                    warnings.warn('This should never happen, investigate if it does')
+                    shutil.copy(fixed_preprocess_labels, coreg_labels)
+
+        if os.path.exists(coreg_reorient_labels):
+            header_superpose(final_ref, coreg_reorient_labels, outpath=final_labels)
             #cmd = f"{os.path.join(gunniespath, 'nifti_header_splicer.bash')} {final_ref} {coreg_labels} {final_labels}"
             #os.system(cmd)
 
@@ -115,6 +168,7 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
                 print(f"Applying fsl maths to {final_labels}")
             cmd = f"fslmaths {final_labels} -add 0 {final_labels} -odt short"
             os.system(cmd)
+            shutil.copy(final_labels, final_labels_backup)
     else:
         print(f"Already calculated the label file for subject {subject}")
 

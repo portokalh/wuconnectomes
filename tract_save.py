@@ -12,8 +12,56 @@ import nibabel as nib
 from nibabel.streamlines import Field
 from nibabel.orientations import aff2axcodes
 from dipy.io.streamline import load_trk
+from dipy.io.utils import create_tractogram_header
+import time
 
-def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, header=None):
+def make_tractogram_object(fname, streamlines, affine, vox_size=None, shape=None, header=None):
+    """ Saves tractogram object for future use
+
+    Parameters
+    ----------
+    fname : str
+        output trk filename
+    streamlines : list of 2D arrays, generator or ArraySequence
+        Each 2D array represents a sequence of 3D points (points, 3).
+    affine : array_like (4, 4)
+        The mapping from voxel coordinates to streamline points.
+    vox_size : array_like (3,), optional
+        The sizes of the voxels in the reference image (default: None)
+    shape : array, shape (dim,), optional
+        The shape of the reference image (default: None)
+    header : dict, optional
+        Metadata associated to the tractogram file(*.trk). (default: None)
+    """
+    if vox_size is not None and shape is not None:
+        if not isinstance(header, dict):
+            header = {}
+        header[Field.VOXEL_TO_RASMM] = affine.copy()
+        header[Field.VOXEL_SIZES] = vox_size
+        header[Field.DIMENSIONS] = shape
+        header[Field.VOXEL_ORDER] = "".join(aff2axcodes(affine))
+
+    tractogram = nib.streamlines.LazyTractogram(streamlines)
+    tractogram.affine_to_rasmm = affine
+    trk_file = nib.streamlines.TrkFile(tractogram, header=header)
+    return tractogram, trk_file
+
+def save_trk_header(filepath, streamlines, header, affine=None, verbose=False):
+
+    myheader = create_tractogram_header(filepath, *header)
+    trk_sl = lambda: (s for s in streamlines)
+    if affine is None:
+        affine = header[0]
+    if verbose:
+        print(f'Saving streamlines to {filepath}')
+        time1 = time.perf_counter()
+    save_trk_heavy_duty(filepath, streamlines=trk_sl,
+                        affine=affine, header=myheader, return_tractogram=False)
+    if verbose:
+        time2 = time.perf_counter()
+        print(f'Saved in {time2 - time1:0.4f} seconds')
+
+def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, header=None, return_tractogram=False):
     """ Saves tractogram files (*.trk)
 
     Parameters
@@ -43,6 +91,8 @@ def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, h
     tractogram.affine_to_rasmm = affine
     trk_file = nib.streamlines.TrkFile(tractogram, header=header)
     nib.streamlines.save(trk_file, fname)
+    if return_tractogram:
+        return tractogram, trk_file
 
 def unload_trk(tractogram_path, reference='same'):
     """ Similar functionality as the older version of load_trk, as it directly

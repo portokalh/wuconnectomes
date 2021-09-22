@@ -244,3 +244,27 @@ save_tck = save_generator('.tck')
 save_vtk = save_generator('.vtk')
 save_fib = save_generator('.fib')
 save_dpy = save_generator('.dpy')
+
+def unload_trk(trkpath, reference='same'):
+    if isinstance(trkpath, str):
+        trk_data = load_trk(trkpath, reference)
+        streamlines = trk_data.streamlines
+        if hasattr(trk_data, 'space_attribute'):
+            header = trk_data.space_attribute
+        elif hasattr(trk_data, 'space_attributes'):
+            header = trk_data.space_attributes
+        return streamlines, header
+    else:
+        trk_data = trkpath
+        try:
+            streamlines = trk_data.streamlines
+        except:
+            raise Exception('Object was not recognized as a filepath and did not possess streamlines to unload')
+        try:
+            if hasattr(trk_data, 'space_attribute'):
+                header = trk_data.space_attribute
+            elif hasattr(trk_data, 'space_attributes'):
+                header = trk_data.space_attributes
+            return streamlines, header
+        except:
+            raise Exception('Could not find recognizable space attributes in tractogram object')

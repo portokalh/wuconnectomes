@@ -11,6 +11,7 @@ import numpy as np
 from pathlib import Path
 import warnings
 import subprocess, pipes
+from scipy.io import loadmat
 
 def mkcdir(folderpaths):
     #creates new folder only if it doesnt already exists
@@ -35,6 +36,14 @@ def check_for_duplicates(checklist,checklist2):
                     print(f"Found the value {checklist[i]} at {i} and {j}")
                 else:
                     print(f"Found the value {checklist[i]} in first list at {i} and second list at {j}")
+
+def get_single_var_matlab(path):
+    mat_struct = loadmat(path)
+    var_name = list(mat_struct.keys())[0]
+    if np.size(var_name) >2:
+        raise Exception('Multiple values in struct, load it properly with scipy.io.loadmat')
+    myvar = mat_struct[var_name]
+    return myvar
 
 def exists_remote(host, path):
     """Test if a file exists at path on a host accessible with SSH."""

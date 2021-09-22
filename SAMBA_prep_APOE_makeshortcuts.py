@@ -9,7 +9,7 @@ from time import time
 import shutil
 from diffusion_preprocessing import launch_preprocessing
 from file_tools import mkcdir, largerfile
-from img_transform_exec import get_transpose
+from transform_handler import get_transpose
 import shutil
 
 def orient_to_str(bvec_orient):

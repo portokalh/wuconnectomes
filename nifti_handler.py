@@ -206,20 +206,25 @@ def getdiffpath(mypath, subject, denoise="", verbose=None):
 
     return(fdiffpath)
 
-def getdiffdata(mypath, subject, denoise="", verbose=None):
-
-    diff_fpath = getdiffpath(mypath, subject, denoise=denoise, verbose=verbose)
+def extract_nii_info(path, verbose=None):
     if verbose:
-        txt = "Extracting information from the diff file located at " + diff_fpath
+        txt = "Extracting information from the nifti file located at " + path
         print(txt)
         send_mail(txt, subject="Begin data extraction")
-    img = nib.load(diff_fpath)
-    diff_data = img.get_data()
+    img = nib.load(path)
+    data = img.get_data()
     vox_size = img.header.get_zooms()[:3]
     affine = img.affine
     header = img.header
     del(img)
-    ref_info = get_reference_info(diff_fpath)
+    ref_info = get_reference_info(path)
+    return data, affine, vox_size, header, ref_info
+
+
+def getdiffdata(mypath, subject, denoise="", verbose=None):
+
+    diff_fpath = getdiffpath(mypath, subject, denoise=denoise, verbose=verbose)
+    diff_data, affine, vox_size, header, ref_info = extract_nii_info(diff_fpath, verbose)
 
     return diff_data, affine, vox_size, diff_fpath, header, ref_info
 

@@ -10,15 +10,17 @@ import os
 import getpass
 
 #project = ["AD_Decode", "APOE"]
-project = "AD_Decode"
+project = "APOE"
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
+SAMBA_headfile_dir = os.path.join(mainpath, "samba_startup_cache")
 
 if project == "AD_Decode":
 
     SAMBA_mainpath = os.path.join(mainpath, "mouse")
     SAMBA_projectname = "VBM_21ADDecode03_IITmean_RPI_fullrun"
+    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "jas297_SAMBA_ADDecode.headfile")
     gunniespath = "~/gunnies/"
     recenter = 0
     #SAMBA_prep_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-inputs")
@@ -30,7 +32,7 @@ if project == "AD_Decode":
 
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-results", "connectomics")
     orient_string = os.path.join(SAMBA_prep_folder,"relative_orientation.txt")
-
+    superpose=True
     copytype="truecopy"
     overwrite=False
     file_ids=["coreg", "fa", "b0", "bval", "bvec", "mask"]
@@ -42,6 +44,7 @@ elif project == "APOE":
 
     SAMBA_mainpath = os.path.join(mainpath, "mouse")
     SAMBA_projectname = "VBM_20APOE01_chass_symmetric3_allAPOE"
+    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "jas297_SAMBA_APOE.headfile")
     gunniespath = "~/gunnies/"
     recenter = 0
     # SAMBA_prep_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-inputs")
@@ -55,10 +58,25 @@ elif project == "APOE":
 
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-results", "connectomics")
     orient_string = os.path.join(SAMBA_prep_folder, "relative_orientation.txt")
-
+    superpose = False
     copytype = "truecopy"
     overwrite = False
     file_ids = ["coreg", "fa", "b0", "bval", "bvec", "mask"]
+    subjects = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504', 'N57513',
+                'N57515','N57518','N57520','N57522','N57546','N57548','N57550','N57552','N57554','N57559','N57580','N57582','N57584',
+                'N57587','N57590','N57692','N57694','N57700','N57500','N57702','N57709',
+                "N58214", "N58215", "N58216", "N58217", "N58218", "N58219", "N58221", "N58222", "N58223", "N58224",
+                "N58225", "N58226", "N58228",
+                "N58229", "N58230", "N58231", "N58232", "N58633", "N58634", "N58635", "N58636", "N58649", "N58650",
+                "N58651", "N58653", "N58654",
+                'N58408', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309', 'N58792', 'N58302',
+                'N58784', 'N58706', 'N58361', 'N58355', 'N58712', 'N58790', 'N58606', 'N58350', 'N58608',
+                'N58779', 'N58500', 'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788', 'N58305',
+                'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
+                'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
+                'N58613', 'N58732', 'N58516', 'N58402']
+
+
     subjects = ["N58214", "N58215", "N58216", "N58217", "N58218", "N58219", "N58221", "N58222", "N58223", "N58224",
                 "N58225", "N58226", "N58228",
                 "N58229", "N58230", "N58231", "N58232", "N58633", "N58634", "N58635", "N58636", "N58649", "N58650",
@@ -74,8 +92,9 @@ else:
     raise Exception("Unknown project name")
 
 for subject in subjects:
-    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, atlas_labels, orient_string, gunniespath=gunniespath,
-                           recenter=recenter)
+    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, atlas_labels, orient_string, headfile = SAMBA_headfile, overwrite=overwrite)
+
+overwrite=True
 
 remote=False
 
@@ -115,11 +134,16 @@ for filename in os.listdir(SAMBA_prep_folder):
                     buildlink(filepath, filenewpath)
             elif copytype=="truecopy":
                 if remote:
-                    try:
-                        sftp.stat(filenewpath)
-                        if verbose:
-                            print(f'file at {filenewpath} exists')
-                    except IOError:
+                    if not overwrite:
+                        try:
+                            sftp.stat(filenewpath)
+                            if verbose:
+                                print(f'file at {filenewpath} exists')
+                        except IOError:
+                            if verbose:
+                                print(f'copying file {filepath} to {filenewpath}')
+                            sftp.put(filepath, filenewpath)
+                    else:
                         if verbose:
                             print(f'copying file {filepath} to {filenewpath}')
                         sftp.put(filepath, filenewpath)
@@ -143,14 +167,17 @@ for subject in subjects:
     newlabelspath = os.path.join(DTC_labels_folder,f'{subject}_labels.nii.gz')
     if not os.path.exists(newlabelspath) or overwrite:
         if remote:
-            try:
-                sftp.stat(newlabelspath)
-                if verbose:
-                    print(f'file at {newlabelspath} exists')
-            except IOError:
-                if verbose:
-                    print(f'copying file {labelspath} to {newlabelspath}')
-                sftp.put(labelspath, newlabelspath)
+            if not overwrite:
+                try:
+                    sftp.stat(newlabelspath)
+                    if verbose:
+                        print(f'file at {newlabelspath} exists')
+                except IOError:
+                    if verbose:
+                        print(f'copying file {labelspath} to {newlabelspath}')
+                    sftp.put(labelspath, newlabelspath)
+            else:
+                sftp.put(filepath, filenewpath)
         else:
             shutil.copy(labelspath, newlabelspath)
     else:
