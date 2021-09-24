@@ -66,7 +66,8 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             shutil.copyfile(bvals,bvals_new)
     final_mask = os.path.join(work_dir, f'{subj}_dwi_mask{ext}')
 
-    if (not os.path.exists(final_mask) and not os.path.exists(tmp_mask)) or overwrite:
+    #if (not os.path.exists(final_mask) and not os.path.exists(tmp_mask)) or overwrite:
+    if not os.path.exists(tmp_mask) or overwrite:
         if not os.path.exists(raw_dwi) or overwrite:
             select_cmd = f"select_dwi_vols {raw_nii} {bvals} {raw_dwi} {nominal_bval} -m"
             os.system(select_cmd)
@@ -349,9 +350,9 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
 
                 header_superpose(raw_dwi, subj_file_tmp, outpath=subj_file)
 
-        if SAMBA_inputs_folder is not None:
-            subj_link = os.path.join(SAMBA_inputs_folder, f'{subj}_subjspace_{contrast}{ext}')
-            buildlink(subj_file, subj_link)
+            if SAMBA_inputs_folder is not None:
+                subj_link = os.path.join(SAMBA_inputs_folder, f'{subj}_subjspace_{contrast}{ext}')
+                buildlink(subj_file, subj_link)
 
 
     #if cleanup:
