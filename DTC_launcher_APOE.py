@@ -55,6 +55,7 @@ l = ['N57500','N57702','N57709', "N58214", "N58215",
                 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
                 'N58613', 'N58732', 'N58516', 'N58402']
 l = ["N58634"]
+l = ['N57442']
 
 print("Will go from subject "+ l[0] + " to subject "+l[-1])
 
@@ -85,7 +86,7 @@ stepsize = 2
 # "none" or None variable for neither and "both" for both of them
 
 targetrois = ["Cerebellum"]
-ratio = 10
+ratio = 1
 if ratio == 1:
     saved_streamlines = "_all_"
 else:

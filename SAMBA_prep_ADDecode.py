@@ -16,33 +16,20 @@ munin=False
 if munin:
     gunniespath = "~/wuconnectomes/gunnies"
     mainpath = "/mnt/munin6/Badea/ADdecode.01/"
-    outpath = "/mnt/munin6/Badea/Lab/human/AD_Decode/diffusion_prep_locale_mpca/"
+    outpath = "/mnt/munin6/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
     bonusshortcutfolder = "/mnt/munin6/Badea/Lab/mouse/ADDeccode_symlink_pool/"
 else:
     gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
     mainpath="/Volumes/Data/Badea/ADdecode.01/"
-    #outpath = "/Users/alex/jacques/APOE_temp"
-    outpath = "/Volumes/Data/Badea/Lab/human/AD_Decode/diffusion_prep_locale_mpca/"
+    outpath = "/Volumes/Data/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
     bonusshortcutfolder = "/Volumes/Data/Badea/Lab/mouse/ADDeccode_symlink_pool/"
     bonusshortcutfolder = None
 
 diffpath = os.path.join(mainpath, "Data","Anat")
 
-
-#gunniespath = "~/gunnies/"
-#mainpath = "/mnt/munin6/Badea/ADdecode.01/"
-#outpath = "/mnt/munin6/Badea/Lab/human/AD_Decode/diffusion_prep_locale/"
-#bonusshortcutfolder = "/mnt/munin6/Badea/Lab/mouse/ADDeccode_symlink_pool/"
-
 mkcdir(outpath)
-subjects = ["02654", "02690", "02720", "02737", "02745", "02753", "02765", "02771", "02781", "02802", "02804", "02812", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
-
-subjects = ["02654", "02690", "02720", "02737", "02753", "02765", "02781", "02802", "02804", "02813", "02817", "02840", "02842", "02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
 subjects = ["02654", "02666", "02670", "02686", "02690", "02695", "02715", "02720", "02737", "02753", "02765", "02771", "02781", "02802", "02804", "02813", "02817", "02840", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03033", "03034", "03045", "03048"]
-#subjects = ["02666"]
-#subjects = ["02871"]
-#subjects = ["02842", "02812", "02871", "02715", "02771","03069"]
-subjects = ["02654"]
+#subjects = ["03010", "03033", "03045"]
 
 #subjects = ["02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
 #02745 was not fully done, discount
@@ -128,33 +115,3 @@ else:
         launch_preprocessing(proc_subjn+subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
          gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter, verbose)
         #results.append(launch_preprocessing(subject, max_file, outpath))
-
-"""
-subjectlist = ["58215","58216","58217","58218","58219","58221","58222","58223","58224","58225","58226","58228","58229","58230","58231","58232","58633","58634","58635","58636","58649","58650","58651","58653","58654"]
-for subj in subjectlist:
-    fbvals_new = fbvals.replace("58214", subj)
-    shutil.copyfile(fbvals, fbvals_new)
-    fbvecs_new = fbvals.replace("58214", subj)
-    shutil.copyfile(fbvals, fbvals_new)
-    
-    
-quickfix = True
-if quickfix:
-    bval_file="/Volumes/Data/Badea/ADdecode.01/Analysis/DWI/01912_bvals.txt"
-    bvec_file="/Volumes/Data/Badea/ADdecode.01/Analysis/DWI/01912_bvec.txt"
-    bval_file, bvec_file = fix_bvals_bvecs(bval_file, bvec_file, outpath= outpath, identifier="", format="dsi")
-    results=[]
-    copybtables=True
-    if copybtables:
-        for subject in subjects:
-            subjectpath = os.path.join(outpath, proc_name + subject)
-            mkcdir(subjectpath)
-            #subjectpath = glob.glob(os.path.join(os.path.join(outpath, "*" + subject + "*")))
-            #subjectpath = subjectpath[0]
-            new_bval_file=os.path.join(subjectpath, subject+"_bvals.txt")
-            new_bvec_file=os.path.join(subjectpath, subject+"_bvecs.txt")
-            if not os.path.exists(new_bval_file):
-                shutil.copyfile(bval_file,new_bval_file)
-            if not os.path.exists(new_bvec_file):
-                shutil.copyfile(bvec_file,new_bvec_file)
-"""

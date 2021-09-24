@@ -14,6 +14,9 @@ from scipy.io import loadmat
 from nifti_handler import extract_nii_info
 import socket
 from file_tools import mkcdir
+from tract_handler import gettrkpath
+from tract_manager import get_str_identifier
+from file_tools import mkcdir
 
 subj='S02654'
 #subj = 'S01912'
@@ -32,26 +35,31 @@ project = "AD_Decode"
 if project == "AD_Decode":
     path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK')
     path_DWI = os.path.join(main_path, 'AD_Decode', 'Analysis', 'DWI')
+    path_transforms = os.path.join(main_path, 'AD_Decode', 'Analysis','Transforms')
     ref = "md"
-    save_trk_tempdir = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_save')
-    mkcdir(save_trk_tempdir)
+    path_trk_tempdir = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_save')
+    mkcdir(path_trk_tempdir)
+
+    #Get the values from DTC_launcher_ADDecode. Should probalby create a single parameter file for each project one day
+    stepsize = 2
+    ratio = 1
+    trkroi = ["wholebrain"]
+    str_identifier = get_str_identifier(stepsize, ratio, trkroi)
 
 if ref=="md":
-    reference= os.path.join(path_DWI},f'{subj}_tmp_md{ext}')
+    reference= os.path.join(path_DWI,f'{subj}_tmp_md{ext}')
 elif ref=="coreg":
-    reference= os.path.join(path_DWI,f'Reg_{D_subj}_nii4D{ext}')
+    reference= os.path.join(path_DWI,f'Reg_{subj}_nii4D{ext}')
 else:
     raise Exception('No other ref yet')
 
-gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
 overwrite = False
 cleanup = False
 verbose=True
 recenter=0
-skip = False
 
-labpath = '/Volumes/Data/Badea/Lab/'
-work_dir = os.path.join(labpath, f'mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work')
+#work_dir = os.path.join(labpath, f'mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work')
+transforms_dir = os.path.join()
 
 orient_string = os.path.join(path_DWI, 'relative_orientation.txt')
 orient_relative = open(orient_string, mode='r').read()
@@ -60,22 +68,28 @@ orientation_out = orientation_out.split(':')[1]
 orientation_in = orient_relative.split(',')[1]
 orientation_in = orientation_in.split(':')[1]
 
-subj_dwi = os.path.join(test_dir, f'{subj}_tmp_{contrast}{ext}')
-SAMBA_input_real_file = os.path.join(labpath,f'mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-inputs/{subj}_{contrast}.nii.gz')
+subj_dwi = os.path.join(path_transforms, f'{subj}_tmp_{contrast}{ext}')
+#SAMBA_input_real_file = os.path.join(labpath,f'mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-inputs/{subj}_{contrast}.nii.gz')
 
-subj_trk = os.path.join(test_dir,f'{subj}_stepsize_2_ratio_100_wholebrain_pruned.trk')
-trk_filepath_tmp2 = os.path.join(test_dir, f'{subj}_ratio_100_tmp2_notdirect.trk')
-inputS_trk_new = os.path.join(test_dir, f'{subj}_ratio_100_final_direct.trk')
-trk_preprocess = os.path.join(test_dir, f'{subj}_preprocess_direct.trk')
-trk_preprocess_posttrans = os.path.join(test_dir, f'{subj}_{contrast}_preprocess_posttrans_direct.trk')
-trk_preprocess_postrigid = os.path.join(test_dir, f'{subj}_{contrast}_preprocess_postrigid_direct.trk')
-trk_preprocess_postrigid_affine = os.path.join(test_dir, f'{subj}_{contrast}_preprocess_postrigid_affine_direct.trk')
-trk_preprocess_postwarp = os.path.join(test_dir, f'{subj}_{contrast}_postwarp_direct_2.trk')
+SAMBA_input_real_file = os.path.join(path_transforms,f'{subj}_{contrast}.nii.gz')
 
-trans = os.path.join(work_dir, "preprocess", "base_images", "translation_xforms", f"{subj}_0DerivedInitialMovingTranslation.mat")
-rigid = os.path.join(work_dir, "dwi", f"{subj}_rigid.mat")
-affine = os.path.join(work_dir, "dwi", f"{subj}_affine.mat")
-runno_to_MDT = os.path.join(work_dir, f'dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_diffeo/{subj}_to_MDT_warp.nii.gz')
+subj_trk = gettrkpath(path_TRK, subj, str_identifier, pruned=True, verbose=verbose)
+trk_filepath_tmp2 = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_tmp2.trk')
+inputS_trk_new = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_SAMBA_input.trk')
+trk_preprocess = os.path.join(path_trk_tempdir, f'{subj}_preprocess_direct.trk')
+trk_preprocess_posttrans = os.path.join(path_trk_tempdir, f'{subj}_preprocess_posttrans.trk')
+trk_preprocess_postrigid = os.path.join(path_trk_tempdir, f'{subj}_preprocess_postrigid.trk')
+trk_preprocess_postrigid_affine = os.path.join(path_trk_tempdir, f'{subj}_preprocess_postrigid_affine.trk')
+trk_preprocess_postwarp = os.path.join(path_TRK, f'{subj}_MDT.trk')
+
+#trans = os.path.join(work_dir, "preprocess", "base_images", "translation_xforms", f"{subj}_0DerivedInitialMovingTranslation.mat")
+#rigid = os.path.join(work_dir, "dwi", f"{subj}_rigid.mat")
+#affine = os.path.join(work_dir, "dwi", f"{subj}_affine.mat")
+#runno_to_MDT = os.path.join(work_dir, f'dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_diffeo/{subj}_to_MDT_warp.nii.gz')
+trans = os.path.join(path_transforms, f"{subj}_0DerivedInitialMovingTranslation.mat")
+rigid = os.path.join(path_transforms, "dwi", f"{subj}_rigid.mat")
+affine = os.path.join(path_transforms, "dwi", f"{subj}_affine.mat")
+runno_to_MDT = os.path.join(path_transforms, f'{subj}_to_MDT_warp.nii.gz')
 
 save_temp_files = False
 overwrite = False

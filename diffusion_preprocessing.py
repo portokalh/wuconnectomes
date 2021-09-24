@@ -3,24 +3,26 @@ import os
 import shutil
 import subprocess
 from file_tools import largerfile, mkcdir, getext, buildlink
-from transform_handler import img_transform_exec, space_transpose, affine_superpose
+from transform_handler import img_transform_exec, space_transpose, affine_superpose, header_superpose
 import glob
 from basic_LPCA_denoise import basic_LPCA_denoise_func
 from mask_handler import applymask_samespace, median_mask_make
+import time
 
-
-def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=4000, bonusshortcutfolder=None,
+def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=4000, SAMBA_inputs_folder=None,
                          gunniespath="~/gunnies/", processes=1, masking="bet", ref=None, transpose=None,
                          overwrite=False, denoise='None', recenter=0, verbose=False):
 
-    #img_transform_exec('/Volumes/Data/Badea/Lab/human/Sinha_epilepsy/diffusion_prep_locale/diffusion_prep_00393/00393_tmp_b0.nii.gz','LPS', 'RAS',
-    #'/Volumes/Data/Badea/Lab/human/Sinha_epilepsy/diffusion_prep_locale/diffusion_prep_00393/00393_b0.nii.gz')
     proc_name ="diffusion_prep_" # Not gonna call it diffusion_calc so we don't assume it does the same thing as the civm pipeline
-
-    ## 15 June 2020, BJA: I still need to figure out the best way to pull out the non-zero bval(s) from the bval file.
-    ## For now, hardcoding it to 1000 to run Whitson data. # 8 September 2020, BJA: changing to 800 for Sinha data.
     work_dir=os.path.join(outpath,proc_name+subj)
 
+    """
+    for filePath in glob.glob(os.path.join(work_dir,'*')):
+        modTimesinceEpoc = os.path.getmtime(filePath)
+        modificationTime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(modTimesinceEpoc))
+        if modificationTime[5:7]=='09' and int(modificationTime[8:10])>9:
+            os.remove(filePath)
+    """
     if verbose:
         print(f"Processing diffusion data with runno/subj: {subj}")
         print(f"Work directory is {work_dir}")
@@ -29,7 +31,6 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     sbatch_folder =os.path.join(work_dir,"sbatch")
     mkcdir(sbatch_folder)
 
-    #nii_name =${raw_nii  ##*/};
     nii_name=os.path.split(raw_nii)[1]
     niifolder = os.path.dirname(raw_nii)
     ext = ".nii.gz"
@@ -37,7 +38,7 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     bxheader = nii_name.replace(nii_ext,".bxh")
     bxheader = os.path.join(niifolder, bxheader)
     bvecs = os.path.join(work_dir, subj+"_bvecs.txt")
-    bvals =bvecs.replace("bvecs","bvals");
+    bvals =bvecs.replace("bvecs","bvals")
 
     if verbose:
         print(f"Original nifti is at {nii_name}\nbvecs are at {bvecs}\nbvals are at {bvals}\n")
@@ -54,17 +55,17 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     raw_dwi = os.path.join(work_dir,f"{subj}_raw_dwi.nii.gz")
     orient_string = os.path.join(work_dir,"relative_orientation.txt")
 
-    if bonusshortcutfolder is not None:
-        raw_nii_link = os.path.join(bonusshortcutfolder, f"{subj}_rawnii{ext}")
+    if SAMBA_inputs_folder is not None:
+        raw_nii_link = os.path.join(SAMBA_inputs_folder, f"{subj}_rawnii{ext}")
         if not os.path.exists(raw_nii_link) or overwrite:
             buildlink(raw_nii, raw_nii_link)
-        bvecs_new = os.path.join(bonusshortcutfolder,subj+"_bvecs.txt")
-        bvals_new = os.path.join(bonusshortcutfolder,subj+"_bvals.txt")
+        bvecs_new = os.path.join(SAMBA_inputs_folder,subj+"_bvecs.txt")
+        bvals_new = os.path.join(SAMBA_inputs_folder,subj+"_bvals.txt")
         if not os.path.exists(bvecs_new) or not os.path.exists(bvals_new) or overwrite:
             shutil.copyfile(bvecs,bvecs_new)
             shutil.copyfile(bvals,bvals_new)
     final_mask = os.path.join(work_dir, f'{subj}_dwi_mask{ext}')
-    #overwrite=True
+
     if (not os.path.exists(final_mask) and not os.path.exists(tmp_mask)) or overwrite:
         if not os.path.exists(raw_dwi) or overwrite:
             select_cmd = f"select_dwi_vols {raw_nii} {bvals} {raw_dwi} {nominal_bval} -m"
@@ -80,10 +81,10 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             else:
                 raise Exception("Unrecognized masking type")
 
-    if bonusshortcutfolder is not None:
-        mask_subj_link = os.path.join(bonusshortcutfolder,f'{subj}_mask_subjspace{ext}')
+    if SAMBA_inputs_folder is not None:
+        mask_subj_link = os.path.join(SAMBA_inputs_folder,f'{subj}_mask_subjspace{ext}')
         if not os.path.exists(mask_subj_link) or overwrite:
-            buildlink(tmp_mask, mask_subj_link)
+            shutil.copy(tmp_mask, mask_subj_link)
 
     #if cleanup and (os.path.exists(tmp_mask) and os.path.exists(raw_dwi)):
     #    os.remove(raw_dwi)
@@ -130,8 +131,8 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             os.system(temp_cmd)
         if cleanup:
             shutil.move(coreg_nii_old,coreg_nii)
-    if bonusshortcutfolder is not None:
-        coreg_link = os.path.join(bonusshortcutfolder,f'{subj}_coreg{ext}')
+    if SAMBA_inputs_folder is not None:
+        coreg_link = os.path.join(SAMBA_inputs_folder,f'{subj}_coreg{ext}')
         if not os.path.exists(coreg_link) or overwrite:
             buildlink(coreg_nii, coreg_link)
 
@@ -156,21 +157,13 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
 
     tmp_dwi_out=os.path.join(work_dir, f'{subj}_tmp_dwi{ext}')
     dwi_out=os.path.join(work_dir,f'{subj}_dwi{ext}')
-    #overwrite=True
-    if not os.path.exists(dwi_out) or overwrite:
-        if not os.path.exists(tmp_dwi_out) or overwrite:
-            cmd=f'select_dwi_vols {coreg_nii} {bvals} {tmp_dwi_out} {nominal_bval}  -m'
-            os.system(cmd)
 
-    if bonusshortcutfolder is not None:
-        tmp_dwi_out_link = os.path.join(bonusshortcutfolder,f'{subj}_mask_subjspace{ext}')
-        if not os.path.exists(tmp_dwi_out_link) or overwrite:
-            buildlink(tmp_dwi_out, tmp_dwi_out_link)
+    if not os.path.exists(tmp_dwi_out) or overwrite:
+        cmd=f'select_dwi_vols {coreg_nii} {bvals} {tmp_dwi_out} {nominal_bval}  -m'
+        os.system(cmd)
 
     # Generate tmp B0:
     tmp_b0_out=os.path.join(work_dir,f'{subj}_tmp_b0{ext}')
-    #b0_out_link=os.path.join(shortcut_dir,f'{subj}_b0{ext}')
-    #if not os.path.exists(b0_out_link):
     b0_out = os.path.join(work_dir, f'{subj}_b0{ext}')
     if (not os.path.exists(b0_out) and not os.path.exists(tmp_b0_out)) or overwrite:
         cmd=f'select_dwi_vols {coreg_nii} {bvals} {tmp_b0_out} 0  -m;'
@@ -185,34 +178,44 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     else:
         c_string=''
 
-    overwrite=True
     #Important note: this is what first creates the fa, md, etc
     if len(glob.glob(os.path.join(work_dir,f'*.fib.gz.md{ext}'))) == 0 or overwrite:
+        if overwrite:
+            oldfiles = glob.glob(os.path.join(work_dir, f'*.fib.gz*'))
+            for oldfile in oldfiles:
+                os.remove(oldfile)
         cmd = os.path.join(gunniespath,'dti_qa_with_dsi_studio.bash')+f' {coreg_nii} {bvecs} {tmp_mask} {work_dir} {c_string}';
         os.system(cmd)
 
-    #md is used as reference for header splicer
+    #Save the subject space dti results
 
-    temp_md = f'{work_dir}/{subj}_tmp_md{ext}';
-    #create backup of md just in case it's used as a reference 'ref' down the line (yes I know its weird!)
+    #Generate tmp MD:
     for contrast in ['md']:
         real_file=largerfile(os.path.join(work_dir,f'*.fib.gz.{contrast}{ext}'))  #Catch the 'real file' for each contrast
-        tmp_file = f'{work_dir}/{subj}_temp_{contrast}{ext}';
-        #contrast=contrast.replace('0','')   #some little nonsense mostly to deal with the 'fa0' name to become 'fa', probably sohould change it
-        if not os.path.exists(temp_md):
+        tmp_file = f'{work_dir}/{subj}_tmp_{contrast}{ext}';
+        if not os.path.exists(tmp_file):
             shutil.copy(real_file,tmp_file)
 
-    overwrite=False
-    #give real header to the temp files using md as reference
-    #overwrite=True
+    tmp_md = f'{work_dir}/{subj}_tmp_md{ext}';
 
     if ref=="md" or ref is None:
-        reference=temp_md
+        reference=tmp_md
     elif ref=="coreg":
         reference=coreg_nii
     elif os.path.exists(ref):
         reference=ref
-    #overwrite=True
+
+    reference_file = os.path.join(work_dir, f'{subj}_reference{ext}')
+    if not os.path.exists(reference_file):
+        shutil.copy(reference, reference_file)
+    if SAMBA_inputs_folder is not None:
+        bonus_ref_link = os.path.join(SAMBA_inputs_folder, f'{subj}_reference{ext}')
+        if not os.path.exists(bonus_ref_link) or overwrite:
+            buildlink(reference_file,bonus_ref_link)
+
+    #give new header to the non-dti files using md as reference
+
+
     for contrast in ['dwi', 'b0', 'dwi_mask']:
         tmp_file=os.path.join(work_dir,f'{subj}_tmp_{contrast}{ext}')
         tmp2_file=os.path.join(work_dir,f'{subj}_tmp2_{contrast}{ext}')
@@ -221,19 +224,28 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             if not os.path.exists(tmp_file):
                 raise Exception("Tmp file was not created, need to rerun previous processes")
             else:
-                #cmd = os.path.join(gunniespath,'nifti_header_splicer.bash')+f' {md} {file} {file}'
-                cmd = os.path.join(gunniespath, 'nifti_header_splicer.bash') + f' {reference} {tmp_file} {tmp2_file}'
-                os.system(cmd)
-                #header_superpose(reference, tmp_file, outpath=tmp2_file)
+                header_superpose(reference, tmp_file, outpath=tmp2_file)
+
+    create_subj_space_files = True
+    if create_subj_space_files:
+        for contrast in ['dwi', 'b0', 'dwi_mask']:
+            tmp_file = os.path.join(work_dir, f'{subj}_tmp_{contrast}{ext}')
+            subj_file = os.path.join(work_dir, f'{subj}_subjspace_{contrast}{ext}')
+            if not os.path.exists(subj_file) or overwrite:
+                if not os.path.exists(tmp_file):
+                    raise Exception("Tmp file was not created, need to rerun previous processes")
+                else:
+                    header_superpose(raw_dwi, tmp_file, outpath=subj_file)
+            if SAMBA_inputs_folder is not None:
+                subj_link = os.path.join(SAMBA_inputs_folder, f'{subj}_subjspace_{contrast}{ext}')
+                buildlink(subj_file, subj_link)
 
     #write the relative orientation file here
     if not os.path.isfile(orient_string) or overwrite:
         if os.path.isfile(orient_string):
             os.remove(orient_string)
         file = os.path.join(work_dir,subj+'_tmp_dwi_mask'+ext);
-        cmd = 'bash ' + os.path.join(gunniespath,'find_relative_orientation_by_CoM.bash') + f' {reference} {file}'
-        #curious, need to look at that find relative orientation code a bit later
-        #orient_test = subprocess.run([cmd], stdout=subprocess.PIPE).stdout.decode('utf-8'
+        cmd = 'bash ' + os.path.join(gunniespath,'find_relative_orientation_by_CoM.bash') + f' {reference_file} {file}'
         orient_relative = subprocess.getoutput(cmd)
 
         with open(orient_string, 'w') as f:
@@ -258,7 +270,7 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             if orientation_out != orientation_in:
                 print('TRYING TO REORIENT...b0 and dwi and mask')
                 if os.path.exists(img_in) and (not os.path.exists(img_out) or overwrite):
-                    img_transform_exec(img_in, orientation_in, orientation_out, img_out, recenter=recenter)
+                    img_transform_exec(img_in, orientation_in, orientation_out, img_out)
                     if os.path.exists(img_out):
                         os.remove(img_in)
                 elif os.path.exists(img_out) and cleanup:
@@ -266,11 +278,8 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             else:
                 shutil.move(img_in,img_out)
 
-        #linked_file=os.path.join(shortcut_dir,f'{subj}_{contrast}{ext}')
-        #shutil.copyfile(img_out, linked_file)
-        #buildlink(img_out, linked_file)
-        if bonusshortcutfolder is not None:
-            bonus_link = os.path.join(bonusshortcutfolder, f'{subj}_{contrast}{ext}')
+        if SAMBA_inputs_folder is not None:
+            bonus_link = os.path.join(SAMBA_inputs_folder, f'{subj}_{contrast}{ext}')
             if not os.path.exists(bonus_link) or overwrite:
                 buildlink(img_out, bonus_link)
 
@@ -282,20 +291,14 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     #    os.remove(tmp_dwi_out)
 
     #refine mask (to check!!!!)
-
     bonusmask=False
+
     if bonusmask:
         mask_new = mask.replace('_mask', '_new')
         bet_cmd = f'bet {b0} {mask_new} -m -f 0.3'
         os.system(bet_cmd)
         mask_new = mask_new.replace('_new','_new_mask')
 
-    if bonusshortcutfolder is not None:
-        dwi_out_blink=os.path.join(bonusshortcutfolder,f'{subj}_dwi{ext}')
-        if not os.path.exists(dwi_out_blink) or overwrite:
-            buildlink(dwi_out, dwi_out_blink)
-
-    if bonusmask:
         outpath=dwi_out.replace(".nii","_newmask.nii")
         applymask_samespace(dwi_out, mask_new, outpath) #(add outpath if you want to save to different location rather than overwrite)
         dwi_out=outpath
@@ -303,8 +306,12 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
         outpath=b0_out.replace(".nii","_newmask.nii")
         applymask_samespace(b0_out, mask_new,outpath=outpath)
 
+
     for contrast in ['fa0', 'rd', 'ad', 'md']:
         real_file=largerfile(os.path.join(work_dir,f'*.fib.gz.{contrast}{ext}'))  # It will be fun times if we ever have more than one match to this pattern...
+        #inputspace = real_file
+        inputspace = os.path.join(work_dir, f'{subj}_inputspace_{contrast}{ext}')
+
         if bonusmask:
             real_file_new=real_file.replace("D.nii.gz","D_newmask.nii.gz")
             applymask_samespace(real_file, mask_new,outpath=real_file_new)
@@ -314,11 +321,40 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
         linked_file_w=os.path.join(work_dir,f'{subj}_{contrast}{ext}')
         header_fix=True
         if header_fix:
-            affine_superpose(dwi_out, real_file, transpose=transpose)
+            affine_superpose(dwi_out, real_file, outpath = inputspace, transpose=transpose)
 
         if not os.path.isfile(linked_file_w) or overwrite:
-            buildlink(real_file, linked_file_w)
-        if bonusshortcutfolder is not None:
-            blinked_file = os.path.join(bonusshortcutfolder, f'{subj}_{contrast}{ext}')
+            buildlink(inputspace, linked_file_w)
+        if SAMBA_inputs_folder is not None:
+            blinked_file = os.path.join(SAMBA_inputs_folder, f'{subj}_{contrast}{ext}')
             if not os.path.exists(blinked_file) or overwrite:
-                buildlink(real_file, blinked_file)
+                buildlink(inputspace, blinked_file)
+
+    if create_subj_space_files:
+        for contrast in ['fa0', 'rd', 'ad', 'md']:
+
+            real_file = largerfile(os.path.join(work_dir,
+                                                f'*.fib.gz.{contrast}{ext}'))  # It will be fun times if we ever have more than one match to this pattern...
+            contrast = contrast.replace('0', '')
+            subj_file_tmp = os.path.join(work_dir, f'{subj}_subjspace_tmp_{contrast}{ext}')
+            subj_file = os.path.join(work_dir, f'{subj}_subjspace_{contrast}{ext}')
+            if not os.path.exists(subj_file) or overwrite:
+                if not os.path.exists(subj_file_tmp):
+                    if orientation_out != orientation_in:
+                        print('TRYING TO REORIENT...b0 and dwi and mask')
+                        if os.path.exists(real_file) and (not os.path.exists(subj_file) or overwrite):
+                            img_transform_exec(real_file, orientation_out, orientation_in, subj_file_tmp)
+                    else:
+                        shutil.copy(subj_file_tmp,subj_file)
+
+                header_superpose(raw_dwi, subj_file_tmp, outpath=subj_file)
+
+        if SAMBA_inputs_folder is not None:
+            subj_link = os.path.join(SAMBA_inputs_folder, f'{subj}_subjspace_{contrast}{ext}')
+            buildlink(subj_file, subj_link)
+
+
+    #if cleanup:
+    #    tmp_files = glob.glob(os.path.join(work_dir, '*tmp*'))
+    #    for file in tmp_files:
+    #        os.remove(file)

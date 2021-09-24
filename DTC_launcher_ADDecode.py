@@ -1,6 +1,6 @@
 
 import numpy as np
-from tract_manager import create_tracts, diff_preprocessing, tract_connectome_analysis, get_diffusionattributes
+from tract_manager import create_tracts, diff_preprocessing, tract_connectome_analysis, get_diffusionattributes, get_str_identifier
 from Daemonprocess import MyPool
 import multiprocessing as mp
 import os, sys
@@ -82,9 +82,10 @@ elif masktype == "T1":
 """
 
 stepsize = 2
-
-
 ratio = 1
+trkroi = ["wholebrain"]
+
+str_identifier = get_str_identifier(stepsize, ratio, trkroi)
 if ratio == 1:
     saved_streamlines = "_all"
 else:

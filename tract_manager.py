@@ -111,6 +111,23 @@ def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
+def get_str_identifier(stepsize, ratio, trkroi):
+
+    if ratio == 1:
+        saved_streamlines = "_all"
+    else:
+        saved_streamlines = "_ratio_" + str(ratio)
+
+    if len(trkroi) == 1:
+        roistring = "_" + trkroi[0]  # + "_"
+    elif len(trkroi) > 1:
+        roistring = "_"
+        for roi in trkroi:
+            roistring = roistring + roi[0:4]
+        roistring = roistring  # + "_"
+    str_identifier = '_stepsize_' + str(stepsize).replace(".", "_") + saved_streamlines + roistring
+    return str_identifier
+
 def almicedf_fix(df, verbose=None):
     # masterFile='/Users/alex/AlexBadea_MyPapers/FIGURES/mwm/mwm_master_organized.csv'
 

@@ -29,6 +29,7 @@ if project == "AD_Decode":
 
     DTC_DWI_folder = os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
     DTC_labels_folder = os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
+    DTC_transforms = os.path.join(mainpath, "..","ADdecode.01","Analysis","Transforms")
 
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-results", "connectomics")
     orient_string = os.path.join(SAMBA_prep_folder,"relative_orientation.txt")
@@ -57,6 +58,7 @@ elif project == "APOE":
     DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/APOE/DWI_allsubj/"
 
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-results", "connectomics")
+    SAMBA_work_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-work")
     orient_string = os.path.join(SAMBA_prep_folder, "relative_orientation.txt")
     superpose = False
     copytype = "truecopy"
@@ -94,7 +96,7 @@ else:
 for subject in subjects:
     create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, atlas_labels, orient_string, headfile = SAMBA_headfile, overwrite=overwrite)
 
-overwrite=True
+overwrite=False
 
 remote=False
 
@@ -120,6 +122,7 @@ if "." and ":" in DTC_DWI_folder:
 if remote:
     sftp = ssh.open_sftp()
 
+overwrite=True
 for filename in os.listdir(SAMBA_prep_folder):
     if any(x in filename for x in file_ids) and any(x in filename for x in subjects):
         filepath=os.path.join(SAMBA_prep_folder,filename)
@@ -149,6 +152,18 @@ for filename in os.listdir(SAMBA_prep_folder):
                         sftp.put(filepath, filenewpath)
                 else:
                     shutil.copy(filepath, filenewpath)
+
+
+template_type_prefix = os.path.basename(os.path.dirname(glob.glob(os.path.join(SAMBA_work_folder,"dwi","SyN*/"))[0]))
+template_runs = glob.glob((os.path.join(SAMBA_work_folder,"dwi",template_type_prefix,"*/")))
+mymax=-1
+for template_run in template_runs:
+    if "NoNameYet" in template_run and template_run[-4:-2]=="_i":
+        if int(template_run[-2])>mymax:
+            mymax=int(template_run[-2])
+            final_template_run=template_run
+if mymax==-1:
+    raise Exception(f"Could not find template runs in {os.path.join(mainpath, f'{SAMBA_projectname}-work','dwi',template_type_prefix)}")
 
 for subject in subjects:
     subjectpath = glob.glob(os.path.join(SAMBA_label_folder, f'{subject}/'))
@@ -185,6 +200,46 @@ for subject in subjects:
 if remote:
     sftp.close()
     ssh.close()
+
+
+for subject in subjects:
+    trans = os.path.join(SAMBA_work_folder, "preprocess", "base_images", "translation_xforms",
+                         f"{subject}_0DerivedInitialMovingTranslation.mat")
+    rigid = os.path.join(SAMBA_work_folder, "dwi", f"{subject}_rigid.mat")
+    affine = os.path.join(SAMBA_work_folder, "dwi", f"{subject}_affine.mat")
+    runno_to_MDT = os.path.join(final_template_run, "reg_diffeo", f"{subject}_to_MDT_warp.nii.gz")
+
+    transform_files = [trans, rigid, affine, runno_to_MDT]
+
+    for file in transform_files:
+        if any(x in filename for x in file_ids) and any(x in filename for x in subjects):
+            filepath=os.path.join(SAMBA_prep_folder,filename)
+            if Path(filepath).is_symlink():
+                filename=Path('A').resolve()
+            filenewpath = os.path.join(DTC_transforms, filename)
+            if not os.path.isfile(filenewpath) or overwrite:
+                if copytype=="shortcut":
+                    if remote:
+                        raise Exception("Can't build shortcut to remote path")
+                    else:
+                        buildlink(filepath, filenewpath)
+                elif copytype=="truecopy":
+                    if remote:
+                        if not overwrite:
+                            try:
+                                sftp.stat(filenewpath)
+                                if verbose:
+                                    print(f'file at {filenewpath} exists')
+                            except IOError:
+                                if verbose:
+                                    print(f'copying file {filepath} to {filenewpath}')
+                                sftp.put(filepath, filenewpath)
+                        else:
+                            if verbose:
+                                print(f'copying file {filepath} to {filenewpath}')
+                            sftp.put(filepath, filenewpath)
+                    else:
+                        shutil.copy(filepath, filenewpath)
 
 
 # bash_label_maker = "/Volumes/Data/Badea/Lab/mouse/create_backported_labels_for_fiber_looper.bash"

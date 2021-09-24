@@ -123,7 +123,7 @@ def QCSA_tractmake(data, affine, vox_size, gtab, mask, masktype, header, step_si
                                  relative_peak_threshold=.5,
                                  min_separation_angle=25,
                                  parallel=parallel,
-                                 nbr_processes=peak_processes)
+                                 num_processes=peak_processes)
 
     duration = time() - t2
     if verbose:
@@ -178,9 +178,11 @@ def QCSA_tractmake(data, affine, vox_size, gtab, mask, masktype, header, step_si
         send_mail('Start of the local tracking ' + ',it has been ' + str(round(duration)) +
                   'seconds since the start of tractmaker', subject="Seed computation")
 
+    #stepsize = 2 #(by default)
     stringstep = str(step_size)
     stringstep = stringstep.replace(".", "_")
-    print("stringstep is "+stringstep)
+    if verbose:
+        print("stringstep is "+stringstep)
 
     streamlines_generator = LocalTracking(csa_peaks, classifier,
                                           seeds, affine=np.eye(4), step_size=step_size)
