@@ -115,7 +115,7 @@ def QCSA_tractmake(data, affine, vox_size, gtab, mask, masktype, header, step_si
         send_mail("Starting calculation of Constant solid angle model for subject " + subject,subject="CSA model start")
 
     wholemask = np.where(mask == 0, False, True)
-
+    print(f"There are {peak_processes} and {parallel} here")
     csa_peaks = peaks_from_model(model=csa_model,
                                  data=data,
                                  sphere=peaks.default_sphere,  # issue with complete sphere
@@ -123,7 +123,7 @@ def QCSA_tractmake(data, affine, vox_size, gtab, mask, masktype, header, step_si
                                  relative_peak_threshold=.5,
                                  min_separation_angle=25,
                                  parallel=parallel,
-                                 num_processes=peak_processes)
+                                 nbr_processes=peak_processes)
 
     duration = time() - t2
     if verbose:
