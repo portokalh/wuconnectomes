@@ -332,7 +332,7 @@ def getmask(mypath, subject, masktype = "diff", verbose=None):
     subjectdir = glob.glob(os.path.join(mypath, "*" + subject + "*"))
     if np.size(subjectdir) == 1:
         mypath = subjectdir[0]
-    maskpath = glob.glob(os.path.join(mypath, subject + '*' + masktype + '*_mask.nii.gz'))
+    maskpath = glob.glob(os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz'))
     if np.size(maskpath)>0:
         maskpath = maskpath[0]
 

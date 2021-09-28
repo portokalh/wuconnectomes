@@ -60,9 +60,9 @@ for bxhfile in subjbxh:
 """
 
 outpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
-figspath = os.path.join(outpath, "Figures")
-diff_preprocessed = os.path.join(outpath, "DWI")
-trkpath = os.path.join(outpath, "TRK")
+figspath = os.path.join(outpath, "Figures_MPCA")
+diff_preprocessed = os.path.join(outpath, "DWI_MPCA")
+trkpath = os.path.join(outpath, "TRK_MPCA")
 
 mkcdir([outpath, figspath, diff_preprocessed, trkpath])
 masktype = "FA"

@@ -11,10 +11,12 @@ import getpass
 
 #project = ["AD_Decode", "APOE"]
 project = "APOE"
+project = "AD_Decode"
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
 SAMBA_headfile_dir = os.path.join(mainpath, "samba_startup_cache")
+file_ids = ["coreg", "fa", "b0", "bval", "bvec", "mask", "reference", "dwi"]
 
 if project == "AD_Decode":
 
@@ -31,15 +33,21 @@ if project == "AD_Decode":
     DTC_labels_folder = os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
     DTC_transforms = os.path.join(mainpath, "..","ADdecode.01","Analysis","Transforms")
 
+    DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AD_Decode/Analysis/DWI"
+    DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AD_Decode/Analysis/DWI"
+
+    SAMBA_work_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-work")
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-results", "connectomics")
     orient_string = os.path.join(SAMBA_prep_folder,"relative_orientation.txt")
     superpose=True
     copytype="truecopy"
     overwrite=False
-    file_ids=["coreg", "fa", "b0", "bval", "bvec", "mask"]
-    subjects = ["S02654", "S02666",  "S02670",  "S02686", "S02690", "S02695", "S02720", "S02737", "S02753", "S02765", "S02781", "S02802",
+    subjects = ["S02654", "S02666",  "S02670",  "S02686", "S02690", "S02695",  "S02715", "S02720", "S02737", "S02753", "S02765", "S02771", "S02781", "S02802",
                 "S02804", "S02813", "S02817", "S02840", "S02877", "S02898", "S02926", "S02938", "S02939", "S02954", "S02967",
-                "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048", "S02771", "S02842", "S02812", "S02871", "S02715","S03069"]
+                "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048"]
+
+    # 02842, 03028 has apparently a 92 stack ? to investigate
+    #"S02812, , "S02871""  "S03069" has a problem? not prepped
 
 elif project == "APOE":
 
@@ -63,22 +71,6 @@ elif project == "APOE":
     superpose = False
     copytype = "truecopy"
     overwrite = False
-    file_ids = ["coreg", "fa", "b0", "bval", "bvec", "mask"]
-    subjects = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504', 'N57513',
-                'N57515','N57518','N57520','N57522','N57546','N57548','N57550','N57552','N57554','N57559','N57580','N57582','N57584',
-                'N57587','N57590','N57692','N57694','N57700','N57500','N57702','N57709',
-                "N58214", "N58215", "N58216", "N58217", "N58218", "N58219", "N58221", "N58222", "N58223", "N58224",
-                "N58225", "N58226", "N58228",
-                "N58229", "N58230", "N58231", "N58232", "N58633", "N58634", "N58635", "N58636", "N58649", "N58650",
-                "N58651", "N58653", "N58654",
-                'N58408', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309', 'N58792', 'N58302',
-                'N58784', 'N58706', 'N58361', 'N58355', 'N58712', 'N58790', 'N58606', 'N58350', 'N58608',
-                'N58779', 'N58500', 'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788', 'N58305',
-                'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
-                'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
-                'N58613', 'N58732', 'N58516', 'N58402']
-
-
     subjects = ["N58214", "N58215", "N58216", "N58217", "N58218", "N58219", "N58221", "N58222", "N58223", "N58224",
                 "N58225", "N58226", "N58228",
                 "N58229", "N58230", "N58231", "N58232", "N58633", "N58634", "N58635", "N58636", "N58649", "N58650",
@@ -90,6 +82,28 @@ elif project == "APOE":
                 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
                 'N58613', 'N58732', 'N58516', 'N58402']
     # subject 'N58610' 'N58612' 'N58813' retired, back on SAMBA_prep, to investigate
+
+elif project == "Whiston":
+
+    SAMBA_mainpath = os.path.join(mainpath, "mouse")
+    SAMBA_projectname = "19.BrainChAMD.01"
+    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "SAMBA_whiston.headfile")
+    gunniespath = "~/gunnies/"
+    recenter = 0
+    SAMBA_prep_folder = os.path.join(SAMBA_mainpath, "whitson_symlink_pool")
+    atlas_labels = os.path.join(mainpath, "atlas","IITmean_RPI","IITmean_RPI_labels.nii.gz")
+
+    DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/Whiston/DWI/"
+    DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/Whiston/DWI/"
+
+    SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-results", "connectomics")
+    SAMBA_work_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-work")
+    orient_string = os.path.join(SAMBA_prep_folder, "relative_orientation.txt")
+    superpose = False
+    copytype = "truecopy"
+    overwrite = False
+
+    subjects = []
 else:
     raise Exception("Unknown project name")
 
@@ -117,17 +131,17 @@ if "." and ":" in DTC_DWI_folder:
     ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
     ssh.connect(server, username=username, password=password)
     DTC_labels_folder = DTC_DWI_folder
+    DTC_transforms = os.path.join(DTC_DWI_folder,'../Transforms')
     remote=True
 
 if remote:
     sftp = ssh.open_sftp()
 
-overwrite=True
 for filename in os.listdir(SAMBA_prep_folder):
     if any(x in filename for x in file_ids) and any(x in filename for x in subjects):
         filepath=os.path.join(SAMBA_prep_folder,filename)
         if Path(filepath).is_symlink():
-            filename=Path('A').resolve()
+            filepath=Path(filepath).resolve()
         filenewpath = os.path.join(DTC_DWI_folder, filename)
         if not os.path.isfile(filenewpath) or overwrite:
             if copytype=="shortcut":
@@ -149,14 +163,18 @@ for filename in os.listdir(SAMBA_prep_folder):
                     else:
                         if verbose:
                             print(f'copying file {filepath} to {filenewpath}')
-                        sftp.put(filepath, filenewpath)
+                        try:
+                            sftp.put(filepath, filenewpath)
+                        except:
+                            print('test')
+                            os.remove(filepath)
                 else:
                     shutil.copy(filepath, filenewpath)
 
 
 template_type_prefix = os.path.basename(os.path.dirname(glob.glob(os.path.join(SAMBA_work_folder,"dwi","SyN*/"))[0]))
 template_runs = glob.glob((os.path.join(SAMBA_work_folder,"dwi",template_type_prefix,"*/")))
-mymax=-1
+mymax = -1
 for template_run in template_runs:
     if "NoNameYet" in template_run and template_run[-4:-2]=="_i":
         if int(template_run[-2])>mymax:
@@ -192,16 +210,19 @@ for subject in subjects:
                         print(f'copying file {labelspath} to {newlabelspath}')
                     sftp.put(labelspath, newlabelspath)
             else:
-                sftp.put(filepath, filenewpath)
+                sftp.put(labelspath, newlabelspath)
+                if verbose:
+                    print(f'copying file {labelspath} to {newlabelspath}')
+
         else:
             shutil.copy(labelspath, newlabelspath)
+            if verbose:
+                print(f'copying file {labelspath} to {newlabelspath}')
     else:
-        print(f"File already exists at {newlabelspath}")
-if remote:
-    sftp.close()
-    ssh.close()
+        if verbose:
+            print(f"File already exists at {newlabelspath}")
 
-
+overwrite=True
 for subject in subjects:
     trans = os.path.join(SAMBA_work_folder, "preprocess", "base_images", "translation_xforms",
                          f"{subject}_0DerivedInitialMovingTranslation.mat")
@@ -209,13 +230,19 @@ for subject in subjects:
     affine = os.path.join(SAMBA_work_folder, "dwi", f"{subject}_affine.mat")
     runno_to_MDT = os.path.join(final_template_run, "reg_diffeo", f"{subject}_to_MDT_warp.nii.gz")
 
-    transform_files = [trans, rigid, affine, runno_to_MDT]
+    burn_dir = os.path.join(SAMBA_mainpath, "burn_after_reading")
+    affine_mat_path = os.path.join(burn_dir, f'{subject}_affine.txt')
+    if not os.path.exists(affine_mat_path) or overwrite:
+        cmd = f'ConvertTransformFile 3 {affine} {affine_mat_path} --matrix'
+        os.system(cmd)
 
-    for file in transform_files:
-        if any(x in filename for x in file_ids) and any(x in filename for x in subjects):
-            filepath=os.path.join(SAMBA_prep_folder,filename)
+    transform_files = [trans, rigid, affine_mat_path, runno_to_MDT]
+
+    for filepath in transform_files:
+        if os.path.exists(filepath):
             if Path(filepath).is_symlink():
-                filename=Path('A').resolve()
+                filepath=Path(filepath).resolve()
+            filename = os.path.basename(filepath)
             filenewpath = os.path.join(DTC_transforms, filename)
             if not os.path.isfile(filenewpath) or overwrite:
                 if copytype=="shortcut":
@@ -223,6 +250,8 @@ for subject in subjects:
                         raise Exception("Can't build shortcut to remote path")
                     else:
                         buildlink(filepath, filenewpath)
+                        if verbose:
+                            print(f'Built link for {filepath} at {filenewpath}')
                 elif copytype=="truecopy":
                     if remote:
                         if not overwrite:
@@ -240,8 +269,15 @@ for subject in subjects:
                             sftp.put(filepath, filenewpath)
                     else:
                         shutil.copy(filepath, filenewpath)
+                        if verbose:
+                            print(f'copying file {filepath} to {filenewpath}')
+        else:
+            print(f'Could not find {filepath}')
 
 
+if remote:
+    sftp.close()
+    ssh.close()
 # bash_label_maker = "/Volumes/Data/Badea/Lab/mouse/create_backported_labels_for_fiber_looper.bash"
 # mainpath = "/Volumes/Data/Badea/Lab/mouse/"
 # gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
@@ -249,3 +285,21 @@ for subject in subjects:
 # atlas_labels = "/Volumes/Data/Badea/Lab/atlas/IITmean_RPI/IITmean_RPI_labels.nii.gz"
 
 #copytype = [shortcut, truecopy]
+
+"""
+    APOE
+    subjects = ['N57437', 'N57442', 'N57446', 'N57447','N57449','N57451','N57496','N57498','N57500','N57502','N57504', 'N57513',
+                'N57515','N57518','N57520','N57522','N57546','N57548','N57550','N57552','N57554','N57559','N57580','N57582','N57584',
+                'N57587','N57590','N57692','N57694','N57700','N57500','N57702','N57709',
+                "N58214", "N58215", "N58216", "N58217", "N58218", "N58219", "N58221", "N58222", "N58223", "N58224",
+                "N58225", "N58226", "N58228",
+                "N58229", "N58230", "N58231", "N58232", "N58633", "N58634", "N58635", "N58636", "N58649", "N58650",
+                "N58651", "N58653", "N58654",
+                'N58408', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309', 'N58792', 'N58302',
+                'N58784', 'N58706', 'N58361', 'N58355', 'N58712', 'N58790', 'N58606', 'N58350', 'N58608',
+                'N58779', 'N58500', 'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788', 'N58305',
+                'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
+                'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
+                'N58613', 'N58732', 'N58516', 'N58402']
+
+"""
