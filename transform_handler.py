@@ -150,6 +150,9 @@ def affine_superpose(target_path, origin_path, outpath=None, transpose=None):
             if outpath is None:
                 outpath = origin_path
             nib.save(new_nii, outpath)
+            return 1 #returns 1 if it saved a new file
+        else:
+            return 0
 
 def space_transpose(origin_path, transpose=[0,0,0], outpath=None):
     if outpath is None:

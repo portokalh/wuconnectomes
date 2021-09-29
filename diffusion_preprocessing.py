@@ -7,6 +7,7 @@ from transform_handler import img_transform_exec, space_transpose, affine_superp
 import glob
 from basic_LPCA_denoise import basic_LPCA_denoise_func
 from mask_handler import applymask_samespace, median_mask_make
+import warnings
 import time
 
 def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=4000, SAMBA_inputs_folder=None,
@@ -134,7 +135,7 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
         if cleanup:
             shutil.move(coreg_nii_old,coreg_nii)
     if SAMBA_inputs_folder is not None:
-        coreg_link = os.path.join(SAMBA_inputs_folder,f'{subj}_coreg{ext}')
+        coreg_link = os.path.join(SAMBA_inputs_folder,f'{subj}_subjspace_coreg{ext}')
         if not os.path.exists(coreg_link) or overwrite:
             buildlink(coreg_nii, coreg_link)
 
@@ -282,9 +283,9 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
                 shutil.move(img_in,img_out)
 
         if SAMBA_inputs_folder is not None:
-            bonus_link = os.path.join(SAMBA_inputs_folder, f'{subj}_{contrast}{ext}')
-            if not os.path.exists(bonus_link) or overwrite:
-                buildlink(img_out, bonus_link)
+            inputs_space_link = os.path.join(SAMBA_inputs_folder, f'{subj}_{contrast}{ext}')
+            if not os.path.exists(inputs_space_link) or overwrite:
+                buildlink(img_out, inputs_space_link)
 
 
     mask = os.path.join(work_dir,f'{subj}_mask{ext}')
@@ -293,7 +294,59 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     #if cleanup and os.path.exists(dwi_out) and os.path.exists(tmp_dwi_out):
     #    os.remove(tmp_dwi_out)
 
-    #refine mask (to check!!!!)
+    for contrast in ['fa0', 'rd', 'ad', 'md']:
+        real_file=largerfile(os.path.join(work_dir,f'*.fib.gz.{contrast}{ext}'))  # It will be fun times if we ever have more than one match to this pattern...
+        #inputspace = real_file
+        inputspace = os.path.join(work_dir, f'{subj}_inputspace_{contrast}{ext}')
+
+        contrast=contrast.replace('0','')
+        #linked_file=os.path.join(shortcut_dir,f'{subj}_{contrast}{ext}')
+        linked_file_w=os.path.join(work_dir,f'{subj}_{contrast}{ext}')
+
+        made_newfile = affine_superpose(dwi_out, real_file, outpath = inputspace, transpose=transpose)
+        if not made_newfile:
+            inputspace = real_file
+        if not os.path.isfile(linked_file_w) or overwrite:
+            buildlink(inputspace, linked_file_w)
+        if SAMBA_inputs_folder is not None:
+            warnings.warn('should reach this!')
+            blinked_file = os.path.join(SAMBA_inputs_folder, f'{subj}_{contrast}{ext}')
+            if not os.path.exists(blinked_file) or overwrite:
+                buildlink(inputspace, blinked_file)
+                print(f'build link from {inputspace} to {blinked_file}')
+
+    warnings.warn('did we reach this?')
+    if create_subj_space_files:
+        for contrast in ['fa0', 'rd', 'ad', 'md']:
+
+            real_file = largerfile(os.path.join(work_dir,
+                                                f'*.fib.gz.{contrast}{ext}'))  # It will be fun times if we ever have more than one match to this pattern...
+            contrast = contrast.replace('0', '')
+            subj_file_tmp = os.path.join(work_dir, f'{subj}_subjspace_tmp_{contrast}{ext}')
+            subj_file = os.path.join(work_dir, f'{subj}_subjspace_{contrast}{ext}')
+            if not os.path.exists(subj_file) or overwrite:
+                if not os.path.exists(subj_file_tmp):
+                    if orientation_out != orientation_in:
+                        print('TRYING TO REORIENT...b0 and dwi and mask')
+                        if os.path.exists(real_file) and (not os.path.exists(subj_file) or overwrite):
+                            img_transform_exec(real_file, orientation_out, orientation_in, subj_file_tmp)
+                    else:
+                        shutil.copy(subj_file_tmp,subj_file)
+
+                header_superpose(raw_dwi, subj_file_tmp, outpath=subj_file)
+
+            if SAMBA_inputs_folder is not None:
+                subj_link = os.path.join(SAMBA_inputs_folder, f'{subj}_subjspace_{contrast}{ext}')
+                buildlink(subj_file, subj_link)
+
+
+    #if cleanup:
+    #    tmp_files = glob.glob(os.path.join(work_dir, '*tmp*'))
+    #    for file in tmp_files:
+    #        os.remove(file)
+
+
+"""
     bonusmask=False
 
     if bonusmask:
@@ -333,31 +386,4 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             if not os.path.exists(blinked_file) or overwrite:
                 buildlink(inputspace, blinked_file)
 
-    if create_subj_space_files:
-        for contrast in ['fa0', 'rd', 'ad', 'md']:
-
-            real_file = largerfile(os.path.join(work_dir,
-                                                f'*.fib.gz.{contrast}{ext}'))  # It will be fun times if we ever have more than one match to this pattern...
-            contrast = contrast.replace('0', '')
-            subj_file_tmp = os.path.join(work_dir, f'{subj}_subjspace_tmp_{contrast}{ext}')
-            subj_file = os.path.join(work_dir, f'{subj}_subjspace_{contrast}{ext}')
-            if not os.path.exists(subj_file) or overwrite:
-                if not os.path.exists(subj_file_tmp):
-                    if orientation_out != orientation_in:
-                        print('TRYING TO REORIENT...b0 and dwi and mask')
-                        if os.path.exists(real_file) and (not os.path.exists(subj_file) or overwrite):
-                            img_transform_exec(real_file, orientation_out, orientation_in, subj_file_tmp)
-                    else:
-                        shutil.copy(subj_file_tmp,subj_file)
-
-                header_superpose(raw_dwi, subj_file_tmp, outpath=subj_file)
-
-            if SAMBA_inputs_folder is not None:
-                subj_link = os.path.join(SAMBA_inputs_folder, f'{subj}_subjspace_{contrast}{ext}')
-                buildlink(subj_file, subj_link)
-
-
-    #if cleanup:
-    #    tmp_files = glob.glob(os.path.join(work_dir, '*tmp*'))
-    #    for file in tmp_files:
-    #        os.remove(file)
+"""
