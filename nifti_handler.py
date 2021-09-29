@@ -320,7 +320,7 @@ def getlabelmask(mypath, subject, verbose=None):
 
     return labels, affine_labels, labelspath
 
-def getmask(mypath, subject, masktype = "diff", verbose=None):
+def getmask(mypath, subject, masktype = "subjspace", verbose=None):
     if os.path.isfile(mypath):
         if mypath.contains(masktype+'binary_mask.nii.gz'):
             mask, affine_mask = load_nifti(mypath)
@@ -342,7 +342,8 @@ def getmask(mypath, subject, masktype = "diff", verbose=None):
             print("Mask taken from " + maskpath)
         return mask, affine_mask
     elif np.size(maskpath) == 0:
-        print('mask not found')
+        print(f"mask not found {os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz')}")
+        raise Exception(f"here is what is going on {os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz')}")
         return None, None
     elif np.size(maskpath)>1:
         raise Warning("too many masks fitting parameters!!")

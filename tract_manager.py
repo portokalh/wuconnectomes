@@ -1069,7 +1069,7 @@ def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processe
     #fdiffpath = getdiffpath(diffpath, subject, denoise=denoise, verbose=verbose)
 
     if masktype == "dwi":
-        mask, _ = getmask(diffpath,subject, masktype, verbose)
+        mask, _ = getmask(diffpath,subject, "subjspace", verbose)
         if mask is None:
             warnings.warn(f'Did not find mask, assuming that the diffusion path {fdiffpath} is already masked')
             mask,_ = dwi_to_mask(diff_data, subject, affine, diffpath, masking='extract', makefig=False, header=header, verbose=True)
