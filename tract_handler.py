@@ -445,7 +445,7 @@ def save_roisubset(streamlines, roislist, roisexcel, labelmask, stringstep, rati
                         header = trkdata.space_attributes
                     trkstreamlines = trkdata.streamlines
 
-def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=True, ratio=10, return_affine= False, verbose=False):
+def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=False, ratio=10, return_affine= False, verbose=False):
 
     if verbose:
         print("Beginning to read " + oldtrkfile)

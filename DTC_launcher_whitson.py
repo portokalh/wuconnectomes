@@ -12,7 +12,7 @@ import numpy as np
 import os
 import multiprocessing as mp
 import pickle
-from tract_manager import create_tracts, tract_connectome_analysis, dwi_preprocessing
+from tract_manager import create_tracts, tract_connectome_analysis, diff_preprocessing
 from bvec_handler import extractbvec_fromheader
 from BIAC_tools import send_mail
 from Daemonprocess import MyPool
@@ -71,8 +71,11 @@ figspath = BIGGUS_DISKUS + '/C57_JS/VBM_whiston_Figs_inclusive_new/'
 
 outpathpickle = figspath
 
+outpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
+
 atlas_legends = BIGGUS_DISKUS + "/../atlases/IITmean_RPI/IITmean_RPI_lookup.xlsx"
 atlas_legends = BIGGUS_DISKUS + "/../atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+atlas_legends = outpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 
 stepsize = 2
 
@@ -174,7 +177,7 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    #dwi_results = pool.starmap_async(dwi_preprocessing, [(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa, function_processes,
+    #dwi_results = pool.starmap_async(diff_preprocessing, [(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa, function_processes,
     #                                 createmask, vol_b0, verbose) for subject in l]).get()
     tract_results = pool.starmap_async(create_tracts, [(dwipath_preprocessed, outtrkpath, subject, figspath, stepsize, function_processes,
                                                         str_identifier, ratio, classifiertype, labelslist, bvec_orient, doprune,
@@ -186,11 +189,11 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in l:
-       #dwi_results.append(dwi_preprocessing(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa,
+       #dwi_results.append(diff_preprocessing(dwipath, dwipath_preprocessed, subject, bvec_orient, denoise, savefa,
        #                                  function_processes, createmask, vol_b0, verbose))
-       #tract_results.append(create_tracts(dwipath_preprocessed, outtrkpath, subject, figspath, stepsize, function_processes, str_identifier,
-       #                                       ratio, classifiertype, labelslist, bvec_orient, doprune, overwrite, get_params,
-       #                                    verbose))
+       tract_results.append(create_tracts(dwipath_preprocessed, outtrkpath, subject, figspath, stepsize, function_processes, str_identifier,
+                                              ratio, classifiertype, labelslist, bvec_orient, doprune, overwrite, get_params,
+                                           verbose))
        tract_results.append(tract_connectome_analysis(dwipath, outtrkpath, str_identifier, figspath, subject,
                                                      atlas_legends, bvec_orient, brainmask, inclusive, function_processes,
                                                      forcestart, picklesave, verbose))

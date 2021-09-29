@@ -51,7 +51,7 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
 
     # Make dwi for mask generation purposes.
     orient_string = os.path.join(work_dir,'relative_orientation.txt')
-    tmp_mask = os.path.join(work_dir,f"{subj}_tmp_dwi_mask{ext}")
+    tmp_mask = os.path.join(work_dir,f"{subj}_tmp_mask{ext}")
     raw_dwi = os.path.join(work_dir,f"{subj}_raw_dwi.nii.gz")
     orient_string = os.path.join(work_dir,"relative_orientation.txt")
 
@@ -64,7 +64,7 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
         if not os.path.exists(bvecs_new) or not os.path.exists(bvals_new) or overwrite:
             shutil.copyfile(bvecs,bvecs_new)
             shutil.copyfile(bvals,bvals_new)
-    final_mask = os.path.join(work_dir, f'{subj}_dwi_mask{ext}')
+    final_mask = os.path.join(work_dir, f'{subj}_mask{ext}')
 
     #if (not os.path.exists(final_mask) and not os.path.exists(tmp_mask)) or overwrite:
     if not os.path.exists(tmp_mask) or overwrite:
@@ -82,10 +82,11 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             else:
                 raise Exception("Unrecognized masking type")
 
-    if SAMBA_inputs_folder is not None:
-        mask_subj_link = os.path.join(SAMBA_inputs_folder,f'{subj}_mask_subjspace{ext}')
-        if not os.path.exists(mask_subj_link) or overwrite:
-            shutil.copy(tmp_mask, mask_subj_link)
+    # I think this part is done later more properly:     if create_subj_space_files: for contrast in ['dwi', 'b0', 'mask']:
+    #if SAMBA_inputs_folder is not None:
+    #    mask_subj_link = os.path.join(SAMBA_inputs_folder,f'{subj}_subjspace_mask{ext}')
+    #    if not os.path.exists(mask_subj_link) or overwrite:
+    #        shutil.copy(tmp_mask, mask_subj_link)
 
     #if cleanup and (os.path.exists(tmp_mask) and os.path.exists(raw_dwi)):
     #    os.remove(raw_dwi)
@@ -217,7 +218,7 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     #give new header to the non-dti files using md as reference
 
 
-    for contrast in ['dwi', 'b0', 'dwi_mask']:
+    for contrast in ['dwi', 'b0', 'mask']:
         tmp_file=os.path.join(work_dir,f'{subj}_tmp_{contrast}{ext}')
         tmp2_file=os.path.join(work_dir,f'{subj}_tmp2_{contrast}{ext}')
         final_file=os.path.join(work_dir,f'{subj}_{contrast}{ext}')
@@ -229,7 +230,7 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
 
     create_subj_space_files = True
     if create_subj_space_files:
-        for contrast in ['dwi', 'b0', 'dwi_mask']:
+        for contrast in ['dwi', 'b0', 'mask']:
             tmp_file = os.path.join(work_dir, f'{subj}_tmp_{contrast}{ext}')
             subj_file = os.path.join(work_dir, f'{subj}_subjspace_{contrast}{ext}')
             if not os.path.exists(subj_file) or overwrite:
@@ -239,13 +240,14 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
                     header_superpose(raw_dwi, tmp_file, outpath=subj_file)
             if SAMBA_inputs_folder is not None:
                 subj_link = os.path.join(SAMBA_inputs_folder, f'{subj}_subjspace_{contrast}{ext}')
-                buildlink(subj_file, subj_link)
+                if not os.path.exists(subj_link) or overwrite:
+                    buildlink(subj_file, subj_link)
 
     #write the relative orientation file here
     if not os.path.isfile(orient_string) or overwrite:
         if os.path.isfile(orient_string):
             os.remove(orient_string)
-        file = os.path.join(work_dir,subj+'_tmp_dwi_mask'+ext);
+        file = os.path.join(work_dir,subj+'_tmp_mask'+ext);
         cmd = 'bash ' + os.path.join(gunniespath,'find_relative_orientation_by_CoM.bash') + f' {reference_file} {file}'
         orient_relative = subprocess.getoutput(cmd)
 
@@ -264,7 +266,7 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
         print(f'reference orientation: {orientation_out}');
 
     #apply the orientation modification to specified contrasts
-    for contrast in ['dwi', 'b0', 'dwi_mask']:
+    for contrast in ['dwi', 'b0', 'mask']:
         img_in=os.path.join(work_dir,f'{subj}_tmp2_{contrast}{ext}')
         img_out=os.path.join(work_dir,f'{subj}_{contrast}{ext}')
         if not os.path.isfile(img_out) or overwrite:

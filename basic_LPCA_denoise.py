@@ -154,7 +154,7 @@ def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath, processes=1,
         if path.exists(outpath):
             print('File already exists; Skipping LPCA denoising (path: ' + outpath + ')' )
         else:
-            print('Beginning LPCA denoising for: '+ id + '. (Expected result: ' + outpath + ')' )
+            print('Beginning MPCA denoising for: '+ id + '. (Expected result: ' + outpath + ')' )
             t = time()
 
             print(data.shape)
