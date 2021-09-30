@@ -51,7 +51,6 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
         os.system(bvec_cmd)
 
     # Make dwi for mask generation purposes.
-    orient_string = os.path.join(work_dir,'relative_orientation.txt')
     tmp_mask = os.path.join(work_dir,f"{subj}_tmp_mask{ext}")
     raw_dwi = os.path.join(work_dir,f"{subj}_raw_dwi.nii.gz")
     orient_string = os.path.join(work_dir,"relative_orientation.txt")
@@ -256,6 +255,10 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             f.write(orient_relative)
     else:
         orient_relative = open(orient_string, mode='r').read()
+
+    if SAMBA_inputs_folder is not None:
+        subj_orient_string = os.path.join(SAMBA_inputs_folder, f'{subj}_relative_orientation.txt')
+        shutil.copy(orient_string, subj_orient_string)
 
     #check extracted values from relative orientation vals
     orientation_out = orient_relative.split(',')[0]

@@ -11,12 +11,12 @@ import getpass
 
 #project = ["AD_Decode", "APOE"]
 project = "APOE"
-project = "AD_Decode"
+project = "AMD"
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
 SAMBA_headfile_dir = os.path.join(mainpath, "samba_startup_cache")
-file_ids = ["coreg", "fa", "b0", "bval", "bvec", "mask", "reference", "dwi"]
+file_ids = ["coreg", "subject_fa", "subjspace_b0", "bval", "bvec", "subjspace_mask", "reference", "subjspace_dwi"]
 
 if project == "AD_Decode":
 
@@ -42,6 +42,7 @@ if project == "AD_Decode":
     superpose=True
     copytype="truecopy"
     overwrite=False
+    preppath = None
     subjects = ["S02654", "S02666",  "S02670",  "S02686", "S02690", "S02695",  "S02715", "S02720", "S02737", "S02753", "S02765", "S02771", "S02781", "S02802",
                 "S02804", "S02813", "S02817", "S02840", "S02877", "S02898", "S02926", "S02938", "S02939", "S02954", "S02967",
                 "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048"]
@@ -71,6 +72,7 @@ elif project == "APOE":
     superpose = False
     copytype = "truecopy"
     overwrite = False
+    preppath = None
     subjects = ["N58214", "N58215", "N58216", "N58217", "N58218", "N58219", "N58221", "N58222", "N58223", "N58224",
                 "N58225", "N58226", "N58228",
                 "N58229", "N58230", "N58231", "N58232", "N58633", "N58634", "N58635", "N58636", "N58649", "N58650",
@@ -83,18 +85,18 @@ elif project == "APOE":
                 'N58613', 'N58732', 'N58516', 'N58402']
     # subject 'N58610' 'N58612' 'N58813' retired, back on SAMBA_prep, to investigate
 
-elif project == "Whiston":
+elif project == "AMD":
 
     SAMBA_mainpath = os.path.join(mainpath, "mouse")
-    SAMBA_projectname = "19.BrainChAMD.01"
-    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "SAMBA_whiston.headfile")
+    SAMBA_projectname = "VBM_19BrainChAMD01_IITmean_RPI_with_2yr"
+    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "rja20_BrainChAMD.01_with_2yr_SAMBA_startup.headfile")
     gunniespath = "~/gunnies/"
     recenter = 0
-    SAMBA_prep_folder = os.path.join(SAMBA_mainpath, "whitson_symlink_pool")
+    SAMBA_prep_folder = os.path.join(SAMBA_mainpath, "whitson_symlink_pool_test")
     atlas_labels = os.path.join(mainpath, "atlas","IITmean_RPI","IITmean_RPI_labels.nii.gz")
 
-    DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/Whiston/DWI/"
-    DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/Whiston/DWI/"
+    DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AMD/DWI/"
+    DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AMD/DWI/"
 
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-results", "connectomics")
     SAMBA_work_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-work")
@@ -102,13 +104,29 @@ elif project == "Whiston":
     superpose = False
     copytype = "truecopy"
     overwrite = False
+    preppath = os.path.join(SAMBA_mainpath, 'whiston_symlink_pool_test')
 
-    subjects = []
+    subjects = ["H29056", "H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660", "H29304", "H26890", "H29556",
+                "H26862", "H29410", "H26966", "H29403", "H26841", "H21593", "H27126", "H29618", "H27111", "H29627", "H27164",
+                "H29502", "H27100", "H27381", "H21836", "H27391", "H21850", "H27495", "H21729", "H27488", "H21915", "H27682",
+                "H21956", "H27686", "H22331", "H28208", "H21990", "H28955", "H29878", "H27719", "H22102", "H27841", "H22101",
+                "H27842", "H22228", "H28029", "H22140", "H27852", "H22276", "H27999", "H22369", "H28115", "H22644", "H28308",
+                "H22574", "H28377", "H22368", "H28325", "H22320", "H28182", "H22898", "H28748", "H22683", "H28373", "H22536",
+                "H28433", "H22825", "H28662", "H22864", "H28698", "H23143", "H28861", "H23157", "H28820", "H23028", "H29002",
+                "H23210", "H29020", "H23309", "H29161", "H26841", "H26862", "H26949", "H26966", "H27100", "H27126", "H27163",
+                "H27246", "H27488", "H27682", "H27686", "H27719", "H27841", "H27842", "H27852", "H27869", "H27999", "H28029",
+                "H28068", "H28208", "H28262", "H28325", "H28820", "H28856", "H28869", "H28955", "H29002", "H29044", "H29089",
+                "H29127", "H29161", "H29242", "H29254", "H26578", "H26637", "H26660", "H26745", "H26765", "H26850", "H26880",
+                "H26890", "H26958", "H26974", "H27017", "H27111", "H27164", "H27381", "H27391", "H27495", "H27610", "H27640",
+                "H27680", "H27778", "H27982", "H28115", "H28308", "H28338", "H28373", "H28377", "H28433", "H28437", "H28463",
+                "H28532", "H28662", "H28698", "H28748", "H28809", "H28857", "H28861", "H29013", "H29020", "H29025"]
+    subjects = ["H21953"]
 else:
     raise Exception("Unknown project name")
 
+overwrite=True
 for subject in subjects:
-    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, atlas_labels, orient_string, headfile = SAMBA_headfile, overwrite=overwrite)
+    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, preppath = preppath, headfile = SAMBA_headfile, overwrite=overwrite)
 
 overwrite=False
 
@@ -181,6 +199,12 @@ for template_run in template_runs:
             mymax=int(template_run[-2])
             final_template_run=template_run
 if mymax==-1:
+    for template_run in template_runs:
+        if "dwiMDT_Control_n72" in template_run and template_run[-4:-2]=="_i":
+            if int(template_run[-2])>mymax:
+                mymax=int(template_run[-2])
+                final_template_run=template_run
+if mymax == -1:
     raise Exception(f"Could not find template runs in {os.path.join(mainpath, f'{SAMBA_projectname}-work','dwi',template_type_prefix)}")
 
 for subject in subjects:

@@ -56,13 +56,13 @@ def exists_remote(host, path):
     raise Exception('SSH failed')
 
 
-def file_rename(folder, initstring, finalstring, identifier_string="*"):
+def file_rename(folder, initstring, finalstring, identifier_string="*", anti_identifier_string='the answer is obv 42'):
     #Renames files in a folder by replacing init string with final string, identifier_string being an optional
     #identifier (* format)
     files = glob.glob(os.path.join(folder, identifier_string))
     for file in files:
         newfile = file.replace(initstring, finalstring)
-        if newfile!=file:
+        if newfile!=file and anti_identifier_string not in file:
             os.rename(file, newfile)
 
 def check_files(files):

@@ -42,7 +42,7 @@ def get_info_SAMBA_headfile(SAMBA_headfile, verbose=False):
     return orig_orientation, working_orientation
 
 
-def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient_string, preppath = None, headfile=None, overwrite=False, verbose=True):
+def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_labels, preppath = None, headfile=None, overwrite=False, verbose=True):
 
     #mainpath = "/Volumes/Data/Badea/Lab/mouse/"
     #gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
@@ -56,18 +56,27 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
 
     template_type_prefix = os.path.basename(os.path.dirname(glob.glob(os.path.join(work_dir,"dwi","SyN*/"))[0]))
     template_runs = glob.glob((os.path.join(work_dir,"dwi",template_type_prefix,"*/")))
+
     mymax=-1
-    for template_run in template_runs:
-        if "NoNameYet" in template_run and template_run[-4:-2]=="_i":
-            if int(template_run[-2])>mymax:
-                mymax=int(template_run[-2])
-                final_template_run=template_run
     if mymax==-1:
+        for template_run in template_runs:
+            if "NoNameYet" in template_run and template_run[-4:-2] == "_i":
+                if int(template_run[-2]) > mymax:
+                    mymax = int(template_run[-2])
+                    final_template_run = template_run
+    if mymax==-1:
+        for template_run in template_runs:
+            if "dwiMDT_Control_n72" in template_run and template_run[-4:-2]=="_i":
+                if int(template_run[-2])>mymax:
+                    mymax=int(template_run[-2])
+                    final_template_run=template_run
+    if mymax == -1:
         raise Exception(f"Could not find template runs in {os.path.join(mainpath, f'{project_name}-work','dwi',template_type_prefix)}")
     #template_type_prefix = "faMDT_NoNameYet_n37_i6"
     #final_template_run = "SyN_0p5_3_0p5_fa"
 
     #final_ref = f"/mnt/munin6/Badea/Lab/human/AD_Decode/diffusion_prep_locale/diffusion_prep_{subject}/Reg_LPCA_{subject}_nii4D.nii.gz";
+    orient_string = os.path.join(prep_folder, f'{subject}_relative_orientation.txt')
     if os.path.exists(orient_string):
         orient_relative = open(orient_string, mode='r').read()
         orientation_out = orient_relative.split(',')[0]
@@ -77,7 +86,7 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
     else:
         orientation_out = "*"
         warnings.warn("Could not find orientation file, may cause errors later")
-        orientation_in = "LPS"
+        orientation_in = "RAS"
         orientation_out = "RAS"
 
     if headfile is not None:
@@ -95,13 +104,13 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
     MDT_to_atlas_affine = os.path.join(final_template_run,"stats_by_region","labels","transforms",f"MDT_*_to_{label_name}_affine.mat")
     atlas_to_MDT = os.path.join(final_template_run,"stats_by_region","labels","transforms",f"{label_name}_to_MDT_warp.nii.gz")
 
-    [trans, rigid, affine, MDT_to_subject, MDT_to_atlas_affine, atlas_to_MDT], _ = check_files([trans,rigid,affine,MDT_to_subject,MDT_to_atlas_affine,atlas_to_MDT])
+    [trans, rigid, affine, MDT_to_subject, MDT_to_atlas_affine, atlas_to_MDT], exists = check_files([trans,rigid,affine,MDT_to_subject,MDT_to_atlas_affine,atlas_to_MDT])
 
 
     preprocess_ref = os.path.join(work_dir,"preprocess",f"{subject}_fa_masked.nii.gz")
     preprocess_labels = os.path.join(dirty_dir,f"{subject}_preprocess_labels.nii.gz")
     fixed_preprocess_labels = os.path.join(dirty_dir,f"{subject}_fixed_preprocess_labels.nii.gz")
-    coreg_labels = os.path.join(dirty_dir,f"{subject}_{orientation_in}_labels.nii.gz")
+    coreg_labels = os.path.join(dirty_dir,f"{subject}_{orientation_out}_labels.nii.gz")
     coreg_reorient_labels = os.path.join(dirty_dir,f"{subject}_{SAMBA_orientation_in}_labels.nii.gz")
 
     # final_ref="/mnt/munin6/Badea/Lab/mouse/co_reg_LPCA_${subject:1:5}_m00-results/Reg_LPCA_${subject:1:5}_nii4D.nii.gz";
@@ -113,6 +122,15 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
                 final_ref=str(Path(final_ref).resolve())
         else:
             raise Exception("Could not find final registered subject file")
+    else:
+        final_ref = os.path.join(preppath, f"{subject}_subjspace_coreg.nii.gz")
+        if os.path.exists(final_ref):
+            if Path(final_ref).is_symlink():
+                final_ref=str(Path(final_ref).resolve())
+        else:
+            print
+            warnings.warn(f"Could not find final registered subject file for subject {subject}")
+            return
 
 
     symbolic_ref = os.path.join(out_dir,f"{subject}_Reg_LPCA_nii4D.nii.gz")
@@ -155,8 +173,9 @@ def create_backport_labels(subject, mainpath, project_name, atlas_labels, orient
                 if verbose:
                     print(f"Orientations are the same, skipping reorientation")
                 if coreg_labels != coreg_reorient_labels:
-                    warnings.warn('This should never happen, investigate if it does')
-                    shutil.copy(fixed_preprocess_labels, coreg_labels)
+                    warnings.warn('There is a discrepancy between the stated input orientation in headfile and the '
+                                  'one found by find_relative_orientation_by_CoM.bash, beware')
+                    coreg_reorient_labels = coreg_labels
 
         if os.path.exists(coreg_reorient_labels):
             header_superpose(final_ref, coreg_reorient_labels, outpath=final_labels)
