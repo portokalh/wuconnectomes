@@ -38,9 +38,9 @@ gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
 diffpath = "/Volumes/dusom_civm-atlas/20.abb.15/research/"
 outpath = "/Volumes/Data/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
 #outpath = "/mnt/munin6/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
-bonusshortcutfolder = "/Volumes/Data/Badea/Lab/jacques/APOE_series/19abb14/"
-#bonusshortcutfolder = "/mnt/munin6/Badea/Lab/19abb14/"
-bonusshortcutfolder = None
+#bonusshortcutfolder = "/Volumes/Data/Badea/Lab/jacques/APOE_series/19abb14/"
+bonusshortcutfolder = "/mnt/munin6/Badea/Lab/APOE_symlink_pool/"
+#bonusshortcutfolder = None
 
 subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N58222","N58223","N58224","N58225","N58226","N58228",
             "N58229","N58230","N58231","N58232","N58633","N58634","N58635","N58636","N58649","N58650","N58651","N58653","N58654",
@@ -51,8 +51,8 @@ subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N582
             'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
             'N58613', 'N58732', 'N58516', 'N58813', 'N58402']
 
-subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N58222","N58223","N58224","N58225","N58226","N58228",
-            "N58229","N58230","N58231","N58232","N58633","N58634","N58635","N58636","N58649","N58650","N58651","N58653","N58654"]
+#subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N58222","N58223","N58224","N58225","N58226","N58228",
+#            "N58229","N58230","N58231","N58232","N58633","N58634","N58635","N58636","N58649","N58650","N58651","N58653","N58654"]
 #subjects = ['N58408', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309', 'N58792', 'N58302', 'N58784', 'N58706', 'N58361', 'N58355', 'N58712', 'N58790', 'N58606', 'N58350', 'N58608', 'N58779', 'N58500', 'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788', 'N58305', 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512', 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396', 'N58613', 'N58732', 'N58516', 'N58402']
 
 atlas = "/mnt/munin6/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
