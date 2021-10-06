@@ -14,7 +14,7 @@ import os
 import multiprocessing as mp
 import pickle
 
-from tract_manager import create_tracts, create_tracts_test
+from tract_manager import create_tracts
 from BIAC_tools import send_mail
 from Daemonprocess import MyPool
 
@@ -44,6 +44,7 @@ def orient_to_str(bvec_orient):
 #l = ['N57433']
 l = ['N54717']
 l = ['H28029']
+l = ['H21850']
 
 max_processors = 16
 
@@ -63,6 +64,13 @@ BIGGUS_DISKUS = "/mnt/munin6/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with
 dwipath = BIGGUS_DISKUS
 
 outtrkpath = '/mnt/munin6/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
+
+outpath = "/Users/alex/jacques/AMD_TRK_testing/"
+figspath = os.path.join(outpath, "Figures")
+dwipath = os.path.join(outpath, "DWI")
+trkpath = os.path.join(outpath, "bvec_orients")
+
+
 #outtrkpath = '/Volumes/Data/Badea/Lab/mouse/C57_JS/VBM_whistson_QA/'
 #figspath = BIGGUS_DISKUS + "/C57_JS/Figures_RAS/"
 figspath = outtrkpath
@@ -96,6 +104,9 @@ savefig=False
 doprune=False
 get_params=False
 overwrite = False
+masktype = "dwi"
+classifier = "binary"
+
 strproperty = "_pzmypx_fimbria"
 #labelslist = [120,1120]#fimbria
 labelslist = []
@@ -145,8 +156,8 @@ else:
             tract_results = []
             print(bvec_orient)
             strproperty = orient_to_str(bvec_orient)
-            tract_results.append(create_tracts(dwipath, outtrkpath, subject, stepsize, function_processes, strproperty,
-                                              ratio, savefa, labelslist, bvec_orient, doprune, overwrite, get_params, verbose))
+            tract_results.append(create_tracts(dwipath, outtrkpath, subject, figspath, stepsize, function_processes, strproperty,
+                                              ratio, masktype, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise, verbose))
             print(tract_results)
             with open(txtfile, 'a') as f:
                 for item in tract_results:

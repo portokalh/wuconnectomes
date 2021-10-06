@@ -42,7 +42,7 @@ def get_info_SAMBA_headfile(SAMBA_headfile, verbose=False):
     return orig_orientation, working_orientation
 
 
-def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_labels, preppath = None, headfile=None, overwrite=False, verbose=True):
+def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_labels, headfile=None, overwrite=False, verbose=True):
 
     #mainpath = "/Volumes/Data/Badea/Lab/mouse/"
     #gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
@@ -114,23 +114,15 @@ def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_l
     coreg_reorient_labels = os.path.join(dirty_dir,f"{subject}_{SAMBA_orientation_in}_labels.nii.gz")
 
     # final_ref="/mnt/munin6/Badea/Lab/mouse/co_reg_LPCA_${subject:1:5}_m00-results/Reg_LPCA_${subject:1:5}_nii4D.nii.gz";
-    if preppath is None:
-        inputsfolder = os.path.join(mainpath, f"{project_name}-inputs")
-        final_ref = os.path.join(inputsfolder, f"{subject}_coreg.nii.gz")
-        if os.path.exists(final_ref):
-            if Path(final_ref).is_symlink():
-                final_ref=str(Path(final_ref).resolve())
-        else:
-            raise Exception("Could not find final registered subject file")
+
+    final_ref = os.path.join(prep_folder, f"{subject}_subjspace_coreg.nii.gz")
+    if os.path.exists(final_ref):
+        if Path(final_ref).is_symlink():
+            final_ref=str(Path(final_ref).resolve())
     else:
-        final_ref = os.path.join(preppath, f"{subject}_subjspace_coreg.nii.gz")
-        if os.path.exists(final_ref):
-            if Path(final_ref).is_symlink():
-                final_ref=str(Path(final_ref).resolve())
-        else:
-            print
-            warnings.warn(f"Could not find final registered subject file for subject {subject}")
-            return
+        print
+        warnings.warn(f"Could not find final registered subject file for subject {subject}")
+        return
 
 
     symbolic_ref = os.path.join(out_dir,f"{subject}_Reg_LPCA_nii4D.nii.gz")

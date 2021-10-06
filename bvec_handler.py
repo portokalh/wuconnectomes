@@ -82,6 +82,26 @@ from dif_to_trk import QCSA_tractmake
 """
 
 
+def orient_to_str(bvec_orient):
+    mystr="_"
+    for i in np.arange(3):
+        if np.abs(bvec_orient[i]) == 1:
+            if bvec_orient[i]<0:
+                mystr = mystr+"mx"
+            else:
+                mystr = mystr+"px"
+        if np.abs(bvec_orient[i]) == 2:
+            if bvec_orient[i] < 0:
+                mystr = mystr + "my"
+            else:
+                mystr = mystr + "py"
+        if np.abs(bvec_orient[i])==3:
+            if bvec_orient[i]<0:
+                mystr = mystr+"mz"
+            else:
+                mystr = mystr+"pz"
+    return mystr
+
 def read_bvals(fbvals,fbvecs):
 
     vals=[]

@@ -16,7 +16,9 @@ verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
 SAMBA_headfile_dir = os.path.join(mainpath, "samba_startup_cache")
-file_ids = ["coreg", "subject_fa", "subjspace_b0", "bval", "bvec", "subjspace_mask", "reference", "subjspace_dwi"]
+file_ids = ["coreg", "subject_fa", "subjspace_b0", "bval", "bvec", "subjspace_mask", "reference", "subjspace_dwi", "relative_orientation"]
+if project == 'AMD':
+    file_ids = ["relative_orientation"]
 
 if project == "AD_Decode":
 
@@ -58,7 +60,7 @@ elif project == "APOE":
     gunniespath = "~/gunnies/"
     recenter = 0
     # SAMBA_prep_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-inputs")
-    SAMBA_prep_folder = os.path.join(mainpath, "19abb14/")
+    SAMBA_prep_folder = os.path.join(mainpath, "APOE_symlink_pool")
     atlas_labels = os.path.join(mainpath,"atlases","chass_symmetric3","chass_symmetric3_labels.nii.gz")
 
     DTC_DWI_folder = os.path.join(mainpath,"mouse","APOE_series","DWI")
@@ -92,7 +94,7 @@ elif project == "AMD":
     SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "rja20_BrainChAMD.01_with_2yr_SAMBA_startup.headfile")
     gunniespath = "~/gunnies/"
     recenter = 0
-    SAMBA_prep_folder = os.path.join(SAMBA_mainpath, "whitson_symlink_pool_test")
+    SAMBA_prep_folder = os.path.join(SAMBA_mainpath, "whiston_symlink_pool_test")
     atlas_labels = os.path.join(mainpath, "atlas","IITmean_RPI","IITmean_RPI_labels.nii.gz")
 
     DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AMD/DWI/"
@@ -104,7 +106,6 @@ elif project == "AMD":
     superpose = False
     copytype = "truecopy"
     overwrite = False
-    preppath = os.path.join(SAMBA_mainpath, 'whiston_symlink_pool_test')
 
     subjects = ["H29056", "H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660", "H29304", "H26890", "H29556",
                 "H26862", "H29410", "H26966", "H29403", "H26841", "H21593", "H27126", "H29618", "H27111", "H29627", "H27164",
@@ -120,15 +121,11 @@ elif project == "AMD":
                 "H26890", "H26958", "H26974", "H27017", "H27111", "H27164", "H27381", "H27391", "H27495", "H27610", "H27640",
                 "H27680", "H27778", "H27982", "H28115", "H28308", "H28338", "H28373", "H28377", "H28433", "H28437", "H28463",
                 "H28532", "H28662", "H28698", "H28748", "H28809", "H28857", "H28861", "H29013", "H29020", "H29025"]
-    subjects = ["H21953"]
 else:
     raise Exception("Unknown project name")
 
-overwrite=True
-for subject in subjects:
-    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, preppath = preppath, headfile = SAMBA_headfile, overwrite=overwrite)
-
-overwrite=False
+#for subject in subjects:
+#    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, headfile = SAMBA_headfile, overwrite=overwrite)
 
 remote=False
 
@@ -207,46 +204,123 @@ if mymax==-1:
 if mymax == -1:
     raise Exception(f"Could not find template runs in {os.path.join(mainpath, f'{SAMBA_projectname}-work','dwi',template_type_prefix)}")
 
-for subject in subjects:
-    subjectpath = glob.glob(os.path.join(SAMBA_label_folder, f'{subject}/'))
-    if np.size(subjectpath) == 1:
-        subjectpath = subjectpath[0]
-    elif np.size(subjectpath) > 1:
-        raise Exception('Too many subject folders')
-    else:
-        subjectpath = SAMBA_label_folder
+if project != "AMD":
+    for subject in subjects:
+        subjectpath = glob.glob(os.path.join(SAMBA_label_folder, f'{subject}/'))
+        if np.size(subjectpath) == 1:
+            subjectpath = subjectpath[0]
+        elif np.size(subjectpath) > 1:
+            raise Exception('Too many subject folders')
+        else:
+            subjectpath = SAMBA_label_folder
 
-    labelspath = glob.glob(os.path.join(subjectpath, f'{subject}*_preprocess_labels.nii*'))
-    if np.size(labelspath) == 1:
-        labelspath = labelspath[0]
-    else:
-        raise Exception(f"Could not find file at {os.path.join(subjectpath, f'{subject}*_labels.nii*')}")
-    newlabelspath = os.path.join(DTC_labels_folder,f'{subject}_labels.nii.gz')
-    if not os.path.exists(newlabelspath) or overwrite:
-        if remote:
-            if not overwrite:
-                try:
-                    sftp.stat(newlabelspath)
-                    if verbose:
-                        print(f'file at {newlabelspath} exists')
-                except IOError:
+        labelspath = glob.glob(os.path.join(subjectpath, f'{subject}*_preprocess_labels.nii*'))
+        if np.size(labelspath) == 1:
+            labelspath = labelspath[0]
+        else:
+            warnings.warn(f"Could not find file at {os.path.join(subjectpath, f'{subject}*_labels.nii*')}")
+            continue
+        newlabelspath = os.path.join(DTC_labels_folder,f'{subject}_labels.nii.gz')
+        if not os.path.exists(newlabelspath) or overwrite:
+            if remote:
+                if not overwrite:
+                    try:
+                        sftp.stat(newlabelspath)
+                        if verbose:
+                            print(f'file at {newlabelspath} exists')
+                    except IOError:
+                        if verbose:
+                            print(f'copying file {labelspath} to {newlabelspath}')
+                        sftp.put(labelspath, newlabelspath)
+                else:
+                    sftp.put(labelspath, newlabelspath)
                     if verbose:
                         print(f'copying file {labelspath} to {newlabelspath}')
-                    sftp.put(labelspath, newlabelspath)
+
             else:
-                sftp.put(labelspath, newlabelspath)
+                shutil.copy(labelspath, newlabelspath)
                 if verbose:
                     print(f'copying file {labelspath} to {newlabelspath}')
-
         else:
-            shutil.copy(labelspath, newlabelspath)
             if verbose:
-                print(f'copying file {labelspath} to {newlabelspath}')
-    else:
-        if verbose:
-            print(f"File already exists at {newlabelspath}")
+                print(f"File already exists at {newlabelspath}")
 
-overwrite=True
+elif project == "AMD":
+    for subject in subjects:
+        subjectpath = glob.glob(os.path.join(SAMBA_label_folder, f'{subject}/'))
+        if np.size(subjectpath) == 1:
+            subjectpath = subjectpath[0]
+        elif np.size(subjectpath) > 1:
+            raise Exception('Too many subject folders')
+        else:
+            subjectpath = SAMBA_label_folder
+
+        labelspath = glob.glob(os.path.join(subjectpath, f'{subject}*_IITmean_RPI_labels.nii*'))
+        coreg_prepro =  glob.glob(os.path.join(subjectpath, f'{subject}*_nii4D_masked_isotropic.nii*'))
+        if np.size(labelspath) == 1:
+            labelspath = labelspath[0]
+        else:
+            warnings.warn(f"Could not find file at {os.path.join(subjectpath, f'{subject}*_labels.nii*')}")
+            continue
+
+        if np.size(coreg_prepro) == 1:
+            coreg_prepro = coreg_prepro[0]
+        else:
+            warnings.warn(f"Could not find file at {os.path.join(subjectpath, f'{subject}*_labels.nii*')}")
+            continue
+
+        newlabelspath = os.path.join(DTC_labels_folder, f'{subject}_labels.nii.gz')
+        new_coregpath = os.path.join(DTC_labels_folder, f'{subject}_coreg_diff.nii.gz')
+
+        if not os.path.exists(newlabelspath) or overwrite:
+            if remote:
+                if not overwrite:
+                    try:
+                        sftp.stat(newlabelspath)
+                        if verbose:
+                            print(f'file at {newlabelspath} exists')
+                    except IOError:
+                        if verbose:
+                            print(f'copying file {labelspath} to {newlabelspath}')
+                        sftp.put(labelspath, newlabelspath)
+                else:
+                    sftp.put(labelspath, newlabelspath)
+                    if verbose:
+                        print(f'copying file {labelspath} to {newlabelspath}')
+
+            else:
+                shutil.copy(labelspath, newlabelspath)
+                if verbose:
+                    print(f'copying file {labelspath} to {newlabelspath}')
+        else:
+            if verbose:
+                print(f"File already exists at {newlabelspath}")
+
+        if not os.path.exists(new_coregpath) or overwrite:
+            if remote:
+                if not overwrite:
+                    try:
+                        sftp.stat(new_coregpath)
+                        if verbose:
+                            print(f'file at {new_coregpath} exists')
+                    except IOError:
+                        if verbose:
+                            print(f'copying file {coreg_prepro} to {new_coregpath}')
+                        sftp.put(coreg_prepro, new_coregpath)
+                else:
+                    sftp.put(coreg_prepro, new_coregpath)
+                    if verbose:
+                        print(f'copying file {coreg_prepro} to {new_coregpath}')
+
+            else:
+                shutil.copy(coreg_prepro, new_coregpath)
+                if verbose:
+                    print(f'copying file {coreg_prepro} to {new_coregpath}')
+        else:
+            if verbose:
+                print(f"File already exists at {new_coregpath}")
+
+overwrite=False
 for subject in subjects:
     trans = os.path.join(SAMBA_work_folder, "preprocess", "base_images", "translation_xforms",
                          f"{subject}_0DerivedInitialMovingTranslation.mat")
