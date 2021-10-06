@@ -19,7 +19,7 @@ from tract_manager import get_str_identifier
 from file_tools import mkcdir, check_files
 from tract_manager import check_dif_ratio
 
-subjects = ["H29056", "H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660", "H29304", "H26890",
+subjects = ["H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660", "H29304", "H26890",
             "H29556", "H26862", "H29410", "H26966", "H29403", "H26841", "H21593", "H27126", "H29618", "H27111", "H29627",
             "H27164", "H29502", "H27100", "H27381", "H21836", "H27391", "H21850", "H27495", "H21729", "H27488", "H21915",
             "H27682", "H21956", "H27686", "H22331", "H28208", "H21990", "H28955", "H29878", "H27719", "H22102", "H27841",
@@ -33,6 +33,7 @@ subjects = ["H29056", "H26578", "H29060", "H26637", "H29264", "H26765", "H29225"
             "H26880", "H26890", "H26958", "H26974", "H27017", "H27111", "H27164", "H27381", "H27391", "H27495", "H27610",
             "H27640", "H27680", "H27778", "H27982", "H28115", "H28308", "H28338", "H28373", "H28377", "H28433", "H28437",
             "H28463", "H28532", "H28662", "H28698", "H28748", "H28809", "H28857", "H28861", "H29013", "H29020", "H29025"]
+#temporarily removing "H29056" to recalculate it 
 ext = ".nii.gz"
 computer_name = socket.gethostname()
 
@@ -74,7 +75,8 @@ native_ref=''
 for subj in subjects:
     trans = os.path.join(path_transforms, f"{subj}_0DerivedInitialMovingTranslation.mat")
     rigid = os.path.join(path_transforms, f"{subj}_rigid.mat")
-    affine = os.path.join(path_transforms, f"{subj}_affine.mat")
+    affine_orig = os.path.join(path_transforms, f"{subj}_affine.mat")
+    affine = os.path.join(path_transforms, f"{subj}_affine.txt")
     runno_to_MDT = os.path.join(path_transforms, f'{subj}_to_MDT_warp.nii.gz')
 
     if nii_test_files:
@@ -95,7 +97,7 @@ for subj in subjects:
             os.system(cmd)
 
             cmd = f'antsApplyTransforms -v 1 --float -d 3 -i {SAMBA_preprocess_test_rigid} -o {SAMBA_preprocess_test_rigid_affine} ' \
-                f'-r {native_ref} -n Linear -t [{affine},0]'
+                f'-r {native_ref} -n Linear -t [{affine_orig},0]'
             os.system(cmd)
 
             cmd = f'antsApplyTransforms -v 1 --float -d 3 -i {SAMBA_preprocess_test_rigid_affine} -o {SAMBA_preprocess_test_postwarp} ' \
@@ -123,8 +125,10 @@ for subj in subjects:
         check_dif_ratio(path_TRK, subj, str_identifier, ratio)
         subj_trk, trkexists = gettrkpath(path_TRK, subj, str_identifier, pruned=prune, verbose=False)
 
-        _, exists = check_files([trans, rigid, affine, runno_to_MDT])
+        _, exists = check_files([trans, rigid, runno_to_MDT])
         if np.any(exists==0):
+            raise Exception('missing transform file')
+        if not os.path.exists(affine) and not os.path.exists(affine_orig):
             raise Exception('missing transform file')
 
         streamlines_prepro, header = unload_trk(subj_trk)
@@ -160,15 +164,13 @@ for subj in subjects:
             save_trk_header(filepath=trk_preprocess_postrigid, streamlines=streamlines_postrigid, header=header,
                     affine=np.eye(4), verbose=verbose)
 
-        affine_mat_path = os.path.join(path_transforms, f'{subj}_affine.txt')
         overwrite=True
-        if os.path.exists(affine_mat_path) and not overwrite:
-            affine_mat_s = read_affine_txt(affine_mat_path)
+        if os.path.exists(affine) and not overwrite:
+            affine_mat_s = read_affine_txt(affine)
         else:
-            affine_mat_path_new = os.path.join(path_transforms, f'{subj}_affine.txt')
-            cmd = f'ConvertTransformFile 3 {affine} {affine_mat_path_new} --matrix'
+            cmd = f'ConvertTransformFile 3 {affine_orig} {affine} --matrix'
             os.system(cmd)
-            affine_mat_s = read_affine_txt(affine_mat_path_new)
+            affine_mat_s = read_affine_txt(affine)
 
         affine_mat = np.eye(4)
         affine_mat[:3, :3] = affine_mat_s
