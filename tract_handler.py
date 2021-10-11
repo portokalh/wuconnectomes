@@ -30,6 +30,7 @@ from dipy.tracking.utils import length
 from dipy.viz import window, actor
 import glob
 import os
+from tract_save import save_trk_header
 
 def longstring(string,margin=0):
 
@@ -271,6 +272,67 @@ def get_tract_params(mypath, subject, str_identifier, pruned = False, verbose = 
     else:
         print("Error, trkfile not found")
 
+def streamline_checker(streamline, voxdim):
+
+    from itertools import product
+
+    mymin = np.min(streamline, axis=0)
+    mymax = np.max(streamline, axis=0)
+    np.asarray(list(product(*zip(mymin, mymax))))
+    bbox_min = np.min(streamline, axis=0)
+    bbox_max = np.max(streamline, axis=0)
+    bbox_corners = np.asarray(list(product(*zip(bbox_min, bbox_max))))
+    if np.any(bbox_corners[:, 0] > voxdim[0]) or \
+            np.any(bbox_corners[:, 1] > voxdim[1]) or \
+            np.any(bbox_corners[:, 2] > voxdim[2]):
+        return False
+    else:
+        return True
+
+def trk_fixer(trkpath, trk_newpath, verbose = False):
+
+    from streamline_nocheck import load_trk as load_trk_spe
+
+    if verbose:
+        t1 = time()
+    trkdata = load_trk_spe(trkpath, 'same')
+    trk_streamlines = trkdata.streamlines
+    if hasattr(trkdata, 'space_attribute'):
+        header = trkdata.space_attribute
+    elif hasattr(trkdata, 'space_attributes'):
+        header = trkdata.space_attributes
+
+
+    voxdim = trkdata.dimensions
+
+    if verbose:
+        t2 = time()
+        txt = f'It took {str(t2-t1)} seconds to load {trkpath}'
+        print(txt)
+
+    trk_streamlines[:] = (x for x in trk_streamlines if streamline_checker(x, voxdim))
+
+    """
+    for i, streamline in enumerate(trk_streamlines):
+        mymin = np.min(trk_streamlines, axis=0)
+        mymax = np.max(trk_streamlines, axis=0)
+        np.asarray(list(product(*zip(mymin, mymax))))
+        bbox_min = np.min(trk_streamlines, axis=0)
+        bbox_max = np.max(trk_streamlines, axis=0)
+        bbox_corners = np.asarray(list(product(*zip(bbox_min, bbox_max))))
+        if np.any(bbox_corners[:, 0] > voxdim[0]) or \
+        np.any(bbox_corners[:, 1] > voxdim[1]) or \
+        np.any(bbox_corners[:, 2] > voxdim[2]):
+            np.pop()
+    """
+    if verbose:
+        duration = time() - t2
+        txt = f"it took {duration} to do the test on {trkpath}, saving it to {trk_newpath}"
+        print(txt)
+
+    #np.asarray(list(product(*zip(bbox_min, bbox_max))))
+
+    save_trk_header(trk_newpath, trk_streamlines, header, verbose = verbose)
 
 def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
     """

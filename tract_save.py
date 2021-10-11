@@ -14,6 +14,7 @@ from nibabel.orientations import aff2axcodes
 from dipy.io.streamline import load_trk
 from dipy.io.utils import create_tractogram_header
 import time
+import numpy as np
 
 def make_tractogram_object(fname, streamlines, affine, vox_size=None, shape=None, header=None):
     """ Saves tractogram object for future use
@@ -46,12 +47,10 @@ def make_tractogram_object(fname, streamlines, affine, vox_size=None, shape=None
     trk_file = nib.streamlines.TrkFile(tractogram, header=header)
     return tractogram, trk_file
 
-def save_trk_header(filepath, streamlines, header, affine=None, verbose=False):
+def save_trk_header(filepath, streamlines, header, affine=np.eye(4), verbose=False):
 
     myheader = create_tractogram_header(filepath, *header)
     trk_sl = lambda: (s for s in streamlines)
-    if affine is None:
-        affine = header[0]
     if verbose:
         print(f'Saving streamlines to {filepath}')
         time1 = time.perf_counter()
