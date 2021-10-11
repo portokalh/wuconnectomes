@@ -48,3 +48,4 @@ def show_bundles(bundles, colors=None, show=True, fname=None, fa=False, str_tube
     if fname is not None:
         sleep(1)
         window.record(ren, n_frames=1, out_path=fname, size=(900, 900))
+

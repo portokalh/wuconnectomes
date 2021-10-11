@@ -29,8 +29,9 @@ from dipy.io.streamline import load_trk
 from dipy.tracking.utils import length
 from dipy.viz import window, actor
 import glob
-import os
+import os, shutil
 from tract_save import save_trk_header
+from streamline_nocheck import load_trk as load_trk_spe
 
 def longstring(string,margin=0):
 
@@ -272,7 +273,7 @@ def get_tract_params(mypath, subject, str_identifier, pruned = False, verbose = 
     else:
         print("Error, trkfile not found")
 
-def streamline_checker(streamline, voxdim):
+def streamline_checker(streamline, voxdim, verbose = False):
 
     from itertools import product
 
@@ -285,16 +286,47 @@ def streamline_checker(streamline, voxdim):
     if np.any(bbox_corners[:, 0] > voxdim[0]) or \
             np.any(bbox_corners[:, 1] > voxdim[1]) or \
             np.any(bbox_corners[:, 2] > voxdim[2]):
+        if verbose:
+            print('deleted a streamline')
         return False
     else:
         return True
 
-def trk_fixer(trkpath, trk_newpath, verbose = False):
-
-    from streamline_nocheck import load_trk as load_trk_spe
+def trk_fixer(trkpath, trk_newpath, verbose=False):
 
     if verbose:
         t1 = time()
+        txt = f'Beginning to load {trkpath}'
+    trkdata = load_trk_spe(trkpath, 'same')
+    if verbose:
+        t2 = time()
+        txt = f'It took {str(t2-t1)} seconds to load {trkpath}'
+        print(txt)
+    if hasattr(trkdata, 'space_attribute'):
+        header = trkdata.space_attribute
+    elif hasattr(trkdata, 'space_attributes'):
+        header = trkdata.space_attributes
+    remove, keep = trkdata.remove_invalid_streamlines()
+    if verbose:
+        t3 = time()
+        duration = t3 - t2
+        txt = f"it took {duration} to do the test on {trkpath}, and {np.size(remove)} streamlines were removed. saving it to {trk_newpath}"
+        print(txt)
+    if np.size(remove)==0:
+        shutil.copy(trkpath, trk_newpath)
+    else:
+        new_streamlines = trkdata.streamlines
+        save_trk_header(trk_newpath, new_streamlines, header, verbose=verbose)
+    if verbose:
+        t4 = time()
+        txt = f'It took {str(t4-t3)} seconds to save {trk_newpath}'
+        print(txt)
+
+def trk_fixer_old(trkpath, trk_newpath, verbose = False):
+
+    if verbose:
+        t1 = time()
+        txt = f'Beginning to load {trkpath}'
     trkdata = load_trk_spe(trkpath, 'same')
     trk_streamlines = trkdata.streamlines
     if hasattr(trkdata, 'space_attribute'):
@@ -302,15 +334,17 @@ def trk_fixer(trkpath, trk_newpath, verbose = False):
     elif hasattr(trkdata, 'space_attributes'):
         header = trkdata.space_attributes
 
-
     voxdim = trkdata.dimensions
 
     if verbose:
         t2 = time()
         txt = f'It took {str(t2-t1)} seconds to load {trkpath}'
         print(txt)
+    vverbose=True
 
-    trk_streamlines[:] = (x for x in trk_streamlines if streamline_checker(x, voxdim))
+    orig_size = np.shape(trk_streamlines)[0]
+
+    trk_streamlines[:] = (x for x in trk_streamlines if streamline_checker(x, voxdim,vverbose))
 
     """
     for i, streamline in enumerate(trk_streamlines):
@@ -325,14 +359,27 @@ def trk_fixer(trkpath, trk_newpath, verbose = False):
         np.any(bbox_corners[:, 2] > voxdim[2]):
             np.pop()
     """
+
+    new_size = np.shape(trk_streamlines)[0]
+    cut_streamlines = orig_size - new_size
+
     if verbose:
-        duration = time() - t2
-        txt = f"it took {duration} to do the test on {trkpath}, saving it to {trk_newpath}"
+        t3 = time()
+        duration = t3 - t2
+        txt = f"it took {duration} to do the test on {trkpath}, and {str(cut_streamlines)} streamlines were removed. saving it to {trk_newpath}"
         print(txt)
 
     #np.asarray(list(product(*zip(bbox_min, bbox_max))))
 
-    save_trk_header(trk_newpath, trk_streamlines, header, verbose = verbose)
+    if cut_streamlines!=0:
+        save_trk_header(trk_newpath, trk_streamlines, header, verbose = verbose)
+    else:
+        shutil.copy(trkpath, trk_newpath)
+
+    if verbose:
+        t4 = time()
+        txt = f'It took {str(t4-t3)} seconds to save {trk_newpath}'
+        print(txt)
 
 def prune_streamlines(streamline, mask, cutoff=2, harshcut=None, verbose=None):
     """
