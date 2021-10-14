@@ -510,13 +510,16 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         if not os.path.isfile(labeloutpath):
             labelmask = convert_labelmask(labelmask, converter_comb, atlas_outpath=labeloutpath,
                                           affine_labels=labelaffine)
+        else:
+            labelmask, labelaffine = load_nifti(labeloutpath)
         index_to_struct = index_to_struct_comb
     elif labeltype == 'lrordered':
         labeloutpath = labelpath.replace('.nii.gz','_lr_ordered.nii.gz')
-        #if not os.path.isfile(labeloutpath):
-        labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
+        if not os.path.isfile(labeloutpath):
+            labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
                                       affine_labels=labelaffine)
-        labelmask, labelaffine = load_nifti(labeloutpath)
+        else:
+            labelmask, labelaffine = load_nifti(labeloutpath)
         index_to_struct = index_to_struct_lr
     else:
         raise TypeError("Cannot recognize label type (this error raise is a THEORETICALLY a temp patch")
@@ -1049,8 +1052,8 @@ def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processe
                       classifier="FA", labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False,
                   get_params=False, denoise="", verbose=None):
 
-    outpathtrk, trkexists = gettrkpath(outpath, subject, strproperty, pruned=doprune, verbose=False)
     check_dif_ratio(outpath, subject, strproperty, ratio)
+    outpathtrk, trkexists = gettrkpath(outpath, subject, strproperty, pruned=doprune, verbose=False)
 
     if trkexists and overwrite is False:
         print("The tract creation of subject " + subject + " is already done")

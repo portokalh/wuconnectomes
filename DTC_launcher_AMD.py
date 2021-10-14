@@ -45,6 +45,9 @@ figspath = os.path.join(outpath, "Figures")
 diff_preprocessed = os.path.join(outpath, "DWI_attempted_recreation")
 trkpath = os.path.join(outpath, "TRK_attempted_recreation")
 
+atlas_legends = outpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+
+
 mkcdir([outpath, figspath, diff_preprocessed, trkpath])
 masktype = "FA"
 masktype = "T1"

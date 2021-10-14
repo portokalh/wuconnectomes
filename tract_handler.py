@@ -169,6 +169,15 @@ def target(streamlines, affine, target_mask, include=True, strict=False):
                 yield sl
 
 
+def ratio_to_str(ratio):
+    if ratio == 1:
+        saved_streamlines = "_all"
+    elif ratio > 1:
+        saved_streamlines = "_ratio_" + str(ratio)
+    else:
+        raise Exception(f'invalid ratio {str(ratio)}')
+    return saved_streamlines
+
 def gettrkpath(trkpath, subject, str_identifier, pruned=False, verbose=False):
     #Finds the right trk file based on certain established parameters (folder, subject, extra identifiers)
     if os.path.isfile(trkpath):

@@ -10,6 +10,8 @@ from dipy.core.gradients import gradient_table
 from diff_preprocessing import make_tensorfit
 from dipy.io.image import load_nifti
 import shutil
+from convert_atlas_mask import convert_labelmask, atlas_converter
+
 
 def getfa(mypath, subject, bvec_orient, verbose=None):
 
@@ -323,6 +325,34 @@ def getlabelmask(mypath, subject, verbose=None):
         raise Exception(txt)
 
     return labels, affine_labels, labelspath
+
+def getlabeltypemask(mypath, subject, ROI_legends, labeltype = '', verbose=False):
+
+    labelmask, labelaffine, labelpath = getlabelmask(mypath, subject, verbose=verbose)
+
+    converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = atlas_converter(ROI_legends)
+    if labeltype == 'combined':
+        labeloutpath = labelpath.replace('.nii.gz', '_comb.nii.gz')
+        if not os.path.isfile(labeloutpath):
+            labelmask = convert_labelmask(labelmask, converter_comb, atlas_outpath=labeloutpath,
+                                          affine_labels=labelaffine)
+        else:
+            labelmask, labelaffine = load_nifti(labeloutpath)
+        index_to_struct = index_to_struct_comb
+    elif labeltype == 'lrordered':
+        labeloutpath = labelpath.replace('.nii.gz', '_lr_ordered.nii.gz')
+        if not os.path.isfile(labeloutpath):
+            labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
+                                          affine_labels=labelaffine)
+        else:
+            labelmask, labelaffine = load_nifti(labeloutpath)
+        index_to_struct = index_to_struct_lr
+    else:
+        labeloutpath = labelpath
+        index_to_struct = None
+
+    return labelmask, labelaffine, labeloutpath, index_to_struct
+
 
 def getmask(mypath, subject, masktype = "subjspace", verbose=None):
     if os.path.isfile(mypath):

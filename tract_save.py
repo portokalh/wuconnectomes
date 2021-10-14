@@ -107,5 +107,8 @@ def unload_trk(tractogram_path, reference='same'):
         print("Reference taken directly from file")
     tract_obj = load_trk(tractogram_path, reference)
     streams_control = tract_obj.streamlines
-    hdr_control = tract_obj.space_attribute
+    try:
+        hdr_control = tract_obj.space_attribute
+    except:
+        hdr_control = tract_obj.space_attributes
     return streams_control, hdr_control, tract_obj
