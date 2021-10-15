@@ -33,6 +33,7 @@ subjects = ["H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660"
             "H26880", "H26890", "H26958", "H26974", "H27017", "H27111", "H27164", "H27381", "H27391", "H27495", "H27610",
             "H27640", "H27680", "H27778", "H27982", "H28115", "H28308", "H28338", "H28373", "H28377", "H28433", "H28437",
             "H28463", "H28532", "H28662", "H28698", "H28748", "H28809", "H28857", "H28861", "H29013", "H29020", "H29025"]
+subjects = ['H21593']
 #temporarily removing "H29056" to recalculate it
 ext = ".nii.gz"
 computer_name = socket.gethostname()
@@ -46,6 +47,10 @@ else:
 
 project = "AMD"
 
+testing = True
+if testing:
+    main_path = '/Users/alex/jacques/AMD_testing_zone/AMD_TRK_testing'
+
 if project == "AMD":
     path_TRK = os.path.join(main_path, 'AMD', 'TRK')
     path_DWI = os.path.join(main_path, 'AMD', 'DWI')
@@ -57,7 +62,7 @@ if project == "AMD":
     #Get the values from DTC_launcher_ADDecode. Should probably create a single parameter file for each project one day
 
 stepsize = 2
-ratio = 1
+ratio = 100
 trkroi = ["wholebrain"]
 str_identifier = get_str_identifier(stepsize, ratio, trkroi)
 prune= True
@@ -66,8 +71,8 @@ cleanup = False
 verbose=True
 recenter=0
 
-save_temp_files = False
-nii_test_files = False
+save_temp_files = True
+nii_test_files = True
 overwrite = True
 
 contrast='dwi'

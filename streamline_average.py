@@ -28,6 +28,8 @@ from dipy.tracking.utils import connectivity_matrix
 from nifti_handler import getfa, getdiffdata_all, getdiffdata, getdiffpath, getgtab, getlabelmask, move_bvals, getmask, getb0s, getlabeltypemask
 from file_tools import mkcdir
 from tract_handler import ratio_to_str, gettrkpath
+from convert_atlas_mask import convert_labelmask, atlas_converter
+
 
 def show_bundles(bundles, colors=None, show=True, fname=None, fa=False, str_tube=False):
     ren = window.Renderer()
@@ -73,8 +75,7 @@ num_points2 = 50
 distance2 = 2
 feature2 = ResampleFeature(nb_points=num_points2)
 metric2 = AveragePointwiseEuclideanMetric(feature=feature2)
-target_left = 30
-target_right = 50
+
 
 samos = False
 if samos:
@@ -90,8 +91,10 @@ if santorini:
     trkpaths = glob.glob(os.path.join(TRK_folder,'*trk'))
     figures_folder = '/Users/alex/jacques/AMD_testing_zone/Figures_MDT'
     pickle_folder = '/Users/alex/jacques/AMD_testing_zone/Pickle_MDT'
+    centroid_folder = '/Users/alex/jacques/AMD_testing_zone/Centroids_MDT'
     mkcdir(figures_folder)
     mkcdir(pickle_folder)
+    mkcdir(centroid_folder)
     if not os.path.exists(TRK_folder):
         raise Exception(f'cannot find TRK folder at {TRK_folder}')
 
@@ -120,14 +123,12 @@ groups_subjects['Paired 2-YR AMD'] = ['H22825', 'H21850', 'H29225', 'H29304', 'H
 groups_subjects['Initial Control'] = ['H26949', 'H27852', 'H28029', 'H26966', 'H27126', 'H28068', 'H29161', 'H28955', 'H26862', 'H28262', 'H28856', 'H27842', 'H27246', 'H27869', 'H27999', 'H29127', 'H28325', 'H26841', 'H29044', 'H27719', 'H27100', 'H29254', 'H27682', 'H29002', 'H29089', 'H29242', 'H27488', 'H27841', 'H28820', 'H27163', 'H28869', 'H28208', 'H27686']
 groups_subjects['Paired 2-YR Control'] = ['H29403', 'H22102', 'H29502', 'H22276', 'H29878', 'H29410', 'H22331', 'H22368', 'H21729', 'H29556', 'H21956', 'H22140', 'H23309', 'H22101', 'H23157', 'H21593', 'H21990', 'H22228', 'H23028', 'H21915']
 groups_subjects['Paired Initial Control'] = ['H27852', 'H28029', 'H26966', 'H27126', 'H29161', 'H28955', 'H26862', 'H27842', 'H27999', 'H28325', 'H26841', 'H27719', 'H27100', 'H27682', 'H29002', 'H27488', 'H27841', 'H28820', 'H28208', 'H27686']
-groups_subjects['Paired Initial AMD'] = ['H29020', 'H26637', '$H27111', 'H26765', 'H28308', 'H28433', 'H26660', 'H28182', 'H27111', 'H27391', 'H28748', 'H28662', 'H26578', 'H28698', 'H27495', 'H28861', 'H28115', 'H28377', 'H26890', 'H28373', 'H27164']
-
-groups = ['Paired 2-YR AMD']  #Specify here the groups you want to actually LOOK AT
-groups = ['Initial AMD']
-groups = ['Initial Control']
-groups = ['Paired 2-YR Control']
-groups = ['Paired Initial Control']
-groups = ['Paired Initial AMD']
+groups_subjects['Paired Initial AMD'] = ['H29020', 'H26637', 'H27111', 'H26765', 'H28308', 'H28433', 'H26660', 'H28182', 'H27111', 'H27391', 'H28748', 'H28662', 'H26578', 'H28698', 'H27495', 'H28861', 'H28115', 'H28377', 'H26890', 'H28373', 'H27164']
+groups_subjects['testing'] = ['H22825']
+groups = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
+#group_toview = 'Paired 2-YR AMD'
+#group_toview = 'testing'
+#roups = [group_toview]
 """
 1 Cerebellum-Cortex_Right---Cerebellum-Cortex_Left 9 1 with weight of 3981.9602
 2 rostralmiddlefrontal_Right---rostralmiddlefrontal_Left 76 42 with weight of 3781.9696
@@ -143,91 +144,135 @@ labeltype = 'lrordered'
 verbose=True
 picklesave=True
 
+
+#1 lingual_Left---Cerebellum-Cortex_Right 28 9 with weight of 1194.3023
+#2 lingual_Right---Cerebellum-Cortex_Left 62 1 with weight of 1070.304
+#3 lingual_Left---Cerebellum-Cortex_Left 28 1 with weight of 986.7037
+#4 lingual_Right---Cerebellum-Cortex_Right 62 9 with weight of 980.1034
+#5 fusiform_Left---Cerebellum-Cortex_Right 22 9 with weight of 978.3528
+target_tuple = (28, 9)
+#target_tuple = (30, 50)
+
+group_qb = {}
+group_clusters = {}
+
 for group in groups:
     groupstreamlines[group]=[]
     for ref in references:
         groupLines[group, ref]=[]
         groupPoints[group, ref]=[]
 for group in groups:
-    subjects = groups_subjects[group]
-    for subject in subjects:
-        trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
-        if not exists:
-            txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
-            warnings.warn(txt)
-            continue
-        #streamlines, header, _ = unload_trk(trkpath)
-        trkdata = load_trk(trkpath, 'same')
-        picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
-        grouping_xlsxpath = os.path.join(pickle_folder, subject + str_identifier + "_grouping.xlsx")
-        if os.path.exists(picklepath_grouping):
-            with open(picklepath_grouping, 'rb') as f:
-                grouping = pickle.load(f)
-        elif os.path.exists(grouping_xlsxpath):
-            grouping = get_grouping('grouping.xlsx')
-        else:
-            from convert_atlas_mask import convert_labelmask, atlas_converter
-            #affine_streams = np.eye(4)
-            labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends, labeltype = labeltype, verbose = verbose)
-            trkdata_test = load_trk('/Volumes/Data/Badea/ADdecode.01/Analysis/TRK_MPCA/S02654_stepsize_2_ratio_100_wholebrain_pruned.trk', 'same')
-            streamlines_2 = transform_streamlines(trkdata.streamlines, np.linalg.inv(trkdata.space_attributes[0]))
-            M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True,
-                                return_mapping=True,
-                                mapping_as_streamlines=False)
-            if picklesave:
-                pickle.dump(grouping, open(picklepath_grouping, "wb"))
-                if verbose:
-                    txt = ("The connectomes were saved at " + picklepath_grouping)
-                    #send_mail(txt, subject="Pickle save")
-                    print(txt)
 
-        target_streamlines_list = grouping[target_left, target_right]
-        target_streamlines = trkdata.streamlines[target_streamlines_list]
-        target_streamlines_set = set_number_of_points(target_streamlines, nb_points=num_points2)
-        del(target_streamlines, trkdata)
-        target_qb = QuickBundles(threshold=distance1, metric=metric1)
-        target_clusters = target_qb.cluster(target_streamlines_set)
+    group_str = group.replace(' ', '_')
+    _, _, index_to_struct, _ = atlas_converter(ROI_legends)
+    centroid_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '.py')
 
-        #srr = StreamlineLinearRegistration()
-        #srm = srr.optimize(static=target_clusters_control.centroids, moving=target_clusters.centroids)
-        #target_str_aligned = srm.transform(target_streamlines_set)
+    if not os.path.exists(centroid_file_path):
 
-        # first clustering for transform matrix
-        target_qb = QuickBundles(threshold=distance1, metric=metric1)
-        target_clusters = target_qb.cluster(target_streamlines_set)
-        #         print('NO.'+str(j+1)+' '+runno+" Nb. clusters:", len(target_clusters))
+        subjects = groups_subjects[group]
+        for subject in subjects:
+            trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
+            if not exists:
+                txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
+                warnings.warn(txt)
+                continue
+            #streamlines, header, _ = unload_trk(trkpath)
+            trkdata = load_trk(trkpath, 'same')
+            header = trkdata.space_attributes
+            picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
+            grouping_xlsxpath = os.path.join(pickle_folder, subject + str_identifier + "_grouping.xlsx")
+            if os.path.exists(picklepath_grouping):
+                with open(picklepath_grouping, 'rb') as f:
+                    grouping = pickle.load(f)
+            elif os.path.exists(grouping_xlsxpath):
+                grouping = get_grouping('grouping.xlsx')
+            else:
+                #affine_streams = np.eye(4)
+                labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends, labeltype = labeltype, verbose = verbose)
+                streamlines_2 = transform_streamlines(trkdata.streamlines, np.linalg.inv(trkdata.space_attributes[0]))
+                M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True,
+                                    return_mapping=True,
+                                    mapping_as_streamlines=False)
+                if picklesave:
+                    pickle.dump(grouping, open(picklepath_grouping, "wb"))
+                    if verbose:
+                        txt = ("The connectomes were saved at " + picklepath_grouping)
+                        #send_mail(txt, subject="Pickle save")
+                        print(txt)
 
-        for ref in references:
-            ref_img_path = get_diff_ref(label_folder, subject, ref)
-            ref_data, ref_affine = load_nifti(ref_img_path)
-            stream_ref = []
-            stream_point_ref = []
-            for s in range(len(target_streamlines_set)):
-                point_ref = [ref_data[int(k[0]), int(k[1]), int(k[2])] for k in target_streamlines_set[s]]
-                stream_point_ref.append(point_ref)
-                stream_ref.append(np.mean(point_ref))
+            target_streamlines_list = grouping[target_tuple[0], target_tuple[1]]
+            target_streamlines = trkdata.streamlines[target_streamlines_list]
+            target_streamlines_set = set_number_of_points(target_streamlines, nb_points=num_points2)
+            del(target_streamlines, trkdata)
+            target_qb = QuickBundles(threshold=distance1, metric=metric1)
+            target_clusters = target_qb.cluster(target_streamlines_set)
 
-            groupLines[group, ref].extend(stream_ref)
-            groupPoints[group, ref].extend(stream_point_ref)
+            #srr = StreamlineLinearRegistration()
+            #srm = srr.optimize(static=target_clusters_control.centroids, moving=target_clusters.centroids)
+            #target_str_aligned = srm.transform(target_streamlines_set)
 
-        groupstreamlines[group].extend(target_streamlines_set)
+            # first clustering for transform matrix
+            target_qb = QuickBundles(threshold=distance1, metric=metric1)
+            target_clusters = target_qb.cluster(target_streamlines_set)
+            #         print('NO.'+str(j+1)+' '+runno+" Nb. clusters:", len(target_clusters))
+
+            for ref in references:
+                ref_img_path = get_diff_ref(label_folder, subject, ref)
+                ref_data, ref_affine = load_nifti(ref_img_path)
+                stream_ref = []
+                stream_point_ref = []
+                for s in range(len(target_streamlines_set)):
+                    point_ref = [ref_data[int(k[0]), int(k[1]), int(k[2])] for k in target_streamlines_set[s]]
+                    stream_point_ref.append(point_ref)
+                    stream_ref.append(np.mean(point_ref))
+
+                groupLines[group, ref].extend(stream_ref)
+                groupPoints[group, ref].extend(stream_point_ref)
+
+            groupstreamlines[group].extend(target_streamlines_set)
+
+        group_qb[group] = QuickBundles(threshold=distance2, metric=metric2)
+        group_clusters[group] = group_qb[group].cluster(groupstreamlines[group])
+        pickle.dump(group_clusters[group], open(centroid_file_path, "wb"))
+
+    else:
+        with open(centroid_file_path, 'rb') as f:
+            group_clusters[group] = pickle.load(f)
         # registration
         #srr = StreamlineLinearRegistration()
         ##srm = srr.optimize(static=target_clusters_control.centroids, moving=target_clusters.centroids)
         #target_str_aligned = srm.transform(target_streamlines)
         #native_target_stream_aligned = transform_streamlines(target_str_aligned, np.linalg.inv(affine_fa))
 
+from tract_save import save_trk_heavy_duty
+"""
 group_qb = {}
 group_clusters = {}
 for group in groups:
-    group_qb[group] = QuickBundles(threshold=distance2,metric=metric2)
-    group_clusters[group] = group_qb[group].cluster(groupstreamlines[group])
+    group_str = group.replace(' ', '_')
+    centroid_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '.py')
+    if not os.path.exists(centroid_file_path):
+        group_qb[group] = QuickBundles(threshold=distance2, metric=metric2)
+        group_clusters[group] = group_qb[group].cluster(groupstreamlines[group])
+        pickle.dump(grouping, open(centroid_file_path, "wb"))
+    else:
+        if os.path.exists(picklepath_grouping):
+            with open(picklepath_grouping, 'rb') as f:
+                grouping = pickle.load(f)
+"""
+
+    #save_trk(group_qb[group].cluster(groupstreamlines[group]), centroid_file_path)
+    #save_trk_heavy_duty(centroid_file_path, streamlines=group_clusters[group], affine=np.eye(4), header=header)
+
 
 #print("Young Group Nb. clusters:", len(group3_clusters))
 
+# groups = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
+group_toview = 'Paired 2-YR AMD'
+group_toview = 'Initial AMD'
 viz_top_bundle = True
 ref = None
-group_toview = 'Paired 2-YR AMD'
+
 if viz_top_bundle:
     np.random.seed(123)
     num_of_bundles = 5
