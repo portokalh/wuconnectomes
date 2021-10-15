@@ -1,6 +1,6 @@
 import os
 from transform_handler import get_affine_transform, get_flip_affine, header_superpose, recenter_nii_affine, \
-    convert_ants_vals_to_affine, read_affine_txt
+    convert_ants_vals_to_affine, read_affine_txt, recenter_nii_save, add_translation
 import shutil
 import nibabel as nib
 import numpy as np
@@ -33,7 +33,7 @@ subjects = ["H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660"
             "H26880", "H26890", "H26958", "H26974", "H27017", "H27111", "H27164", "H27381", "H27391", "H27495", "H27610",
             "H27640", "H27680", "H27778", "H27982", "H28115", "H28308", "H28338", "H28373", "H28377", "H28433", "H28437",
             "H28463", "H28532", "H28662", "H28698", "H28748", "H28809", "H28857", "H28861", "H29013", "H29020", "H29025"]
-subjects = ['H21593']
+
 #temporarily removing "H29056" to recalculate it
 ext = ".nii.gz"
 computer_name = socket.gethostname()
@@ -47,7 +47,7 @@ else:
 
 project = "AMD"
 
-testing = True
+testing = False
 if testing:
     main_path = '/Users/alex/jacques/AMD_testing_zone/AMD_TRK_testing'
 
@@ -62,21 +62,26 @@ if project == "AMD":
     #Get the values from DTC_launcher_ADDecode. Should probably create a single parameter file for each project one day
 
 stepsize = 2
-ratio = 100
+ratio = 1
 trkroi = ["wholebrain"]
 str_identifier = get_str_identifier(stepsize, ratio, trkroi)
 prune= True
 overwrite = False
 cleanup = False
 verbose=True
-recenter=0
+recenter=1
 
-save_temp_files = True
-nii_test_files = True
+save_temp_files = False
+nii_test_files = False
 overwrite = True
 
 contrast='dwi'
 native_ref=''
+
+
+if save_temp_files:
+    mkcdir(path_trk_tempdir)
+
 for subj in subjects:
     trans = os.path.join(path_transforms, f"{subj}_0DerivedInitialMovingTranslation.mat")
     rigid = os.path.join(path_transforms, f"{subj}_rigid.mat")
@@ -87,6 +92,12 @@ for subj in subjects:
     if nii_test_files:
         mkcdir(DWI_save)
         SAMBA_preprocess = os.path.join(DWI_save, f'{subj}_{contrast}_masked{ext}')
+        if recenter:
+            SAMBA_preprocess_recentered_1 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_recenter_1{ext}')
+            recenter_nii_save(SAMBA_preprocess, SAMBA_preprocess_recentered_1,verbose=True)
+            SAMBA_preprocess_recentered_2 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_recenter_2{ext}')
+            add_translation(SAMBA_preprocess_recentered_1, SAMBA_preprocess_recentered_2, translation = [0,0,-33], verbose=True)
+            SAMBA_preprocess = SAMBA_preprocess_recentered_2
         SAMBA_preprocess_test_posttrans = os.path.join(DWI_save, f'{subj}_{contrast}_masked_posttrans{ext}')
         SAMBA_preprocess_test_rigid = os.path.join(DWI_save, f'{subj}_{contrast}_postrigid{ext}')
         SAMBA_preprocess_test_rigid_affine = os.path.join(DWI_save, f'{subj}_{contrast}_postrigid_affine{ext}')
@@ -125,6 +136,8 @@ for subj in subjects:
 
         SAMBA_input_real_file =  os.path.join(path_DWI, f'{subj}_dwi{ext}')
 
+        #new_affine, translation, translate_affine = recenter_nii_affine(SAMBA_input_real_file, return_translation=True)
+
         #subj_trk, _ = gettrkpath(path_TRK, subj, str_identifier, pruned=True, verbose=verbose)
 
         check_dif_ratio(path_TRK, subj, str_identifier, ratio)
@@ -137,21 +150,32 @@ for subj in subjects:
             raise Exception('missing transform file')
         streamlines_prepro, header = unload_trk(subj_trk)
 
+        #if recenter:
+            #new_affine, translation, translate_affine = recenter_nii_affine(SAMBA_preprocess,
+        #                                                                    return_translation=True)
+            #streamlines_prepro_recenter = transform_streamlines(streamlines_prepro, translate_affine)
+            #save_trk_header(filepath= trk_preprocess_recentered_1, streamlines = streamlines_prepro_recenter, header = header,
+            #        affine=np.eye(4), verbose=verbose)
+            #translate_affine = np.eye(4)
+            #translate_affine[:3,3] = [0,0,-33]
+            #streamlines_prepro_recenter = transform_streamlines(streamlines_prepro_recenter, translate_affine)
+            #save_trk_header(filepath= trk_preprocess_recentered_2, streamlines = streamlines_prepro_recenter, header = header,
+            #        affine=np.eye(4), verbose=verbose)
+
         #streamlines_prepro, header_prepro = unload_trk(trk_preprocess)
         mat_struct = loadmat(trans)
         var_name = list(mat_struct.keys())[0]
         later_trans_mat = mat_struct[var_name]
         new_transmat = np.eye(4)
-        #vox_dim = [1,1,1]
-        new_transmat[:3,3] = np.squeeze(later_trans_mat[3:6])# * vox_dim
+        vox_dim = [1,1,-1]
+        new_transmat[:3,3] = np.squeeze(later_trans_mat[3:6]) * vox_dim
 
         #pix_dim = np.eye(4)
         #vox_dim = [1,1,2]
         #for i in np.arange(3):
         #    pix_dim[i,i]=vox_dim[i]
         #new_transmat = np.matmul(pix_dim, new_transmat)
-        streamlines_posttrans = transform_streamlines(streamlines_prepro, new_transmat)
-
+        streamlines_posttrans = transform_streamlines(streamlines_prepro, (new_transmat))
         if (not os.path.exists(trk_preprocess_posttrans) or overwrite) and save_temp_files:
             save_trk_header(filepath= trk_preprocess_posttrans, streamlines = streamlines_posttrans, header = header,
                     affine=np.eye(4), verbose=verbose)
@@ -179,7 +203,12 @@ for subj in subjects:
         affine_mat = np.eye(4)
         affine_mat[:3, :3] = affine_mat_s
         #streamlines_postrigid, header_postrigid = unload_trk(trk_preprocess_postrigid)
-        streamlines_postrigidaffine = transform_streamlines(streamlines_postrigid, np.linalg.inv(affine_mat))
+        vox_dim = [1,1,-1]
+        vox_mat = np.eye(4)
+        for i in np.arange(3):
+            vox_mat[i,i] = vox_dim[i]
+        #affine_mat = np.matmul(vox_mat, affine_mat)
+        streamlines_postrigidaffine = transform_streamlines(streamlines_postrigid, (affine_mat))
 
         if (not os.path.exists(trk_preprocess_postrigid_affine) or overwrite) and save_temp_files:
             save_trk_header(filepath=trk_preprocess_postrigid_affine, streamlines=streamlines_postrigidaffine, header=header,

@@ -242,6 +242,29 @@ def recenter_nii_save(img, output_path, return_translation = False, verbose=Fals
     if verbose:
         print(f'Saved')
 
+def add_translation(img, output_path, translation, verbose):
+
+    if not os.path.exists(img):
+        raise('Nifti img file does not exists')
+
+    try:
+        nii = nib.load(img)
+    except:
+        raise('Could not load img at '+img)
+
+    nii_data = nii.get_data()
+    affine = nii._affine
+
+    newaffine = affine
+    newaffine[:3,3] = newaffine[:3,3] + translation
+    new_nii=nib.Nifti1Image(nii_data, newaffine, nii.header)
+    output_path = str(output_path)
+    if verbose:
+        print(f'Saving nifti file to {output_path}')
+    nib.save(new_nii, output_path)
+    if verbose:
+        print(f'Saved')
+
 def img_transform_exec(img, current_vorder, desired_vorder, output_path=None, write_transform=0, verbose=False):
 
     is_RGB = 0;

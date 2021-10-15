@@ -151,7 +151,7 @@ picklesave=True
 #4 lingual_Right---Cerebellum-Cortex_Right 62 9 with weight of 980.1034
 #5 fusiform_Left---Cerebellum-Cortex_Right 22 9 with weight of 978.3528
 target_tuple = (28, 9)
-#target_tuple = (30, 50)
+target_tuple = (30, 50)
 
 group_qb = {}
 group_clusters = {}
@@ -268,8 +268,8 @@ for group in groups:
 #print("Young Group Nb. clusters:", len(group3_clusters))
 
 # groups = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
-group_toview = 'Paired 2-YR AMD'
-group_toview = 'Initial AMD'
+group_toview = 'Paired Initial Control'
+#group_toview = 'Initial AMD'
 viz_top_bundle = True
 ref = None
 
