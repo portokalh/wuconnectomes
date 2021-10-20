@@ -351,6 +351,8 @@ def getlabeltypemask(mypath, subject, ROI_legends, labeltype = '', verbose=False
         labeloutpath = labelpath
         index_to_struct = None
 
+    if verbose:
+        print(f'Final label taken from {labeloutpath}')
     return labelmask, labelaffine, labeloutpath, index_to_struct
 
 

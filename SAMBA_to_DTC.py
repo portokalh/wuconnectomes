@@ -121,7 +121,7 @@ elif project == "AMD":
                 "H26890", "H26958", "H26974", "H27017", "H27111", "H27164", "H27381", "H27391", "H27495", "H27610", "H27640",
                 "H27680", "H27778", "H27982", "H28115", "H28308", "H28338", "H28373", "H28377", "H28433", "H28437", "H28463",
                 "H28532", "H28662", "H28698", "H28748", "H28809", "H28857", "H28861", "H29013", "H29020", "H29025"]
-    subjects = ["H27999"]
+    #subjects = ["H27999"]
 else:
     raise Exception("Unknown project name")
 
@@ -373,6 +373,45 @@ for subject in subjects:
         else:
             print(f'Could not find {filepath}')
 
+MDT_refs = ['fa', 'md', 'rd', 'ad', 'b0']
+for subject in subjects:
+    for MDT_ref in MDT_refs:
+        filepath = os.path.join(final_template_run, 'MDT_images',f'{subject}_{MDT_ref}_to_MDT.nii.gz')
+        if not os.path.exists(filepath):
+            txt = f'Could not find {filepath} in {final_template_run} for subject {subject} in project {project}'
+            warnings.warn(txt)
+        else:
+            if Path(filepath).is_symlink():
+                filepath=Path(filepath).resolve()
+            filename = os.path.basename(filepath)
+            filenewpath = os.path.join(DTC_labels_folder, filename)
+            if not os.path.isfile(filenewpath) or overwrite:
+                if copytype=="shortcut":
+                    if remote:
+                        raise Exception("Can't build shortcut to remote path")
+                    else:
+                        buildlink(filepath, filenewpath)
+                        if verbose:
+                            print(f'Built link for {filepath} at {filenewpath}')
+                elif copytype=="truecopy":
+                    if remote:
+                        if not overwrite:
+                            try:
+                                sftp.stat(filenewpath)
+                                if verbose:
+                                    print(f'file at {filenewpath} exists')
+                            except IOError:
+                                if verbose:
+                                    print(f'copying file {filepath} to {filenewpath}')
+                                sftp.put(filepath, filenewpath)
+                        else:
+                            if verbose:
+                                print(f'copying file {filepath} to {filenewpath}')
+                            sftp.put(filepath, filenewpath)
+                    else:
+                        if verbose:
+                            print(f'copying file {filepath} to {filenewpath}')
+                        shutil.copy(filepath, filenewpath)
 
 if remote:
     sftp.close()

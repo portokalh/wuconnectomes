@@ -91,6 +91,7 @@ import dipy.reconst.msdki as msdki
 from multiprocessing import Pool
 from convert_atlas_mask import convert_labelmask, atlas_converter
 #from connectivity_own import connectivity_matrix_special
+from excel_management import connectomes_to_excel, grouping_to_excel
 
 
 def strfile(string):
@@ -352,48 +353,6 @@ def makemask_fromdiff(dwipath, subject, bvec_orient):
     mask = dwi_to_mask(data, subject, affine, outpath, makefig = False)
     return(mask)
 
-
-def connectomes_to_excel(connectome, index_to_struct, output_path):
-
-    #df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
-    #structure = df['Structure']
-
-    workbook = xlsxwriter.Workbook(output_path)
-    worksheet = workbook.add_worksheet()
-
-    for num in np.arange(1, np.shape(connectome)[0]):
-        worksheet.write(0, num, index_to_struct[num])
-        worksheet.write(num, 0, index_to_struct[num])
-
-    row=0
-    for col, data in enumerate(connectome):
-        worksheet.write_column(row+1, col+1, data)
-
-    workbook.close()
-
-    return
-
-
-def grouping_to_excel(grouping, index_to_struct, output_path):
-
-    #df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
-    #structure = df['Structure']
-
-    workbook = xlsxwriter.Workbook(output_path)
-    worksheet = workbook.add_worksheet()
-
-    for num in np.arange(1, np.shape(grouping)[0]):
-        worksheet.write(0, num, index_to_struct[num])
-        worksheet.write(num, 0, index_to_struct[num])
-
-    row=0
-    for i in np.arange(np.shape(grouping)[0]):
-        for j in np.arange(np.shape(grouping)[1]):
-            worksheet.write(i+1,j+1,str(grouping[i,j]))
-
-    workbook.close()
-
-    return
 
 """
 def prunestreamline(trkorigpath, trkprunepath, cutoff = 4, forcestart = False):
