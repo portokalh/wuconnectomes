@@ -60,10 +60,13 @@ def file_rename(folder, initstring, finalstring, identifier_string="*", anti_ide
     #Renames files in a folder by replacing init string with final string, identifier_string being an optional
     #identifier (* format)
     files = glob.glob(os.path.join(folder, identifier_string))
-    for file in files:
-        newfile = file.replace(initstring, finalstring)
-        if newfile!=file and anti_identifier_string not in file:
-            os.rename(file, newfile)
+    for myfile in files:
+        filename = os.path.basename(myfile)
+        newfilename = filename.replace(initstring, finalstring)
+        newfilepath = os.path.join(folder, newfilename)
+        if newfilepath!=myfile and anti_identifier_string not in filename:
+            os.rename(myfile, newfilepath)
+            #print(myfile, newfilepath)
 
 def check_files(files):
     exists=[]

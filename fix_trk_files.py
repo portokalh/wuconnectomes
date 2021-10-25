@@ -8,7 +8,7 @@ TRK_folder = '/Users/alex/jacques/AMD_TRK_testing/TRK_MDT'
 TRK_output = '/Users/alex/jacques/AMD_TRK_testing/TRK_MDT_fixed'
 
 hostname = 'samos'
-if hostname == 'samsdfos':
+if hostname == 'samos':
     TRK_folder = '/mnt/paros_MRI/jacques/AMD/TRK_MDT/'
     TRK_output = '/mnt/paros_MRI/jacques/AMD/TRK_MDT_fixed'
 

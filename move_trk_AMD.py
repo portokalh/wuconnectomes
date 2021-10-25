@@ -18,6 +18,7 @@ from tract_handler import gettrkpath
 from tract_manager import get_str_identifier
 from file_tools import mkcdir, check_files
 from tract_manager import check_dif_ratio
+import glob, warnings
 
 subjects = ["H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660", "H29304", "H26890",
             "H29556", "H26862", "H29410", "H26966", "H29403", "H26841", "H21593", "H27126", "H29618", "H27111", "H29627",
@@ -73,7 +74,6 @@ recenter=1
 
 save_temp_files = False
 nii_test_files = False
-overwrite = True
 
 contrast='dwi'
 native_ref=''
@@ -127,7 +127,12 @@ for subj in subjects:
 
     if not os.path.exists(trk_MDT_space) or overwrite:
         orient_string = os.path.join(path_DWI, f'{subj}_relative_orientation.txt')
-        orient_relative = open(orient_string, mode='r').read()
+        if os.path.exists(orient_string):
+            orient_relative = open(orient_string, mode='r').read()
+        else:      
+            warnings.warn(f'could not find {orient_string}')
+            orient_string_varpath = glob.glob(os.path.join(path_DWI, '*relative_orientation.txt'))[0]  
+            orient_relative = open(orient_string_varpath, mode='r').read()
         orientation_out = orient_relative.split(',')[0]
         orientation_out = orientation_out.split(':')[1]
         orientation_in = orient_relative.split(',')[1]
@@ -193,7 +198,7 @@ for subj in subjects:
                     affine=np.eye(4), verbose=verbose)
 
         overwrite=True
-        if os.path.exists(affine) and not overwrite:
+        if os.path.exists(affine):
             affine_mat_s = read_affine_txt(affine)
         else:
             cmd = f'ConvertTransformFile 3 {affine_orig} {affine} --matrix'
