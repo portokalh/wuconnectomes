@@ -46,6 +46,9 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
 
     from dipy.viz import actor, window, ui
 
+
+    scene = window.Scene()
+
     if isinstance(trk_object[0], ClusterCentroid):
         bundles = trk_object
         if str_tube:
@@ -55,16 +58,27 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
             for (i, bundle) in enumerate(bundles):
                 color = colors[i]
                 #         lines_actor = actor.streamtube(bundle, color, linewidth=0.05
-
-                object_actor = actor.line(bundle, color, linewidth=2.5)
+                #color = (0.0, 1.0, 0.0)
+                object_actor = actor.line(bundle, color, linewidth=1.0)
                 # lines_actor.RotateX(-90)
                 # lines_actor.RotateZ(90)
-                #ren.add(lines_actor)
+                scene.add(object_actor)
+    elif isinstance(trk_object[0][0], ClusterCentroid):
+        for group in np.arange(np.shape(trk_object)[0]):
+            color = colors[group]
+            bundles = trk_object[group]
+            for (i, bundle) in enumerate(bundles):
+                #         lines_actor = actor.streamtube(bundle, color, linewidth=0.05
+                # color = (0.0, 1.0, 0.0)
+                object_actor = actor.line(bundle, color, linewidth=1.0)
+                # lines_actor.RotateX(-90)
+                # lines_actor.RotateZ(90)
+                scene.add(object_actor)
     elif isinstance(trk_object, Streamlines):
         object_actor = actor.line(trk_object)
+        scene.add(object_actor)
     else:
         raise Exception('Unindentified object')
-    scene = window.Scene()
 
     if os.path.exists(ref):
         data, affine = load_nifti(ref)

@@ -23,7 +23,7 @@ from dipy.segment.clustering import ClusterCentroid
 from dipy.tracking.streamline import Streamlines
 from tract_visualize import show_bundles, setup_view
 from tract_save import save_trk_header
-from excel_management import M_grouping_excel_save
+from excel_management import M_grouping_excel_save, extract_grouping
 
 
 
@@ -106,7 +106,9 @@ if project == 'AMD':
     #groups to go through
     groups = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
 
+#groups = ['Paired 2-YR AMD']
 #groups = ['Paired 2-YR Control']
+groups=[groups[0]]
 group_toview = groups[0]
 
 if project == 'AD_Decode':
@@ -146,14 +148,14 @@ picklesave=True
 5 fusiform_Left---Cerebellum-Cortex_Right 22 9 with weight of 978.3528
 """
 target_tuple = (28, 9)
-target_tuple = (62, 1)
+#target_tuple = (62, 1)
 #target_tuple = (28, 1)
 #target_tuple = (62, 9)
 #target_tuple = (22, 9)
 #target_tuple = (30, 50) #The connectomes to check up on and create groupings clusters for
 
 
-overwrite=True
+overwrite=False
 
 """
 labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
@@ -203,17 +205,26 @@ for group in groups:
             picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
             M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectome.xlsx")
             grouping_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_grouping.xlsx")
-            if os.path.exists(picklepath_grouping) and not overwrite:
-                with open(picklepath_grouping, 'rb') as f:
-                    grouping = pickle.load(f)
-            #elif os.path.exists(grouping_xlsxpath):
-            #    grouping = get_grouping('grouping.xlsx')
+            #if os.path.exists(picklepath_grouping) and not overwrite:
+            #    with open(picklepath_grouping, 'rb') as f:
+            #        grouping = pickle.load(f)
+            if os.path.exists(picklepath_connectome) and not overwrite:
+                with open(picklepath_connectome, 'rb') as f:
+                    M = pickle.load(f)
+            if os.path.exists(grouping_xlsxpath):
+                grouping = extract_grouping(grouping_xlsxpath, index_to_struct, None, verbose=verbose)
             else:
                 #affine_streams = np.eye(4)
-                M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True,
+                M, grouping_temp = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True,
                                     return_mapping=True,
                                     mapping_as_streamlines=False)
-                M_grouping_excel_save(M,grouping,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
+                M_grouping_excel_save(M,grouping_temp,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
+
+                if os.path.exists(grouping_xlsxpath):
+                    grouping = extract_grouping(grouping_xlsxpath, index_to_struct, np.shape(M), verbose=verbose)
+                else:
+                    raise Exception(f'saving of the excel at {grouping_xlsxpath} did not work')
+
                 if picklesave:
                     pickle.dump(grouping, open(picklepath_grouping, "wb"))
                     pickle.dump(M, open(picklepath_connectome, "wb"))
@@ -258,12 +269,16 @@ for group in groups:
         if os.path.exists(centroid_file_path) and overwrite:
             os.remove(centroid_file_path)
         if not os.path.exists(centroid_file_path):
+            if verbose:
+                print(f'Summarized the clusters for group {group} at {centroid_file_path}')
             pickle.dump(group_clusters[group], open(centroid_file_path, "wb"))
 
         for ref in references:
             if overwrite:
                 os.remove([grouping_files[ref,'lines'], grouping_files[ref,'points']])
             if not os.path.exists(grouping_files[ref,'lines']):
+                if verbose:
+                    print(f"Summarized the clusters for group {group} and statistics {ref} at {grouping_files[ref,'lines']}")
                 pickle.dump(groupLines[group, ref], grouping_files[ref,'lines'])
                 pickle.dump(groupPoints[group, ref], grouping_files[ref,'points'])
 
@@ -276,36 +291,99 @@ for group in groups:
             ref_path_points = grouping_files[ref, 'points']
             groupPoints[group, ref] = grouping_files[ref, 'points']
 
+for group in groups:
+    cluster = group_clusters[group]
+    group_str = group.replace(' ', '_')
+    idx_path = os.path.join(centroid_folder,
+                            group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' +
+                            index_to_struct[target_tuple[1]] + '_idx.py')
+    if os.path.exists(idx_path):
+        continue
+    else:
+        top_idx_list = sorted(range(len(cluster.clusters_sizes())), key=lambda i: cluster.clusters_sizes()[i],
+                              reverse=True)
+        if verbose:
+            print(f'Listed the biggest clusters for group {group} at {idx_path}')
+        pickle.dump(top_idx_list, open(idx_path, "wb"))
 
+toview=True
+if toview:
+    #group_toview = 'Initial AMD'
+    viz_top_bundle = True
+    ref = None
+    ref = '/Volumes/Data/Badea/Lab/mouse/VBM_19IntractEP01_IITmean_RPI-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_NoNameYet_n7_i6/median_images/MDT_fa.nii.gz'
 
-#group_toview = 'Initial AMD'
-viz_top_bundle = True
-ref = None
-ref = '/Volumes/Data/Badea/Lab/mouse/VBM_19IntractEP01_IITmean_RPI-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_NoNameYet_n7_i6/median_images/MDT_fa.nii.gz'
+    num_of_bundles = 5
+    color_list = [(np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
+                  for n in range(num_of_bundles)]
+    color_list_dis_all = [window.colors.green, window.colors.yellow,
+                          window.colors.red, window.colors.brown,
+                          window.colors.orange, window.colors.blue]
+    color_list_dis = [color_list_dis_all[i] for i in range(num_of_bundles)]
 
+    if num_of_bundles <= 6:
+        colors = color_list_dis
+    else:
+        colors = color_list
 
-num_of_bundles = 5
-color_list = [(np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
-              for n in range(num_of_bundles)]
-color_list_dis_all = [window.colors.green, window.colors.yellow,
-                      window.colors.red, window.colors.brown,
-                      window.colors.orange, window.colors.blue]
-color_list_dis = [color_list_dis_all[i] for i in range(num_of_bundles)]
+    cluster = group_clusters[group_toview]
+    group_str = group_toview.replace(' ', '_')
+    idx_path = os.path.join(centroid_folder,group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_idx.py')
+    if os.path.exists(idx_path):
+        with open(idx_path, 'rb') as f:
+            top_idx_list = pickle.load(f)
+    else:
+        top_idx_list = sorted(range(len(cluster.clusters_sizes())), key=lambda i: cluster.clusters_sizes()[i],
+                     reverse=True)
+        pickle.dump(top_idx_list, open(idx_path, "wb"))
+    top_idx = top_idx_list[:num_of_bundles]
 
-if num_of_bundles <= 6:
-    colors = color_list_dis
-else:
-    colors = color_list
+    bundle_list = [cluster.clusters[idx] for idx in top_idx]
 
-cluster = group_clusters[group_toview]
-top_idx = sorted(range(len(cluster.clusters_sizes())), key=lambda i: cluster.clusters_sizes()[i],
-                 reverse=True)[:num_of_bundles]
+    setup_view(bundle_list, colors = colors,ref=ref, world_coords=True)
 
-bundle_list = [cluster.clusters[idx] for idx in top_idx]
+groups_toview = ['Paired 2-YR Control','Paired 2-YR AMD' ]
+toview_multi = False
+num_of_bundles = 10
 
-setup_view(bundle_list, colors = colors,ref=ref, world_coords=True)
+if toview_multi:
+    ref = '/Volumes/Data/Badea/Lab/mouse/VBM_19IntractEP01_IITmean_RPI-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_NoNameYet_n7_i6/median_images/MDT_fa.nii.gz'
 
+    num_of_groups = np.size(groups_toview)
 
+    color_list = [(np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
+                  for n in range(num_of_groups)]
+    color_list_dis_all = [window.colors.green, window.colors.yellow,
+                          window.colors.red, window.colors.brown,
+                          window.colors.orange, window.colors.blue]
+    color_list_dis = [color_list_dis_all[i] for i in range(num_of_groups)]
+    if num_of_groups <= 6:
+        colors = color_list_dis
+    else:
+        colors = color_list
+    num_of_bundles = 10
+    bundle_superlist = []
+    for group in groups_toview:
+        cluster = group_clusters[group]
+        group_str = group.replace(' ', '_')
+        idx_path = os.path.join(centroid_folder,
+                                group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' +
+                                index_to_struct[target_tuple[1]] + '_idx.py')
+        if os.path.exists(idx_path):
+            with open(idx_path, 'rb') as f:
+                top_idx_list = pickle.load(f)
+        else:
+            top_idx_list = sorted(range(len(cluster.clusters_sizes())), key=lambda i: cluster.clusters_sizes()[i],
+                                  reverse=True)
+            pickle.dump(top_idx_list, open(idx_path, "wb"))
+        top_idx = top_idx_list[:num_of_bundles]
+
+        bundle_list = [cluster.clusters[idx] for idx in top_idx]
+        bundle_superlist.append(bundle_list)
+
+    setup_view(bundle_superlist, colors = colors,ref=ref, world_coords=True)
+
+"""
 if viz_top_bundle:
     np.random.seed(123)
     num_of_bundles = 5
@@ -331,7 +409,7 @@ if viz_top_bundle:
 
     show_bundles(bundle_list, colors, ref=ref)
 
-"""
+
 #color by lines, select a bundle?
 np.random.seed(123)
 bundle_id = 40

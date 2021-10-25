@@ -116,3 +116,53 @@ def M_grouping_excel_save(M,grouping,M_path, grouping_path, index_to_struct, ver
         txt = (f"The excelfile for connectome and grouping were saved at {M_path} and {grouping_path}")
         send_mail(txt, subject="Excel save")
         print(txt)
+
+
+
+def grouping_to_excel(grouping, index_to_struct, output_path):
+
+    #df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
+    #structure = df['Structure']
+
+    workbook = xlsxwriter.Workbook(output_path)
+    worksheet = workbook.add_worksheet()
+
+    for num in np.arange(1, np.shape(grouping)[0]):
+        worksheet.write(0, num, index_to_struct[num])
+        worksheet.write(num, 0, index_to_struct[num])
+
+    row=0
+    for i in np.arange(np.shape(grouping)[0]):
+        for j in np.arange(np.shape(grouping)[1]):
+            worksheet.write(i+1,j+1,str(grouping[i,j]))
+
+    workbook.close()
+
+    return
+
+def extract_grouping(grouping_path, index_to_struct, shape=None, verbose=False):
+
+    #grouping_array = np.empty(shape, dtype=object)
+    grouping_newdic = {}
+    grouping_frame = pd.read_excel(grouping_path)
+    if shape is None:
+        shape = list(grouping_frame.shape)
+        shape[0] = shape[0]+1
+        shape = tuple(shape)
+    for i in np.arange(shape[0]-1):
+        for j in np.arange(shape[1]-1):
+            liststring = grouping_frame.iloc[i, j+1]
+            liststring = liststring.replace('[','')
+            liststring = liststring.replace(']','')
+            liststring = (liststring.split(','))
+            if liststring[0] != '':
+                liststring = [int(i) for i in liststring]
+            else:
+                liststring = []
+            grouping_newdic[i + 1, j + 1] = liststring
+    return grouping_newdic
+
+    #for key in grouping.keys():
+    #    matrix_sl[key] = grouping[key]
+    #    matrix_sl[tuple(np.flip(key))] = grouping[key]
+
