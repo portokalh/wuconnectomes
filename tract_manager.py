@@ -414,6 +414,43 @@ def makedir(dir):
         os.mkdir(dir)
 
 
+def connectivity_matrix_func(pruned_streamlines_SL, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = np.eye(4), inclusive= False, verbose=verbose):
+
+    n = function_processes
+    size_SL = np.size(pruned_streamlines_SL)
+    listcut = []
+    listcut.append(0)
+    for i in np.arange(n - 1):
+        listcut.append(np.int(((i + 1) * size_SL) / n))
+        print(size_SL, i + 1, n)
+    listcut.append(size_SL)
+    print(listcut)
+    pruned_cut = []
+    for i in np.arange(n):
+        pruned_cut.append(pruned_streamlines_SL[listcut[i]:listcut[i+1]])
+    pool = Pool()
+    if verbose:
+        print("The streamline is split into "+str(function_processes)+" of size "+str(np.int(size_SL / n)))
+
+    return_mapping = True
+    connectomic_results = pool.starmap_async(connectivity_matrix, [(Streamlines(pruned_streamlines_SL[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
+                                                                          inclusive, symmetric, return_mapping,
+                                                                          mapping_as_streamlines) for i in np.arange(n)]).get()
+    M = np.zeros(np.shape(connectomic_results[0][0]))
+    grouping = {}
+    i=0
+    for connectome_results in connectomic_results:
+        M += connectome_results[0]
+        for key, val in connectome_results[1].items():
+            if key in grouping:
+                grouping[key].extend([j+listcut[i] for j in val])
+            else:
+                grouping[key] = val
+        i = i + 1
+
+    return M, grouping
+
+
 def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype = "T1",
                               inclusive = False, function_processes = 1, forcestart = False, picklesave = True, labeltype='orig',
                               verbose = None):

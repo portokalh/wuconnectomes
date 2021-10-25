@@ -24,9 +24,9 @@ from dipy.tracking.streamline import Streamlines
 from tract_visualize import show_bundles, setup_view
 from tract_save import save_trk_header
 from excel_management import M_grouping_excel_save, extract_grouping
-
-
-
+import sys
+from argument_tools import parse_arguments_function
+from tract_manager import connectivity_matrix_func
 
 def get_grouping(grouping_xlsx):
     print('not done yet')
@@ -154,6 +154,7 @@ target_tuple = (28, 9)
 #target_tuple = (22, 9)
 #target_tuple = (30, 50) #The connectomes to check up on and create groupings clusters for
 
+function_processes = parse_arguments_function(sys.argv)
 
 overwrite=False
 
@@ -214,10 +215,12 @@ for group in groups:
             if os.path.exists(grouping_xlsxpath):
                 grouping = extract_grouping(grouping_xlsxpath, index_to_struct, None, verbose=verbose)
             else:
-                #affine_streams = np.eye(4)
-                M, grouping_temp = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True,
-                                    return_mapping=True,
-                                    mapping_as_streamlines=False)
+                if function_processes == 1:
+                    M, grouping_temp = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True,
+                                        return_mapping=True,
+                                        mapping_as_streamlines=False)
+                else:
+                    M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= True, verbose=verbose)
                 M_grouping_excel_save(M,grouping_temp,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
 
                 if os.path.exists(grouping_xlsxpath):
