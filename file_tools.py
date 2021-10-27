@@ -55,7 +55,6 @@ def exists_remote(host, path):
         return False
     raise Exception('SSH failed')
 
-
 def file_rename(folder, initstring, finalstring, identifier_string="*", anti_identifier_string='the answer is obv 42'):
     #Renames files in a folder by replacing init string with final string, identifier_string being an optional
     #identifier (* format)
@@ -139,10 +138,21 @@ def buildlink(real_file, linked_file):
     if os.path.islink(linked_file) and not os.path.exists(os.readlink(linked_file)):
         os.unlink(linked_file)
     if not os.path.islink(linked_file) and os.path.isfile(real_file):
+        if os.path.islink(real_file):
+            real_file = os.readlink(real_file)
         relpath = getrelativepath(real_file, linked_file)
         link_cmd=f"ln -s ./{relpath} {linked_file}"
         os.system(link_cmd)
 
+def buildlink_folder(folder, initstring, finalstring, identifier_string="*"):
+    files = glob.glob(os.path.join(folder, identifier_string))
+    for myfile in files:
+        filename = os.path.basename(myfile)
+        newfilename = filename.replace(initstring, finalstring)
+        newfilepath = os.path.join(folder, newfilename)
+        if newfilepath != myfile:
+            buildlink(myfile, newfilepath)
+            #print(myfile, newfilepath)
 
 def getext(file):
     filesplit=file.split('.')

@@ -56,7 +56,7 @@ def parse_arguments(sys_argv, subjects):
 
     return subject_processes, function_processes
 
-def parse_arguments_function(sys_argv, subjects):
+def parse_arguments_function(sys_argv):
 
     """
     argv = sys_argv[1:]
