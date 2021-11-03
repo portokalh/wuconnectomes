@@ -102,6 +102,15 @@ def orient_to_str(bvec_orient):
                 mystr = mystr+"pz"
     return mystr
 
+
+def reorient_bvecs(bvecs, bvec_orient=[1,2,3]):
+
+    #bvals, bvecs = get_bvals_bvecs(mypath, subject)
+    bvec_sign = bvec_orient/np.abs(bvec_orient)
+    bvecs = np.c_[bvec_sign[0]*bvecs[:, np.abs(bvec_orient[0])-1], bvec_sign[1]*bvecs[:, np.abs(bvec_orient[1])-1],
+                  bvec_sign[2]*bvecs[:, np.abs(bvec_orient[2])-1]]
+    return bvecs
+
 def read_bvals(fbvals,fbvecs):
 
     vals=[]
@@ -134,6 +143,7 @@ def read_bvals(fbvals,fbvecs):
     bvals, bvecs = vals[0], vals[1]
     return bvals, bvecs
 
+
 def cut_bvals_bvecs(fbvals, fbvecs, tocut, format="classic"):
 
     bvals, bvecs = read_bvals(fbvals, fbvecs)
@@ -156,6 +166,7 @@ def cut_bvals_bvecs(fbvals, fbvecs, tocut, format="classic"):
                 File_object.write(str(bval) + "\t")
 
     return(fbvals_new)
+
 
 def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, identifier = "_fix", writeformat="classic"):
     """
@@ -268,6 +279,7 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, id
     return fbvals, fbvecs
 
 #def extract_bxh_bval_bvec(filepath):
+
 
 def extractbvec_fromheader(source_file,fileoutpath=None,save=None,verbose=True):
 
@@ -409,6 +421,7 @@ def extractbvec_fromheader(source_file,fileoutpath=None,save=None,verbose=True):
 
 import shutil
 
+
 def read_bval_bvec(fbvals, fbvecs):
 
     vals=[]
@@ -476,7 +489,102 @@ def find_bval_bvecs(subjectpath, subject=""):
 
         return bvals, bvecs
 
-def writebfiles(subjectpath, subject, outpath = None, writeformat = "line", fbvals=None, fbvecs=None, overwrite=False):
+
+def writebval(bvals, outpath, subject, writeformat = "line", overwrite=False):
+    
+    if os.path.isdir(outpath):
+        bval_file = os.path.join(outpath, subject+"_bvals.txt")
+    else:
+        bval_file = outpath
+    
+    if os.path.exists(bval_file) and overwrite:
+        os.remove(bval_file)
+    File_object = open(bval_file, "w")
+    for bval in bvals:
+        if writeformat == "line":
+            File_object.write(str(bval) + "\n")
+        if writeformat == "tab":
+            File_object.write(str(bval) + "\t")
+        if writeformat == "dsi":
+            bval = int(round(bval))
+            File_object.write(str(bval) + "\t")
+    File_object.close()
+    return bval_file
+
+
+def writebvec(bvecs, outpath, subject, writeformat = "line", overwrite=False):
+    
+    if os.path.isdir(outpath):
+        bvec_file = os.path.join(outpath, subject+"_bvals.txt")
+    else:
+        bvec_file = outpath
+    
+    if os.path.exists(bvec_file) and overwrite:
+        os.remove(bvec_file)
+
+    if writeformat=="dsi":
+        with open(bvec_file, 'w') as File_object:
+            for i in [0,1,2]:
+                for j in np.arange(np.shape(bvecs)[0]):
+                    if bvecs[j,i]==0:
+                        bvec=0
+                    else:
+                        bvec=round(bvecs[j,i],3)
+                    File_object.write(str(bvec)+"\t")
+                File_object.write("\n")
+            File_object.close()
+    else:
+        shutil.copyfile(bvecs[0], bvec_file)
+        
+    return bvec_file
+
+
+def writebfiles(bvals, bvecs, outpath, subject, writeformat = "line", overwrite=False):
+
+    bval_file = writebval(bvals, outpath, subject, writeformat = "line", overwrite=False)
+    bvec_file = writebvec(bvecs, outpath, subject, writeformat = "line", overwrite=False)
+    """
+    bvec_file = os.path.join(outpath, subject+"_bvecs.txt")
+    bval_file = os.path.join(outpath, subject+"_bvals.txt")
+
+    if (os.path.exists(bvec_file) or os.path.exists(bval_file)) and not overwrite:
+        print(f'Already written files at {bvec_file} or {bval_file}')
+        return bval_file, bvec_file
+
+    if os.path.exists(bvec_file) and overwrite:
+        os.remove(bvec_file)
+
+    if writeformat=="dsi":
+        with open(bvec_file, 'w') as File_object:
+            for i in [0,1,2]:
+                for j in np.arange(np.shape(bvecs)[0]):
+                    if bvecs[j,i]==0:
+                        bvec=0
+                    else:
+                        bvec=round(bvecs[j,i],3)
+                    File_object.write(str(bvec)+"\t")
+                File_object.write("\n")
+            File_object.close()
+    else:
+        shutil.copyfile(bvecs[0], bvec_file)
+
+    if os.path.exists(bval_file) and overwrite:
+        os.remove(bval_file)
+    File_object = open(bval_file, "w")
+    for bval in bvals:
+        if writeformat == "line":
+            File_object.write(str(bval) + "\n")
+        if writeformat == "tab":
+            File_object.write(str(bval) + "\t")
+        if writeformat == "dsi":
+            bval = int(round(bval))
+            File_object.write(str(bval) + "\t")
+    File_object.close()
+    """
+    return bval_file, bvec_file
+
+
+def writebfiles_old(subjectpath, subject, outpath = None, writeformat = "line", fbvals=None, fbvecs=None, overwrite=False):
     if outpath is None:
         outpath = subjectpath
     if fbvals is None or fbvecs is None:
@@ -551,6 +659,7 @@ def writebfiles(subjectpath, subject, outpath = None, writeformat = "line", fbva
     File_object.close()
     return bval_file, bvec_file
 
+
 def extractbvals_research(dwipath, subject, outpath=None, writeformat="tab", fix=True, overwrite=False):
 
     if os.path.isdir(dwipath):
@@ -572,7 +681,9 @@ def extractbvals_research(dwipath, subject, outpath=None, writeformat="tab", fix
                 if fix:
                     fix_bvals_bvecs(fbvals, fbvecs)
             else:
-                bval_file, bvec_file = writebfiles(subjectpath, subject, outpath, writeformat=writeformat)
+                bvals, bvecs = find_bval_bvecs(subjectpath)
+                bval_file, bvec_file = writebfiles(bvals, bvecs, outpath, subject, writeformat=writeformat,
+                                                   overwrite=overwrite)
                 if fix:
                     fbvals, fbvecs = fix_bvals_bvecs(bval_file, bvec_file)
         return fbvals, fbvecs
@@ -595,6 +706,7 @@ def extractbvals_research(dwipath, subject, outpath=None, writeformat="tab", fix
                                                                     save="all")
                 if fix:
                     fix_bvals_bvecs(fbvals, fbvecs)
+
 
 def extractbvals(dwipath, subject, outpath=None, writeformat="tab", fix=True, overwrite=False):
 
@@ -616,7 +728,8 @@ def extractbvals(dwipath, subject, outpath=None, writeformat="tab", fix=True, ov
                 fbvecs = fbvecs[0]
                 fix_bvals_bvecs(fbvals, fbvecs)
             else:
-                bval_file, bvec_file = writebfiles(subjectpath, subject, outpath, writeformat=writeformat)
+                bvals, bvecs = find_bval_bvecs(subjectpath)
+                bval_file, bvec_file = writebfiles(bvals, bvecs, outpath, subject, writeformat = writeformat, overwrite=overwrite)
                 if fix:
                     fbvals, fbvecs = fix_bvals_bvecs(bval_file, bvec_file)
         return fbvals, fbvecs
@@ -640,6 +753,7 @@ def extractbvals(dwipath, subject, outpath=None, writeformat="tab", fix=True, ov
                 if fix:
                     fix_bvals_bvecs(fbvals, fbvecs)
 
+
 def rewrite_subject_bvalues(dwipath, subject, outpath=None, writeformat="tab", overwrite=False):
 
     if os.path.isdir(dwipath):
@@ -660,7 +774,9 @@ def rewrite_subject_bvalues(dwipath, subject, outpath=None, writeformat="tab", o
                 fbvecs = fbvecs[0]
                 #fix_bvals_bvecs(fbvals, fbvecs)
             else:
-                bval_file, bvec_file = writebfiles(subjectpath, subject, outpath, writeformat=writeformat, overwrite=overwrite)
+                bvals, bvecs = find_bval_bvecs(subjectpath)
+                bval_file, bvec_file = writebfiles(bvals, bvecs, outpath, subject, writeformat = writeformat, overwrite=overwrite)
+                #bval_file, bvec_file = writebfiles(subjectpath, subject, outpath, writeformat=writeformat, overwrite=overwrite)
                 #fbvals, fbvecs = fix_bvals_bvecs(bval_file, bvec_file)
         return fbvals, fbvecs
 
@@ -683,7 +799,6 @@ def rewrite_subject_bvalues(dwipath, subject, outpath=None, writeformat="tab", o
                 fix_bvals_bvecs(fbvals, fbvecs)
 
 
-
 def checkbxh(source_file, verbose = False):
     bxhtype = None
     with open(source_file, 'rb') as source:
@@ -702,6 +817,7 @@ def checkbxh(source_file, verbose = False):
         bxhtype = "T1"
 
     return bxhtype
+
 
 def same_axis(first,second):
     if first==second:

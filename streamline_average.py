@@ -108,7 +108,7 @@ if project == 'AMD':
 
 #groups = ['Paired 2-YR AMD']
 #groups = ['Paired 2-YR Control']
-groups=[groups[0]]
+#groups=[groups[0]]
 group_toview = groups[0]
 
 if project == 'AD_Decode':
@@ -147,12 +147,14 @@ picklesave=True
 4 lingual_Right---Cerebellum-Cortex_Right 62 9 with weight of 980.1034
 5 fusiform_Left---Cerebellum-Cortex_Right 22 9 with weight of 978.3528
 """
-target_tuple = (28, 9)
-#target_tuple = (62, 1)
+#target_tuple = (28, 9)
+target_tuple = (62, 1)
 #target_tuple = (28, 1)
 #target_tuple = (62, 9)
 #target_tuple = (22, 9)
 #target_tuple = (30, 50) #The connectomes to check up on and create groupings clusters for
+
+target_tuple = (39,32)
 
 function_processes = parse_arguments_function(sys.argv)
 
@@ -286,6 +288,7 @@ for group in groups:
                 pickle.dump(groupPoints[group, ref], grouping_files[ref,'points'])
 
     else:
+        print(f'Centroid file was found at {centroid_file_path}')
         with open(centroid_file_path, 'rb') as f:
             group_clusters[group] = pickle.load(f)
         for ref in references:

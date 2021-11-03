@@ -3,7 +3,7 @@ import nibabel as nib
 import numpy as np
 import os, glob
 from dipy.io.gradients import read_bvals_bvecs
-from bvec_handler import fix_bvals_bvecs, checkbxh
+from bvec_handler import fix_bvals_bvecs, checkbxh, reorient_bvecs
 import pathlib
 from BIAC_tools import send_mail
 from dipy.core.gradients import gradient_table
@@ -246,12 +246,14 @@ def get_bvals_bvecs(mypath, subject):
     bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
     return bvals, bvecs
 
+
 def getgtab(mypath, subject, bvec_orient=[1,2,3]):
 
     bvals, bvecs = get_bvals_bvecs(mypath, subject)
-    bvec_sign = bvec_orient/np.abs(bvec_orient)
-    bvecs = np.c_[bvec_sign[0]*bvecs[:, np.abs(bvec_orient[0])-1], bvec_sign[1]*bvecs[:, np.abs(bvec_orient[1])-1],
-                  bvec_sign[2]*bvecs[:, np.abs(bvec_orient[2])-1]]
+    bvecs = reorient_bvecs(bvecs, bvec_orient)
+    #bvec_sign = bvec_orient/np.abs(bvec_orient)
+    #bvecs = np.c_[bvec_sign[0]*bvecs[:, np.abs(bvec_orient[0])-1], bvec_sign[1]*bvecs[:, np.abs(bvec_orient[1])-1],
+    #              bvec_sign[2]*bvecs[:, np.abs(bvec_orient[2])-1]]
 
     gtab = gradient_table(bvals, bvecs)
 

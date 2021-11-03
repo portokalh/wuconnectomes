@@ -143,7 +143,7 @@ duration1=time()
 overwrite = False
 get_params = False
 
-if overwrite:
+if overwrite:x
     print("WARNING: FORCESTART EMPLOYED. THIS WILL COPY OVER PREVIOUS DATA")
 picklesave = True
 

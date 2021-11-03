@@ -414,7 +414,7 @@ def makedir(dir):
         os.mkdir(dir)
 
 
-def connectivity_matrix_func(pruned_streamlines_SL, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = np.eye(4), inclusive= False, verbose=verbose):
+def connectivity_matrix_func(pruned_streamlines_SL, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = np.eye(4), inclusive= False, verbose=False):
 
     n = function_processes
     size_SL = np.size(pruned_streamlines_SL)
