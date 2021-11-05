@@ -222,7 +222,10 @@ for group in groups:
                                         return_mapping=True,
                                         mapping_as_streamlines=False)
                 else:
-                    M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= True, verbose=verbose)
+                    M, grouping_temp = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask,
+                                                                symmetric=True, mapping_as_streamlines=False,
+                                                                affine_streams=trkdata.space_attributes[0],
+                                                                inclusive=True, verbose=verbose)
                 M_grouping_excel_save(M,grouping_temp,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
 
                 if os.path.exists(grouping_xlsxpath):

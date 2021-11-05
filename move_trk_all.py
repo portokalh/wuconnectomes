@@ -27,24 +27,28 @@ computer_name = socket.gethostname()
 
 if computer_name == 'samos':
     main_path = '/mnt/paros_MRI/jacques/'
+elif 'santorini' in computer_name:
+	print('not implemented yet')
+	main_path = '/mnt/paros_MRI/jacques/'
 else:
     raise Exception('No other computer name yet')
 
 project = "AD_Decode"
 
 if project == "AD_Decode":
-    path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK')
-    path_DWI = os.path.join(main_path, 'AD_Decode', 'Analysis', 'DWI')
-    path_transforms = os.path.join(main_path, 'AD_Decode', 'Analysis','Transforms')
-    ref = "md"
-    path_trk_tempdir = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_save')
-    mkcdir(path_trk_tempdir)
+	path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK')
+	path_TRK_output = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_MDT')
+	path_DWI = os.path.join(main_path, 'AD_Decode', 'Analysis', 'DWI')
+	path_transforms = os.path.join(main_path, 'AD_Decode', 'Analysis','Transforms')
+	ref = "md"
+	path_trk_tempdir = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_save')
+	mkcdir([path_trk_tempdir,path_TRK_output])
 
     #Get the values from DTC_launcher_ADDecode. Should probalby create a single parameter file for each project one day
-    stepsize = 2
-    ratio = 1
-    trkroi = ["wholebrain"]
-    str_identifier = get_str_identifier(stepsize, ratio, trkroi)
+	stepsize = 2
+	ratio = 1
+	trkroi = ["wholebrain"]
+	str_identifier = get_str_identifier(stepsize, ratio, trkroi)
 
 overwrite = False
 cleanup = False
@@ -59,7 +63,10 @@ orientation_in = orient_relative.split(',')[1]
 orientation_in = orientation_in.split(':')[1]
 
 for subj in subjects:
-	trk_MDT_space = os.path.join(path_TRK, f'{subj}_MDT.trk')
+	subj_trk, _ = gettrkpath(path_TRK, subj, str_identifier, pruned=True, verbose=verbose)
+	trkname = os.path.basename(subj_trk)
+	trk_MDT_space = os.path.join(path_TRK_output, trkname)
+	print(f'Beginning the process to transfer trk file {subj_trk} to {trk_MDT_space}')
 	if not os.path.exists(trk_MDT_space) or overwrite:
 
 		reference = os.path.join(path_DWI, f'{subj}_reference{ext}')

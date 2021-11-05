@@ -1067,6 +1067,8 @@ def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processe
     diff_data, affine, gtab, vox_size, fdiffpath, header, ref_info = getdiffdata_all(diffpath, subject, bvec_orient, denoise=denoise, verbose=verbose)
     #fdiffpath = getdiffpath(diffpath, subject, denoise=denoise, verbose=verbose)
 
+    if masktype == 'subjspace':
+        mask, _ = getmask(diffpath, subject, "subjspace", verbose)
     if masktype == "dwi":
         mask, _ = getmask(diffpath,subject, "subjspace", verbose)
         if mask is None:
