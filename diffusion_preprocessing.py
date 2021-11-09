@@ -31,7 +31,9 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
 
     sbatch_folder =os.path.join(work_dir,"sbatch")
     mkcdir(sbatch_folder)
-
+    nii_path = os.path.join(work_dir,'nii4D_'+subj + '.nii.gz')
+    if not os.path.exists(nii_path):
+        shutil.copy(raw_nii, nii_path)
     nii_name=os.path.split(raw_nii)[1]
     niifolder = os.path.dirname(raw_nii)
     ext = ".nii.gz"
