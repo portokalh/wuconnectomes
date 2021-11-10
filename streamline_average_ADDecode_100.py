@@ -70,13 +70,21 @@ if project=='AD_Decode':
     mainpath=os.path.join(mainpath,project,'Analysis')
 else:
     mainpath = os.path.join(mainpath, project)
-TRK_folder = os.path.join(mainpath, 'TRK_MPCA_MDT_fixed')
+
+ratio = 100
+ratio_str = ratio_to_str(ratio)
+if ratio_str == 'all':
+    ratio_str = ''
+else:
+    ratio_str = ratio_str.replace('_ratio','')
+
+TRK_folder = os.path.join(mainpath, 'TRK_MPCA_MDT_fixed'+ratio_str)
 label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
-figures_folder = os.path.join(mainpath, 'Figures_MDT')
-pickle_folder = os.path.join(mainpath, 'Pickle_MDT')
-centroid_folder = os.path.join(mainpath, 'Centroids_MDT')
-excel_folder = os.path.join(mainpath, 'Excels_MDT')
+figures_folder = os.path.join(mainpath, 'Figures_MDT'+ratio_str)
+pickle_folder = os.path.join(mainpath, 'Pickle_MDT'+ratio_str)
+centroid_folder = os.path.join(mainpath, 'Centroids_MDT'+ratio_str)
+excel_folder = os.path.join(mainpath, 'Excels_MDT'+ratio_str)
 mkcdir([figures_folder, pickle_folder, centroid_folder, excel_folder])
 if not os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
@@ -120,10 +128,10 @@ for group in groups:
 
 
 #Setting identification parameters for ratio, labeling type, etc
-ratio = 1
+
 ratio_str = ratio_to_str(ratio)
 str_identifier = '_MDT'+ratio_str
-str_identifier = '_stepsize_2_all_wholebrain_pruned'
+str_identifier = '_stepsize_2'+ratio_str+'_wholebrain_pruned'
 labeltype = 'lrordered'
 verbose=True
 picklesave=True
@@ -136,7 +144,7 @@ picklesave=True
     '5 fusiform_Left---Cerebellum-Cortex_Left 22 1 with weight of 402.0991\n'
 """
 target_tuple = (9, 1)
-target_tuple = (64, 57)
+#target_tuple = (64, 57)
 #target_tuple = (24, 1)
 #target_tuple = (58, 57)
 #target_tuple = (64, 57)
