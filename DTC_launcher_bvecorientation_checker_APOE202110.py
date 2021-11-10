@@ -19,7 +19,7 @@ from BIAC_tools import send_mail
 from Daemonprocess import MyPool
 from argument_tools import parse_arguments
 from file_tools import mkcdir
-
+import sys
 
 def orient_to_str(bvec_orient):
     mystr=""
@@ -42,7 +42,7 @@ def orient_to_str(bvec_orient):
     return mystr
 
 l = ['N57500']
-
+l = ['N58651']
 
 subject_processes, function_processes = parse_arguments(sys.argv, l)
 
@@ -51,7 +51,7 @@ subject_processes, function_processes = parse_arguments(sys.argv, l)
 
 main_folder = "/Users/alex/jacques/APOE_temp/"
 atlas_legends = "/Volumes/Data/Badea/Lab/atlases/CHASSSYMM3AtlasLegends.xlsx"
-samos = False
+samos = True
 if samos:
     main_folder = "/mnt/paros_MRI/jacques/APOE/"
     atlas_legends = "/mnt/paros_MRI/jacques/atlases/CHASSSYMM3AtlasLegends.xlsx"
@@ -60,9 +60,9 @@ dwipath_preprocessed = os.path.join(main_folder,"diff_whiston_preprocessed")
 dwipath = os.path.join(main_folder,'DWI_allsubj')
 outtrkpath = os.path.join(main_folder,'TRK_bvecs')
 figspath = os.path.join(main_folder,"Figures_RAS_allsubj_lr")
-txtpath = os.path.join(main_folder, )
+txtpath = os.path.join(main_folder, "Parameters")
 
-mkcdir([outtrkpath,figspath])
+mkcdir([outtrkpath,figspath,txtpath])
 
 outpathpickle = figspath
 
@@ -192,12 +192,15 @@ if subject_processes>1:
     pool.close()
 else:
     for subject in l:
-        txtfile = dwipath + subject + "/params.txt"
+        txtfile = os.path.join(txtpath, subject+"_" + "params.txt")
+        with open(txtfile, 'a') as fi:
+            fi.write("Parameters for subject %s \n" % subject)
         for bvec_orient in bvec_orient_list:
             tract_results = []
             print(bvec_orient)
             strproperty = orient_to_str(bvec_orient)
-            tract_results.append(create_tracts(dwipath, outtrkpath, subject, figspath, stepsize, function_processes, str_identifier,
+            print(f'this is the strproperty {strproperty}')
+            tract_results.append(create_tracts(dwipath, outtrkpath, subject, figspath, stepsize, function_processes, strproperty,
                                               ratio, brainmask, classifiertype, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
                                            verbose))
             print(tract_results)

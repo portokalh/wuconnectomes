@@ -672,6 +672,8 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         txt = ("The excelfile was saved at "+grouping_xlsxpath)
         send_mail(txt, subject="Excel save")
         print(txt)
+    
+    del(M, grouping,pruned_streamlines_SL)
 
 
 def tract_connectome_analysis_pickle(dwipath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype="T1",

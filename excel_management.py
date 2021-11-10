@@ -155,7 +155,13 @@ def extract_grouping(grouping_path, index_to_struct, shape=None, verbose=False):
             liststring = liststring.replace('[','')
             liststring = liststring.replace(']','')
             liststring = (liststring.split(','))
-            if liststring[0] != '':
+            #print(liststring[-1])
+            #liststring.pop(-1)
+            if liststring[0] != '' and liststring[0] != ' ':
+                try:
+                    int(liststring[-1])
+                except ValueError:
+                    liststring = liststring[:-1]
                 liststring = [int(i) for i in liststring]
             else:
                 liststring = []

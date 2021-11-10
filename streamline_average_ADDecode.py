@@ -50,7 +50,7 @@ distance2 = 2
 feature2 = ResampleFeature(nb_points=num_points2)
 metric2 = AveragePointwiseEuclideanMetric(feature=feature2)
 
-project = 'AMD'
+project = 'AD_Decode'
 
 huma_projects = ''
 hostname = socket.gethostname()
@@ -66,8 +66,11 @@ elif 'santorini' in hostname:
 else:
     print(f'no option for {hostname}')
 
-mainpath = os.path.join(mainpath, project)
-TRK_folder = os.path.join(mainpath, 'TRK_MDT')
+if project=='AD_Decode':
+    mainpath=os.path.join(mainpath,project,'Analysis')
+else:
+    mainpath = os.path.join(mainpath, project)
+TRK_folder = os.path.join(mainpath, 'TRK_MPCA_MDT_fixed')
 label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
 figures_folder = os.path.join(mainpath, 'Figures_MDT')
@@ -94,7 +97,7 @@ group_qb = {}
 group_clusters = {}
 groups_subjects = {}
 
-if project == 'AMD':
+if project == 'AD_Decode':
     groups_subjects['APO3'] = ['S02402','S02266','S02720','S02812','S02373','S02231','S02410','S01912','S02451','S02485','S02473','S02506','S02524','S02535','S02686','S02695','S02753','S02765','S02804','S02817','S02842','S02871','S02926','S02938','S02939','S02967','S02320','S02110','S02289','S03017','S03010','S02987','S02227','S03033','S03034','S03069']
     groups_subjects['APOE4']= ['S02363','S02386','S02421','S02424','S02446','S02491','S02654','S02666','S02690','S02715','S02737','S02771','S02781','S02802','S02813','S02840','S02224','S02877','S02898','S02954','S02361','S02390','S02670','S03045','S03048']
     #groups to go through
@@ -105,8 +108,6 @@ if project == 'AMD':
 #groups=[groups[0]]
 group_toview = groups[0]
 
-if project == 'AD_Decode':
-    raise Exception('not implemented')
 
 if project == 'APOE':
     raise Exception('not implemented')
@@ -119,7 +120,7 @@ for group in groups:
 
 
 #Setting identification parameters for ratio, labeling type, etc
-ratio = 100
+ratio = 1
 ratio_str = ratio_to_str(ratio)
 str_identifier = '_MDT'+ratio_str
 labeltype = 'lrordered'

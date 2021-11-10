@@ -297,6 +297,7 @@ def getlabelmask(mypath, subject, verbose=None):
 
 
     labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
+    print(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
     if np.size(labelsoption)>0:
         labelspath = labelsoption[0]
     labelsoption = glob.glob(mypath + '/*' + subject + '*labels.nii.gz')

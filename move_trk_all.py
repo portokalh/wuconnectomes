@@ -18,10 +18,16 @@ from tract_handler import gettrkpath
 from tract_manager import get_str_identifier
 from file_tools import mkcdir, check_files
 
-subjects = ["S02654", "S02666",  "S02670",  "S02686", "S02690", "S02695", "S02720", "S02737", "S02753", "S02765", "S02771", "S02781", "S02802",
-                "S02804", "S02813", "S02817", "S02840", "S02877", "S02898", "S02926", "S02938", "S02939", "S02954", "S02967",
-                "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048"]
-# "S02715",
+subjects = ["S02654", "S02666",  "S02670",  "S02686", "S02695", "S02720", "S02737", "S02753", "S02765", "S02781", "S02802", "S02813", "S02817", "S02840", "S02877", "S02898", "S02926", "S02938", "S02939", "S02954", "S02967",
+                "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048","S01912", "S02110", "S02224", "S02227", "S02231", "S02266", "S02289", "S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02491", "S02506"]
+subjects = ["S03010", "S03017", "S03033", "S03034", "S03045", "S03048","S01912", "S02110", "S02224", "S02227", "S02231", "S02266", "S02289", "S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02491", "S02506"]
+subjects = ["S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02491", "S02506"]
+subjects= ["S02802", "S02813", "S02817", "S02840", "S02877", "S02898", "S02926", "S02938", "S02939", "S02954", "S02967",
+                "S02987"]
+#subjects = ["S02231"]
+#subjects = ["S02938", "S02939", "S02954", "S02967",
+#                "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048","S01912", "S02110", "S02224", "S02227", "S02231", "S02266", "S02289", "S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02491", "S02506"]
+# "S02715", S02690, S027701. S02926, S02804
 ext = ".nii.gz"
 computer_name = socket.gethostname()
 
@@ -36,8 +42,8 @@ else:
 project = "AD_Decode"
 
 if project == "AD_Decode":
-	path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK')
-	path_TRK_output = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_MDT')
+	path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_test')
+	path_TRK_output = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_MDT_test')
 	path_DWI = os.path.join(main_path, 'AD_Decode', 'Analysis', 'DWI')
 	path_transforms = os.path.join(main_path, 'AD_Decode', 'Analysis','Transforms')
 	ref = "md"
@@ -64,17 +70,22 @@ orientation_in = orientation_in.split(':')[1]
 
 for subj in subjects:
 	subj_trk, _ = gettrkpath(path_TRK, subj, str_identifier, pruned=True, verbose=verbose)
+	#if not os.path.exists(subj_trk):
+	#	print(f'could not find {subj_trk}, skipping')
+	#continue
 	trkname = os.path.basename(subj_trk)
 	trk_MDT_space = os.path.join(path_TRK_output, trkname)
 	print(f'Beginning the process to transfer trk file {subj_trk} to {trk_MDT_space}')
 	if not os.path.exists(trk_MDT_space) or overwrite:
-
 		reference = os.path.join(path_DWI, f'{subj}_reference{ext}')
 		subj_dwi = os.path.join(path_DWI, f'{subj}_subjspace_dwi{ext}')
 
 		SAMBA_input_real_file =  os.path.join(path_DWI, f'{subj}_dwi{ext}')
 
 		subj_trk, _ = gettrkpath(path_TRK, subj, str_identifier, pruned=True, verbose=verbose)
+		if not os.path.exists(subj_trk):
+			print(f'could not find {subj_trk}, skipping')
+			continue
 		trk_filepath_tmp2 = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_tmp2.trk')
 		inputS_trk_new = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_SAMBA_input.trk')
 		trk_preprocess = os.path.join(path_trk_tempdir, f'{subj}_preprocess_direct.trk')
