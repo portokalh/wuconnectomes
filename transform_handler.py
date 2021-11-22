@@ -12,6 +12,7 @@ from nifti_handler import extract_nii_info
 from streamline_nocheck import load_trk
 from dipy.tracking.streamline import transform_streamlines
 
+
 def header_superpose(target_path, origin_path, outpath=None, verbose=False):
     target_nii=nib.load(target_path)
     origin_nii=nib.load(origin_path)
@@ -30,7 +31,8 @@ def header_superpose(target_path, origin_path, outpath=None, verbose=False):
             if verbose:
                 print(f'Saved')
 
-def get_affine_transform(target_path, origin_path, verbose=False):
+
+def get_affine_transform_nii(target_path, origin_path, verbose=False):
 
     target_nii=nib.load(target_path)
     origin_nii=nib.load(origin_path)
@@ -39,10 +41,21 @@ def get_affine_transform(target_path, origin_path, verbose=False):
     else:
         target_affine=target_nii._affine
         origin_affine=origin_nii._affine
-        transform_affine = np.eye(4)
-        transform_affine[:3,:3] = np.dot(target_affine[:3,:3], np.linalg.inv(origin_affine[:3,:3]))
-        transform_affine[:3,3] = origin_affine[:3,3]-target_affine[:3,3]
-        return transform_affine
+        return get_affine_transform(origin_affine,target_affine)
+
+
+def get_affine_transform(origin_affine, target_affine):
+
+    transform_affine = np.eye(4)
+    transform_affine[:3,:3] = np.dot(np.linalg.inv(origin_affine[:3,:3]), target_affine[:3,:3])
+    transform_affine[:3,3] = origin_affine[:3,3]-target_affine[:3,3]
+    return transform_affine
+
+def get_affine_transform_test(origin_affine, target_affine):
+
+    transform_affine = np.dot(np.linalg.inv(origin_affine), target_affine)
+    return transform_affine
+
 
 def transform_image(target_path, origin_path, outpath=None):
     target_nii=nib.load(target_path)
@@ -58,6 +71,7 @@ def transform_image(target_path, origin_path, outpath=None):
                 outpath = origin_path
             nib.save(new_nii, outpath)
 
+
 def read_affine_txt(path, dimension = 3):
     if os.path.exists(path):
         with open(path, 'r') as f:
@@ -72,9 +86,6 @@ def read_affine_txt(path, dimension = 3):
         return(array)
     else:
         raise Exception(f'Unrecognized path {path}')
-
-
-
 
 
 def header_superpose_trk(target_path, origin_path, outpath=None):
@@ -134,6 +145,7 @@ def header_superpose_trk(target_path, origin_path, outpath=None):
             save_trk_heavy_duty(outpath, streamlines=trkstreamlines,
                                 affine=target_affine, header=myheader)
 
+
 def affine_superpose(target_path, origin_path, outpath=None, transpose=None):
     target_nii=nib.load(target_path)
     origin_nii=nib.load(origin_path)
@@ -154,6 +166,7 @@ def affine_superpose(target_path, origin_path, outpath=None, transpose=None):
         else:
             return 0
 
+
 def space_transpose(origin_path, transpose=[0,0,0], outpath=None):
     if outpath is None:
         outpath = origin_path
@@ -168,6 +181,7 @@ def get_transpose(img):
     transpose = chass_sym_nii[:3, 3]
     return transpose
 
+
 def recenter_affine(shape, affine, return_translation = False):
 
     origin=np.round([val/2 for val in shape])
@@ -178,6 +192,8 @@ def recenter_affine(shape, affine, return_translation = False):
 
     newaffine[0:3,0:3]=affine[0:3,0:3]
     newaffine[3,:]=affine[3,:]
+
+    trueorigin = np.matmul(newaffine[0:3,0:3],trueorigin)
     newaffine[:3,3]=trueorigin
 
     if return_translation:
@@ -187,6 +203,40 @@ def recenter_affine(shape, affine, return_translation = False):
         return newaffine, translation, translation_mat
     else:
         return newaffine
+
+
+def recenter_affine_test(shape, affine, return_translation = False):
+
+    origin=np.round([val/2 for val in shape])
+    origin=origin[0:3]
+    trueorigin=-origin
+
+    newaffine=np.zeros([4,4])
+
+    newaffine[0:3,0:3]=affine[0:3,0:3]
+    newaffine[3,:]=affine[3,:]
+
+    #trueorigin = np.matmul(newaffine[0:3,0:3],trueorigin)
+
+    signs = np.sign([newaffine[0, 0], newaffine[1, 1], newaffine[2, 2]])
+    trueorigin = signs * trueorigin
+    newaffine = np.eye(4)
+    newaffine[0,0] = signs[0]
+    newaffine[1,1] = signs[1]
+    newaffine[2,2] = signs[2]
+    dct = {-1: 0, 1: 1}
+    trueorigin = trueorigin+[*map(dct.get, signs)]
+
+    newaffine[:3,3]=trueorigin
+
+    if return_translation:
+        translation = trueorigin - affine[3,0:3]
+        translation_mat = np.eye(4)
+        translation_mat[:3, 3] = translation
+        return newaffine, translation, translation_mat
+    else:
+        return newaffine
+
 
 def recenter_nii_affine(img, return_translation = False):
 
@@ -208,6 +258,7 @@ def recenter_nii_affine(img, return_translation = False):
         newaffine = recenter_affine(np.shape(nii_data),affine, return_translation=False)
         return newaffine
 
+
 def convert_ants_vals_to_affine(ants_vals):
     if np.size(ants_vals)==12:
         affine_mat = np.eye(4)
@@ -218,6 +269,7 @@ def convert_ants_vals_to_affine(ants_vals):
         negative_mat[2,:2] = -1
         affine_mat = np.multiply(affine_mat, negative_mat) ## WHY THE F DO WE NEED TO DO THAT!!! WHAT IS ANTS DOOIIIING XD
     return(affine_mat)
+
 
 def recenter_nii_save(img, output_path, return_translation = False, verbose=False):
 
@@ -233,14 +285,97 @@ def recenter_nii_save(img, output_path, return_translation = False, verbose=Fals
     affine = nii._affine
 
     newaffine = recenter_affine(np.shape(nii_data),affine)
-
-    new_nii=nib.Nifti1Image(nii_data, newaffine, nii.header)
+    new_nii=nib.Nifti1Image(nii_data, newaffine)
     output_path = str(output_path)
     if verbose:
         print(f'Saving nifti file to {output_path}')
     nib.save(new_nii, output_path)
     if verbose:
         print(f'Saved')
+
+
+def recenter_nii_save_pure(img, output_path, return_translation = False, verbose=False):
+
+    if not os.path.exists(img):
+        raise('Nifti img file does not exists')
+
+    try:
+        nii = nib.load(img)
+    except:
+        raise('Could not load img at '+img)
+
+    nii_data = nii.get_data()
+    affine = nii._affine
+
+    newaffine = np.eye(4)
+
+    new_nii=nib.Nifti1Image(nii_data, newaffine)
+    output_path = str(output_path)
+    if verbose:
+        print(f'Saving nifti file to {output_path}')
+    nib.save(new_nii, output_path)
+    if verbose:
+        print(f'Saved')
+
+
+def recenter_nii_save_test(img, output_path, return_translation = False, verbose=False):
+
+    if not os.path.exists(img):
+        raise('Nifti img file does not exists')
+
+    try:
+        nii = nib.load(img)
+    except:
+        raise('Could not load img at '+img)
+
+    nii_data = nii.get_data()
+    affine = nii._affine
+
+    newaffine = recenter_affine_test(np.shape(nii_data),affine)
+    new_nii=nib.Nifti1Image(nii_data, newaffine)
+    output_path = str(output_path)
+    if verbose:
+        print(f'Saving nifti file to {output_path}')
+    nib.save(new_nii, output_path)
+    if verbose:
+        print(f'Saved')
+
+"""
+def recenter_nii_save_test(img, output_path, return_translation=False, verbose=False):
+
+    if not os.path.exists(img):
+        raise ('Nifti img file does not exists')
+
+    try:
+        nii = nib.load(img)
+    except:
+        raise ('Could not load img at ' + img)
+
+    nii_data = nii.get_data()
+    affine = nii._affine
+
+    newaffine = recenter_affine(np.shape(nii_data), affine)
+    test_affine = np.eye(4)
+    test_affine[:3, 3] = newaffine[:3, 3]
+    xform = np.eye(4) * 1
+    xform[:3, :3] = affine[:3, :3]
+    signs = np.sign([newaffine[0, 0], newaffine[1, 1], newaffine[2, 2]])
+    dct = {1: 0, -1: -2}
+    signs = [*map(dct.get, signs)]
+    neworigin = signs * newaffine[:3, 3] + [1,1,0]
+    xform[:3, 3] = neworigin
+    xform[:3, :3] = np.eye(3)
+    xform[0,0] = -1
+    xform[1,1] = -1
+    new_nii = nib.Nifti1Image(nii_data, xform)
+    output_path = str(output_path)
+    if verbose:
+        print(f'Saving nifti file to {output_path}')
+    nib.save(new_nii, output_path)
+    if verbose:
+        print(f'Saved')
+"""
+
 
 def add_translation(img, output_path, translation, verbose):
 
@@ -264,6 +399,7 @@ def add_translation(img, output_path, translation, verbose):
     nib.save(new_nii, output_path)
     if verbose:
         print(f'Saved')
+
 
 def img_transform_exec(img, current_vorder, desired_vorder, output_path=None, write_transform=0, verbose=False):
 
@@ -462,6 +598,7 @@ def img_transform_exec(img, current_vorder, desired_vorder, output_path=None, wr
     hdr_target = nib_test_target._header
     print('hi')
     """
+
 
 def new_voxels_filename(filename, current_vorder, desired_vorder):
 

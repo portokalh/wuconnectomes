@@ -1,6 +1,6 @@
 import os
 from transform_handler import get_affine_transform, get_flip_affine, header_superpose, recenter_nii_affine, \
-    convert_ants_vals_to_affine, read_affine_txt
+    convert_ants_vals_to_affine, read_affine_txt, recenter_nii_save, add_translation
 import shutil
 import nibabel as nib
 import numpy as np
@@ -32,34 +32,37 @@ ext = ".nii.gz"
 computer_name = socket.gethostname()
 
 if computer_name == 'samos':
-    main_path = '/mnt/paros_MRI/jacques/'
+	main_path = '/Volumes/Data/Badea/'
 elif 'santorini' in computer_name:
-	print('not implemented yet')
-	main_path = '/mnt/paros_MRI/jacques/'
+	main_path = '/Volumes/Data/Badea/Lab/human/'
 else:
-    raise Exception('No other computer name yet')
+	raise Exception('No other computer name yet')
 
 project = "AD_Decode"
 
 if project == "AD_Decode":
-	path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_test')
-	path_TRK_output = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_MDT_test')
+	path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_100')
+	path_TRK_output = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_MDT_100')
 	path_DWI = os.path.join(main_path, 'AD_Decode', 'Analysis', 'DWI')
 	path_transforms = os.path.join(main_path, 'AD_Decode', 'Analysis','Transforms')
 	ref = "md"
 	path_trk_tempdir = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_save')
-	mkcdir([path_trk_tempdir,path_TRK_output])
+	DWI_save = os.path.join(main_path, 'AD_Decode', 'Analysis', 'NII_tempsave')
 
-    #Get the values from DTC_launcher_ADDecode. Should probalby create a single parameter file for each project one day
+	mkcdir([path_trk_tempdir,path_TRK_output, DWI_save])
+	#Get the values from DTC_launcher_ADDecode. Should probalby create a single parameter file for each project one day
 	stepsize = 2
-	ratio = 1
+	ratio = 100
 	trkroi = ["wholebrain"]
 	str_identifier = get_str_identifier(stepsize, ratio, trkroi)
 
-overwrite = False
+overwrite = True
 cleanup = False
 verbose=True
-recenter=0
+save_temp_files = True
+recenter=1
+contrast='dwi'
+native_ref=''
 
 orient_string = os.path.join(path_DWI, 'relative_orientation.txt')
 orient_relative = open(orient_string, mode='r').read()
@@ -68,6 +71,8 @@ orientation_out = orientation_out.split(':')[1]
 orientation_in = orient_relative.split(',')[1]
 orientation_in = orientation_in.split(':')[1]
 
+nii_test_files = 1
+
 for subj in subjects:
 	subj_trk, _ = gettrkpath(path_TRK, subj, str_identifier, pruned=True, verbose=verbose)
 	#if not os.path.exists(subj_trk):
@@ -75,7 +80,49 @@ for subj in subjects:
 	#continue
 	trkname = os.path.basename(subj_trk)
 	trk_MDT_space = os.path.join(path_TRK_output, trkname)
+
+	trans = os.path.join(path_transforms, f"{subj}_0DerivedInitialMovingTranslation.mat")
+	rigid = os.path.join(path_transforms, f"{subj}_rigid.mat")
+	affine = os.path.join(path_transforms, f"{subj}_affine.txt")
+	affine_orig = os.path.join(path_transforms, f"{subj}_affine.mat")
+	runno_to_MDT = os.path.join(path_transforms, f'{subj}_to_MDT_warp.nii.gz')
+
 	print(f'Beginning the process to transfer trk file {subj_trk} to {trk_MDT_space}')
+
+	if nii_test_files:
+		mkcdir(DWI_save)
+		#SAMBA_preprocess = os.path.join(DWI_save, f'{subj}_{contrast}_masked{ext}')
+		SAMBA_preprocess = os.path.join(path_DWI, f'{subj}_{contrast}{ext}')
+		if recenter:
+			SAMBA_preprocess_recentered_1 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_recenter_1{ext}')
+			recenter_nii_save(SAMBA_preprocess, SAMBA_preprocess_recentered_1, verbose=True)
+			#SAMBA_preprocess_recentered_2 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_recenter_2{ext}')
+			#add_translation(SAMBA_preprocess_recentered_1, SAMBA_preprocess_recentered_2, translation=[0, 0, -33],
+			#				verbose=True)
+			SAMBA_preprocess = SAMBA_preprocess_recentered_1
+		SAMBA_preprocess_test_posttrans = os.path.join(DWI_save, f'{subj}_{contrast}_masked_posttrans{ext}')
+		SAMBA_preprocess_test_rigid = os.path.join(DWI_save, f'{subj}_{contrast}_postrigid{ext}')
+		SAMBA_preprocess_test_rigid_affine = os.path.join(DWI_save, f'{subj}_{contrast}_postrigid_affine{ext}')
+		SAMBA_preprocess_test_postwarp = os.path.join(DWI_save, f'{subj}_{contrast}_postwarp{ext}')
+		if native_ref == '':
+			native_ref = SAMBA_preprocess
+		if not os.path.exists(SAMBA_preprocess_test_postwarp) or overwrite:
+			cmd = f'antsApplyTransforms -v 1 -d 3  -i {SAMBA_preprocess} -r {native_ref}  -n Linear  -o {SAMBA_preprocess_test_posttrans} -t {trans}'
+			os.system(cmd)
+
+			cmd = f'antsApplyTransforms -v 1 --float -d 3 -i {SAMBA_preprocess_test_posttrans} -o {SAMBA_preprocess_test_rigid} ' \
+				f'-r {native_ref} -n Linear -t [{rigid},0]'
+			os.system(cmd)
+
+			cmd = f'antsApplyTransforms -v 1 --float -d 3 -i {SAMBA_preprocess_test_rigid} -o {SAMBA_preprocess_test_rigid_affine} ' \
+				f'-r {native_ref} -n Linear -t [{affine_orig},0]'
+			os.system(cmd)
+
+			cmd = f'antsApplyTransforms -v 1 --float -d 3 -i {SAMBA_preprocess_test_rigid_affine} -o {SAMBA_preprocess_test_postwarp} ' \
+				f'-r {native_ref} -n Linear -t {runno_to_MDT}'
+			os.system(cmd)
+
+	overwrite = True
 	if not os.path.exists(trk_MDT_space) or overwrite:
 		reference = os.path.join(path_DWI, f'{subj}_reference{ext}')
 		subj_dwi = os.path.join(path_DWI, f'{subj}_subjspace_dwi{ext}')
@@ -97,17 +144,11 @@ for subj in subjects:
 		#rigid = os.path.join(work_dir, "dwi", f"{subj}_rigid.mat")
 		#affine = os.path.join(work_dir, "dwi", f"{subj}_affine.mat")
 		#runno_to_MDT = os.path.join(work_dir, f'dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_diffeo/{subj}_to_MDT_warp.nii.gz')
-		trans = os.path.join(path_transforms, f"{subj}_0DerivedInitialMovingTranslation.mat")
-		rigid = os.path.join(path_transforms, f"{subj}_rigid.mat")
-		affine = os.path.join(path_transforms, f"{subj}_affine.mat")
-		runno_to_MDT = os.path.join(path_transforms, f'{subj}_to_MDT_warp.nii.gz')
+
 
 		_, exists = check_files([trans, rigid, affine, runno_to_MDT])
 		if np.any(exists==0):
 		    raise Exception('missing transform file')
-
-		save_temp_files = False
-		overwrite = False
 
 		affine_map_test = get_affine_transform(reference, subj_dwi)
 		streamlines, header = unload_trk(subj_trk)

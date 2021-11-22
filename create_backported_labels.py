@@ -7,6 +7,7 @@ from file_tools import mkcdir, check_files
 import glob
 import warnings
 import shutil
+import numpy as np
 
 
 def get_info_SAMBA_headfile(SAMBA_headfile, verbose=False):
@@ -50,6 +51,7 @@ def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_l
     #atlas_labels = "/Volumes/Data/Badea/Lab/atlas/IITmean_RPI/IITmean_RPI_labels.nii.gz"
 
     out_dir = os.path.join(mainpath, f"{project_name}-results","connectomics",subject)
+    mkcdir(out_dir)
     work_dir = os.path.join(mainpath, f"{project_name}-work")
     dirty_dir = os.path.join(mainpath,"burn_after_reading")
     mkcdir(dirty_dir)
@@ -77,6 +79,10 @@ def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_l
 
     #final_ref = f"/mnt/munin6/Badea/Lab/human/AD_Decode/diffusion_prep_locale/diffusion_prep_{subject}/Reg_LPCA_{subject}_nii4D.nii.gz";
     orient_string = os.path.join(prep_folder, f'{subject}_relative_orientation.txt')
+    if not os.path.exists(orient_string):
+        orient_strings = glob.glob(os.path.join(prep_folder, f'*_relative_orientation.txt'))
+        if np.size(orient_strings)>0:
+            orient_string = orient_strings[0]
     if os.path.exists(orient_string):
         orient_relative = open(orient_string, mode='r').read()
         orientation_out = orient_relative.split(',')[0]

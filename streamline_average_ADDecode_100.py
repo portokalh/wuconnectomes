@@ -61,7 +61,7 @@ if 'samos' in hostname:
     mainpath = '/mnt/paros_MRI/jacques/'
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 elif 'santorini' in hostname:
-    mainpath = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis_MDT/'
+    mainpath = '/Volumes/Data/Badea/Lab/human'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 else:
     print(f'no option for {hostname}')
@@ -155,7 +155,7 @@ target_tuple = (9, 1)
 
 function_processes = parse_arguments_function(sys.argv)
 
-overwrite=True
+overwrite=False
 
 """
 labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,

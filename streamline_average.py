@@ -158,7 +158,8 @@ target_tuple = (62, 1)
 #target_tuple = (22, 9)
 #target_tuple = (30, 50) #The connectomes to check up on and create groupings clusters for
 
-target_tuple = (39,32)
+target_tuple = (9,1)
+target_tuple = (24, 1)
 
 function_processes = parse_arguments_function(sys.argv)
 
