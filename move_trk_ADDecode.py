@@ -25,6 +25,7 @@ subjects = ["S03010", "S03017", "S03033", "S03034", "S03045", "S03048","S01912",
 subjects = ["S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02491", "S02506"]
 subjects= ["S02802", "S02813", "S02817", "S02840", "S02877", "S02898", "S02926", "S02938", "S02939", "S02954", "S02967",
                 "S02987"]
+subjects = ["S02802"]
 #subjects = ["S02938", "S02939", "S02954", "S02967",
 #                "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048","S01912", "S02110", "S02224", "S02227", "S02231", "S02266", "S02289", "S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02491", "S02506"]
 # "S02715", S02690, S027701. S02926, S02804
@@ -71,7 +72,7 @@ orientation_out = orientation_out.split(':')[1]
 orientation_in = orient_relative.split(',')[1]
 orientation_in = orientation_in.split(':')[1]
 
-nii_test_files = 1
+nii_test_files = 0
 
 for subj in subjects:
     subj_trk, _ = gettrkpath(path_TRK, subj, str_identifier, pruned=True, verbose=verbose)
@@ -83,6 +84,7 @@ for subj in subjects:
     trkname = os.path.basename(subj_trk)
     trk_MDT_space = os.path.join(path_TRK_output, trkname)
 
+    #preprocess_target = os.path.join(path_DWI,{subj}+'_dwi_masked.nii.gz')
     trans = os.path.join(path_transforms, f"{subj}_0DerivedInitialMovingTranslation.mat")
     rigid = os.path.join(path_transforms, f"{subj}_rigid.mat")
     affine = os.path.join(path_transforms, f"{subj}_affine.txt")
@@ -175,6 +177,7 @@ for subj in subjects:
 
         subj_torecenter_transform_affine = get_affine_transform_test(subj_affine, subj_affine_new)
         added_trans = subj_affine[:3, 3] + np.multiply(preprocess_affine[:3, 3], [1,1,-1]) + [-1,-1,0]
+        added_trans = subj_affine[:3, 3] + np.multiply(subjtorecenter_affine[:3, 3], [-1,-1,-1])
         subj_torecenter_transform_affine[:3, 3] = reorient_trans + added_trans
 
         #subj_torecenter_transform_affine_test = get_affine_transform_test(subj_affine, preprocess_affine)
@@ -191,6 +194,7 @@ for subj in subjects:
         streamlines, header = unload_trk(subj_trk)
         #subj_tocenter_streamlines = transform_streamlines(streamlines, np.linalg.inv(subj_torecenter_transform_affine), in_place=False)
 
+        print(subj_affine_new_trk)
         subj_eye_streamlines = transform_streamlines(streamlines, np.linalg.inv(subj_affine_new_trk),
                                                      in_place=False)
 
@@ -199,6 +203,7 @@ for subj in subjects:
             save_trk_header(filepath=trk_subjspace_eye, streamlines=subj_eye_streamlines, header=header,
                             affine=np.eye(4), verbose=verbose)
 
+        print(subj_torecenter_transform_affine)
         subj_tocenter_streamlines = transform_streamlines(streamlines, np.linalg.inv(subj_torecenter_transform_affine),
                                                           in_place=False)
         if (not os.path.exists(trk_recentered) or overwrite) and save_temp_files:
@@ -211,13 +216,15 @@ for subj in subjects:
         vox_dim = [1, 1, -1]
         new_transmat[:3, 3] = np.squeeze(later_trans_mat[3:6]) * vox_dim
         #new_transmat[:3, 3] = np.squeeze(np.matmul(subj_torecenter_transform_affine[:3,:3],later_trans_mat[3:6]))
-        new_transmat[:3, 3] = np.squeeze(np.matmul(subj_torecenter_transform_affine[:3, :3], later_trans_mat[3:6])) + [-1,-1,0]
+        #new_transmat[:3, 3] = np.squeeze(np.matmul(subj_torecenter_transform_affine[:3, :3], later_trans_mat[3:6])) + [-1,-1,0]
+        new_transmat[:3, 3] = np.squeeze(np.matmul(subj_torecenter_transform_affine[:3, :3], later_trans_mat[3:6]))
         new_transmat[2, 3] = 0
         # pix_dim = np.eye(4)
         # vox_dim = [1,1,2]
         # for i in np.arange(3):
         #    pix_dim[i,i]=vox_dim[i]
         # new_transmat = np.matmul(pix_dim, new_transmat)
+        print(new_transmat)
         streamlines_posttrans = transform_streamlines(subj_tocenter_streamlines, (new_transmat))
         if (not os.path.exists(trk_posttrans) or overwrite) and save_temp_files:
             save_trk_header(filepath=trk_posttrans, streamlines=streamlines_posttrans, header=header,
@@ -229,6 +236,7 @@ for subj in subjects:
         rigid_mat = convert_ants_vals_to_affine(rigid_ants)
 
         # streamlines_posttrans, header_posttrans = unload_trk(trk_preprocess_posttrans)
+        print(rigid_mat)
         streamlines_postrigid = transform_streamlines(streamlines_posttrans, np.linalg.inv(rigid_mat))
 
         if (not os.path.exists(trk_postrigid) or overwrite) and save_temp_files:
@@ -251,6 +259,7 @@ for subj in subjects:
         affine_mat = convert_ants_vals_to_affine(affine_ants)
 
         # streamlines_postrigid, header_postrigid = unload_trk(trk_preprocess_postrigid)
+        print(affine_mat)
         streamlines_postrigidaffine = transform_streamlines(streamlines_postrigid, np.linalg.inv(affine_mat))
 
         if (not os.path.exists(trk_postrigid_affine) or overwrite) and save_temp_files:

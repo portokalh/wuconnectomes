@@ -12,6 +12,7 @@ import getpass
 #project = ["AD_Decode", "APOE"]
 project = "APOE"
 project = "AMD"
+project = 'AD_Decode'
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
@@ -48,7 +49,14 @@ if project == "AD_Decode":
     subjects = ["S02654", "S02666",  "S02670",  "S02686", "S02690", "S02695",  "S02715", "S02720", "S02737", "S02753", "S02765", "S02771", "S02781", "S02802",
                 "S02804", "S02813", "S02817", "S02840", "S02877", "S02898", "S02926", "S02938", "S02939", "S02954", "S02967",
                 "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048"]
-
+    subjects = ["S02802","S01912", "S02110", "S02224", "S02227", "S02230", "S02231", "S02266", "S02289", "S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02490", "S02491", "S02506","S02524","S02535","S02690","S02715","S02771","S02804","S02817", "S02840","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028", "S03048","S02524","S02535","S02690","S02715","S02771","S02804","S02812","S02817", "S02840","S02871","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028", "S03048", "S03069","S02817"]
+    subjects = ["S03028"]
+    #oldsubjects = ["01912", "02110", "02224", "02227", "02230", "02231", "02266", "02289", "02320", "02361",
+    # #           "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451",
+    #            "02469", "02473", "02485", "02490", "02491", "02506"]
+    #subjects = []
+    #for subject in oldsubjects:
+    #    subjects.append('S'+subject)
     # 02842, 03028 has apparently a 92 stack ? to investigate
     #"S02812, , "S02871""  "S03069" has a problem? not prepped
 
@@ -335,7 +343,7 @@ for subject in subjects:
         cmd = f'ConvertTransformFile 3 {affine} {affine_mat_path} --matrix'
         os.system(cmd)
 
-    transform_files = [trans, rigid, affine_mat_path, runno_to_MDT]
+    transform_files = [trans, rigid, affine, affine_mat_path, runno_to_MDT]
 
     for filepath in transform_files:
         if os.path.exists(filepath):

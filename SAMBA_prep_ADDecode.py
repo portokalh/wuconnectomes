@@ -34,6 +34,14 @@ subjects = ["02524","02535","02690","02715","02771","02804","02812","02817", "02
 subjects = ["01912", "02110", "02224", "02227", "02230", "02231", "02266", "02289", "02320", "02361",
                 "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451",
                 "02469", "02473", "02485", "02490", "02491", "02506"]
+subjects = ['01912', '02110', '02224', '02227', '02230', '02231', '02266', '02289', '02320', '02361', '02363', '02373', '02386', '02390', '02402', '02410', '02421', '02424', '02446', '02451', '02469', '02473', '02485', '02491', '02490', '02506', '02523', '02524', '02535', '02654', '02666', '02670', '02686', '02690', '02695', '02715', '02720', '02737', '02745', '02753', '02765', '02771', '02781', '02802', '02804', '02813', '02812', '02817', '02840', '02842', '02871', '02877', '02898', '02926', '02938', '02939', '02954', '02967', '02987', '03010', '03017', '03028', '03033', '03034', '03045', '03048', '03069', '03225', '03265', '03293', '03308', '03321']
+
+removed_list = ['02230','02490','02523','02745']
+for remove in removed_list:
+    subjects.remove(remove)
+
+print(subjects)
+
 #subjects = ["03010", "03033", "03045"]
 
 #subjects = ["02871", "02877", "02898", "02926", "02938", "02939", "02954", "02967", "02987", "02987", "03010", "03017", "03028", "03033", "03034", "03045", "03048"]
@@ -117,6 +125,14 @@ else:
         #max_file="/Volumes/Data/Badea/ADdecode.01/Data/Anat/20210522_02842/bia6_02842_003.nii.gz"
         #launch_preprocessing(subject, max_file, outpath, nominal_bval=1000, shortcutpath=shortcutpath, bonusshortcutfolder = bonusshortcutfolder, gunniespath="/Users/alex/bass/gitfolder/gunnies/")
         #max_file = '/Volumes/Data/Badea/ADdecode.01/Data/Anat/20210522_02842/bia6_02842_003.nii.gz'
-        launch_preprocessing(proc_subjn+subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
-         gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter, verbose)
+        subject_f = proc_subjn + subject
+        if os.path.exists(os.path.join(outpath, proc_name + subject, f'{subject_f}_subjspace_fa.nii.gz')):
+            print(f'already did subject {subject_f}')
+        elif os.path.exists(os.path.join('/Volumes/Badea/Lab/mouse/ADDeccode_symlink_pool/', f'{subject_f}_subjspace_coreg.nii.gz')):
+            print(f'Could not find subject {subject_f} in main diffusion folder but result was found in SAMBA prep folder')
+        elif os.path.exists(os.path.join('/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_images/',f'{subject_f}_rd_to_MDT.nii.gz')):
+            print(f'Could not find subject {subject_f} in main diff folder OR samba init but was in results of SAMBA')
+        else:
+            launch_preprocessing(proc_subjn+subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
+             gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter, verbose)
         #results.append(launch_preprocessing(subject, max_file, outpath))

@@ -508,32 +508,33 @@ def img_transform_exec(img, current_vorder, desired_vorder, output_path=None, wr
             val=2
             new_data = np.flip(new_data, 2)
             orig_ind=orig_string.find(current_vorder[2])
-            current_vorder = current_vorder[0:val] + flip_string[val] + current_vorder[val+1:]
+            current_vorder = current_vorder[0:val] + flip_string[orig_ind] + current_vorder[val+1:]
             if is_vector:
                 new_data[:,:,:,0,2]=-new_data[:,:,:,0,2]
             z_row = [-1 * val for val in z_row]
 
-        xpos=current_vorder.find(desired_vorder[0])
-        ypos=current_vorder.find(desired_vorder[1])
-        zpos=current_vorder.find(desired_vorder[2])
+        xpos = current_vorder.find(desired_vorder[0])
+        ypos = current_vorder.find(desired_vorder[1])
+        zpos = current_vorder.find(desired_vorder[2])
+
 
         if verbose:
             print(['Dimension order is:' + str(xpos) + ' ' + str(ypos) + ' ' + str(zpos)] )
         if not os.path.isfile(output_path) or overwrite:
             if np.size(dims) == 5:
                 if is_tensor:
-                    new_data = new_data.tranpose(xpos, ypos, zpos, 4, 5)
+                    new_data = new_data.tranpose(xpos, ypos, zpos, 3, 4)
                 else:
                     if is_vector:# =>> honestly looking at the original code, this doesnt really make sense to me, so deactivated for now. Will raise warning in case it happens
                         warnings.warn('is vector not properly implemented')
                         #    new[:,:,:,1,:] = new[:,:,:,1].transpose(xpos, ypos, zpos)
                         #new=new(:,:,:,[xpos, ypos, zpos]);
-                    new_data.transpose(xpos, ypos, zpos, 4, 5)
+                    new_data.transpose(xpos, ypos, zpos, 3, 4)
             elif np.size(dims) == 4:
                 if is_RGB:
                     ('is rgb not properly implemented')
                     #new=new(:,:,:,[xpos, ypos, zpos]);
-                new_data = new_data.transpose(xpos, zpos, ypos, 4)
+                new_data = new_data.transpose(xpos, ypos, zpos, 3)
             elif np.size(dims) == 3:
                 new_data = new_data.transpose(xpos, ypos, zpos)
 
@@ -551,6 +552,15 @@ def img_transform_exec(img, current_vorder, desired_vorder, output_path=None, wr
                 print("nope, not implemented")
             except:
                 print("nope, not implemented")
+
+    """
+    if test is not None:
+        newaffine = np.array([[0.045,      0., 0., 0.42525001],[0., 0.045, 0., 0.25920002],
+        [0., 0.,0.045, 0.25920002], [0., 0., 0., 1.]])
+        new_nii = nib.Nifti1Image(new_data, newaffine, hdr)
+        test = str(test)
+        nib.save(new_nii, test)
+    """
 
     origin=affine[0:3,3]
     if desired_vorder != orig_current_vorder:
