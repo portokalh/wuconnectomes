@@ -1066,22 +1066,20 @@ def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processe
     if verbose:
         print('Running the ' + subject + ' file')
 
+    mask, _ = getmask(diffpath, subject, masktype, verbose)
+
     diff_data, affine, gtab, vox_size, fdiffpath, header, ref_info = getdiffdata_all(diffpath, subject, bvec_orient, denoise=denoise, verbose=verbose)
     #fdiffpath = getdiffpath(diffpath, subject, denoise=denoise, verbose=verbose)
 
-    if masktype == 'subjspace':
-        mask, _ = getmask(diffpath, subject, "subjspace", verbose)
-    if masktype == "dwi":
-        mask, _ = getmask(diffpath,subject, "subjspace", verbose)
-        if mask is None:
-            warnings.warn(f'Did not find mask, assuming that the diffusion path {fdiffpath} is already masked')
-            mask,_ = dwi_to_mask(diff_data, subject, affine, diffpath, masking='extract', makefig=False, header=header, verbose=True)
-        else:
-            if np.size(np.shape(mask)) == 1:
-                mask = mask[0]
-            if np.size(np.shape(mask)) == 4:
-                mask = mask[:, :, :, 0]
-            print("Mask shape is " + str(np.shape(mask)))
+    if masktype == "dwi" and mask is None:
+        warnings.warn(f'Did not find mask, assuming that the diffusion path {fdiffpath} is already masked')
+        mask,_ = dwi_to_mask(diff_data, subject, affine, diffpath, masking='extract', makefig=False, header=header, verbose=True)
+
+    if np.size(np.shape(mask)) == 1:
+        mask = mask[0]
+    if np.size(np.shape(mask)) == 4:
+        mask = mask[:, :, :, 0]
+    print("Mask shape is " + str(np.shape(mask)))
 
     if np.mean(diff_data) == 0:
         print("The subject " + subject + "could not be found at " + diffpath)
