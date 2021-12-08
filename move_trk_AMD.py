@@ -1,6 +1,7 @@
 import os
 from transform_handler import get_affine_transform, get_flip_affine, header_superpose, recenter_nii_affine, \
-    convert_ants_vals_to_affine, read_affine_txt, recenter_nii_save, add_translation
+    convert_ants_vals_to_affine, read_affine_txt, recenter_nii_save, add_translation, recenter_nii_save_test, \
+    affine_superpose, get_affine_transform_test
 import shutil
 import nibabel as nib
 import numpy as np
@@ -57,22 +58,24 @@ if project == "AMD":
     path_DWI = os.path.join(main_path, 'AMD', 'DWI')
     path_transforms = os.path.join(main_path, 'AMD','Transforms')
     ref = "md"
-    path_trk_tempdir = os.path.join(main_path, 'AMD', 'TRK_tempsave')
-    path_trk_MDT = os.path.join(main_path, 'AMD', 'TRK_MDT')
-    DWI_save = os.path.join(main_path, 'AMD', 'NII_tempsave')
+    path_trk_tempdir = os.path.join(main_path, 'AMD', 'TRK_tempsave_new')
+    path_TRK_output = os.path.join(main_path, 'AMD', 'TRK_MDT_new')
+    DWI_save = os.path.join(main_path, 'AMD', 'NII_tempsave_new')
     #Get the values from DTC_launcher_ADDecode. Should probably create a single parameter file for each project one day
+
+mkcdir([path_trk_tempdir,path_TRK_output, DWI_save])
 
 stepsize = 2
 ratio = 1
 trkroi = ["wholebrain"]
 str_identifier = get_str_identifier(stepsize, ratio, trkroi)
-prune= True
+prune= False
 overwrite = False
 cleanup = False
 verbose=True
 recenter=1
 
-save_temp_files = False
+save_temp_files = True
 nii_test_files = False
 
 contrast='dwi'
@@ -82,42 +85,67 @@ native_ref=''
 if save_temp_files:
     mkcdir(path_trk_tempdir)
 
+overwrite=True
 for subj in subjects:
     trans = os.path.join(path_transforms, f"{subj}_0DerivedInitialMovingTranslation.mat")
     rigid = os.path.join(path_transforms, f"{subj}_rigid.mat")
     affine_orig = os.path.join(path_transforms, f"{subj}_affine.mat")
     affine = os.path.join(path_transforms, f"{subj}_affine.txt")
     runno_to_MDT = os.path.join(path_transforms, f'{subj}_to_MDT_warp.nii.gz')
+    subj_dwi = os.path.join(path_DWI, f'{subj}_subjspace_dwi{ext}')
 
     if nii_test_files:
         mkcdir(DWI_save)
-        SAMBA_preprocess = os.path.join(DWI_save, f'{subj}_{contrast}_masked{ext}')
-        if recenter:
-            SAMBA_preprocess_recentered_1 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_recenter_1{ext}')
-            recenter_nii_save(SAMBA_preprocess, SAMBA_preprocess_recentered_1,verbose=True)
-            SAMBA_preprocess_recentered_2 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_recenter_2{ext}')
-            add_translation(SAMBA_preprocess_recentered_1, SAMBA_preprocess_recentered_2, translation = [0,0,-33], verbose=True)
-            SAMBA_preprocess = SAMBA_preprocess_recentered_2
+        SAMBA_preprocess_ref = os.path.join(path_DWI, f'{subj}_labels{ext}')
+        SAMBA_coreg_ref = os.path.join(path_DWI, f'{subj}_{contrast}{ext}')
+        SAMBA_init = os.path.join(path_DWI, f'{subj}_{contrast}{ext}')
+        SAMBA_init = subj_dwi
+        SAMBA_preprocess = os.path.join(DWI_save, f'{subj}_{contrast}_preprocess{ext}')
+        #SAMBA_preprocess_2 = os.path.join(DWI_save, f'{subj}_{contrast}_preprocess_2{ext}')
+        #SAMBA_preprocess_recentered_1 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_recenter_1{ext}')
+        #SAMBA_preprocess_recentered_2 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_recenter_2{ext}')
+
+        overwrite=False
+        if recenter and (not os.path.exists(SAMBA_preprocess) or overwrite):
+            """
+            header_superpose(SAMBA_preprocess_ref, SAMBA_init, outpath=SAMBA_preprocess, verbose=False)
+            img_transform_exec(SAMBA_preprocess, 'RAS', 'LPS', output_path=SAMBA_preprocess_2)
+            recenter_nii_save(SAMBA_preprocess_2, SAMBA_preprocess_recentered_1, verbose=True)
+            recenter_nii_save(SAMBA_preprocess_recentered_1,SAMBA_preprocess_2)
+            SAMBA_init = SAMBA_preprocess_2
+            """
+            recenter_nii_save_test(SAMBA_init, SAMBA_preprocess)
+            SAMBA_init = SAMBA_preprocess
+        overwrite=True
+
         SAMBA_preprocess_test_posttrans = os.path.join(DWI_save, f'{subj}_{contrast}_masked_posttrans{ext}')
+        SAMBA_preprocess_test_posttrans_2 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_posttrans_2{ext}')
+        SAMBA_preprocess_test_posttrans_3 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_posttrans_3{ext}')
+
         SAMBA_preprocess_test_rigid = os.path.join(DWI_save, f'{subj}_{contrast}_postrigid{ext}')
         SAMBA_preprocess_test_rigid_affine = os.path.join(DWI_save, f'{subj}_{contrast}_postrigid_affine{ext}')
         SAMBA_preprocess_test_postwarp = os.path.join(DWI_save, f'{subj}_{contrast}_postwarp{ext}')
         if native_ref == '':
-            native_ref = SAMBA_preprocess
+            native_ref = SAMBA_init
         if not os.path.exists(SAMBA_preprocess_test_postwarp) or overwrite:
-            cmd = f'antsApplyTransforms -v 1 -d 3  -i {SAMBA_preprocess} -r {native_ref}  -n Linear  -o {SAMBA_preprocess_test_posttrans} -t {trans}'
+            cmd = f'antsApplyTransforms -v 1 -d 3  -i {SAMBA_init} -r {SAMBA_init}  -n Linear  -o {SAMBA_preprocess_test_posttrans}'
             os.system(cmd)
 
-            cmd = f'antsApplyTransforms -v 1 --float -d 3 -i {SAMBA_preprocess_test_posttrans} -o {SAMBA_preprocess_test_rigid} ' \
-                f'-r {native_ref} -n Linear -t [{rigid},0]'
+            affine_superpose(SAMBA_init, SAMBA_preprocess_test_posttrans, outpath=SAMBA_preprocess_test_posttrans_2)
+
+            cmd = f'antsApplyTransforms -v 1 -d 3  -i {SAMBA_preprocess_test_posttrans_2} -r {SAMBA_preprocess_test_posttrans_2}  -n Linear  -o {SAMBA_preprocess_test_posttrans_3} -t {trans}'
+            os.system(cmd)
+
+            cmd = f'antsApplyTransforms -v 1 --float -d 3 -i {SAMBA_preprocess_test_posttrans_3} -o {SAMBA_preprocess_test_rigid} ' \
+                f'-r {SAMBA_preprocess_test_posttrans_2} -n Linear -t [{rigid},0]'
             os.system(cmd)
 
             cmd = f'antsApplyTransforms -v 1 --float -d 3 -i {SAMBA_preprocess_test_rigid} -o {SAMBA_preprocess_test_rigid_affine} ' \
-                f'-r {native_ref} -n Linear -t [{affine_orig},0]'
+                f'-r {SAMBA_preprocess_test_posttrans_2} -n Linear -t [{affine_orig},0]'
             os.system(cmd)
 
             cmd = f'antsApplyTransforms -v 1 --float -d 3 -i {SAMBA_preprocess_test_rigid_affine} -o {SAMBA_preprocess_test_postwarp} ' \
-                f'-r {native_ref} -n Linear -t {runno_to_MDT}'
+                f'-r {SAMBA_preprocess_test_posttrans_2} -n Linear -t {runno_to_MDT}'
             os.system(cmd)
 
     trk_preprocess_posttrans = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_preprocess_posttrans.trk')
@@ -126,18 +154,17 @@ for subj in subjects:
     trk_MDT_space = os.path.join(path_trk_tempdir, f'{subj}_MDT.trk')
 
     if not os.path.exists(trk_MDT_space) or overwrite:
-        orient_string = os.path.join(path_DWI, f'{subj}_relative_orientation.txt')
-        if os.path.exists(orient_string):
-            orient_relative = open(orient_string, mode='r').read()
-        else:      
-            warnings.warn(f'could not find {orient_string}')
-            orient_string_varpath = glob.glob(os.path.join(path_DWI, '*relative_orientation.txt'))[0]  
-            orient_relative = open(orient_string_varpath, mode='r').read()
-        orientation_out = orient_relative.split(',')[0]
-        orientation_out = orientation_out.split(':')[1]
-        orientation_in = orient_relative.split(',')[1]
-        orientation_in = orientation_in.split(':')[1]
+
         subj_dwi = os.path.join(path_DWI, f'{subj}_subjspace_dwi{ext}')
+        nii = nib.load(subj_dwi)
+        nii_data = nii.get_data()
+        subj_affine = nii._affine
+        subj_affine_new = subj_affine
+
+        #subj_torecenter_transform_affine = get_affine_transform_test(subj_affine, subj_affine_new)
+        #added_trans = subj_affine[:3, 3] + np.multiply(preprocess_affine[:3, 3], [1,1,-1]) + [-1,-1,0]
+        #added_trans = subj_affine[:3, 3] + np.multiply(subjtorecenter_affine[:3, 3], [-1,-1,-1])
+        #subj_torecenter_transform_affine[:3, 3] = reorient_trans + added_trans
 
         SAMBA_input_real_file =  os.path.join(path_DWI, f'{subj}_dwi{ext}')
 
@@ -172,15 +199,13 @@ for subj in subjects:
         var_name = list(mat_struct.keys())[0]
         later_trans_mat = mat_struct[var_name]
         new_transmat = np.eye(4)
-        vox_dim = [1,1,-1]
-        new_transmat[:3,3] = np.squeeze(later_trans_mat[3:6]) * vox_dim
-
-        #pix_dim = np.eye(4)
-        #vox_dim = [1,1,2]
-        #for i in np.arange(3):
-        #    pix_dim[i,i]=vox_dim[i]
-        #new_transmat = np.matmul(pix_dim, new_transmat)
+        vox_dim = [1, 1, -1]
+        #new_transmat[:3, 3] = np.squeeze(later_trans_mat[3:6]) * vox_dim
+        new_transmat[:3, 3] = np.squeeze(np.matmul(subj_affine[:3, :3], later_trans_mat[3:6])) #should be the AFFINE of the current image, to make sure the slight difference in orientation is ACCOUNTED FOR!!!!!!!!!!
+        new_transmat[2, 3] = 0
+        print(new_transmat)
         streamlines_posttrans = transform_streamlines(streamlines_prepro, (new_transmat))
+
         if (not os.path.exists(trk_preprocess_posttrans) or overwrite) and save_temp_files:
             save_trk_header(filepath= trk_preprocess_posttrans, streamlines = streamlines_posttrans, header = header,
                     affine=np.eye(4), verbose=verbose)
@@ -205,15 +230,13 @@ for subj in subjects:
             os.system(cmd)
             affine_mat_s = read_affine_txt(affine)
 
-        affine_mat = np.eye(4)
-        affine_mat[:3, :3] = affine_mat_s
-        #streamlines_postrigid, header_postrigid = unload_trk(trk_preprocess_postrigid)
-        vox_dim = [1,1,-1]
-        vox_mat = np.eye(4)
-        for i in np.arange(3):
-            vox_mat[i,i] = vox_dim[i]
-        #affine_mat = np.matmul(vox_mat, affine_mat)
-        streamlines_postrigidaffine = transform_streamlines(streamlines_postrigid, (affine_mat))
+
+        affine_struct = loadmat(affine_orig)
+        var_name = list(affine_struct.keys())[0]
+        affine_ants = affine_struct[var_name]
+        affine_mat = convert_ants_vals_to_affine(affine_ants)
+
+        streamlines_postrigidaffine = transform_streamlines(streamlines_postrigid, np.linalg.inv(affine_mat))
 
         if (not os.path.exists(trk_preprocess_postrigid_affine) or overwrite) and save_temp_files:
             save_trk_header(filepath=trk_preprocess_postrigid_affine, streamlines=streamlines_postrigidaffine, header=header,

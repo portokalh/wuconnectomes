@@ -141,9 +141,9 @@ picklesave=True
     '4 middletemporal_Right---inferiorparietal_Right 64 57 with weight of 434.9106\n'
     '5 fusiform_Left---Cerebellum-Cortex_Left 22 1 with weight of 402.0991\n'
 """
-
+target_tuple = (9,1)
 #target_tuple = (28, 9)
-target_tuple = (62, 1)
+#target_tuple = (76, 42)
 #target_tuple = (28, 1)
 #target_tuple = (62, 9)
 #target_tuple = (22, 9)
@@ -154,7 +154,7 @@ target_tuple = (62, 1)
 
 function_processes = parse_arguments_function(sys.argv)
 
-overwrite=True
+overwrite=False
 
 write_streamlines = True
 skip_subjects = True
