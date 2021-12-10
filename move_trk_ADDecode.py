@@ -26,38 +26,37 @@ removed_list = ['S02230','S02490','S02523','S02745']
 removed_list = removed_list + ['S03028','S03033', 'S03034', 'S03045', 'S03048', 'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321']
 for remove in removed_list:
     try:
-    	subjects.remove(remove)
+        subjects.remove(remove)
     except:
         print(f'could not find {remove}')
 print(subjects)
-
+subjects = ["S02506"]
 
 ext = ".nii.gz"
 computer_name = socket.gethostname()
 
 if 'samos' in computer_name:
-	main_path = '/mnt/paros_MRI/jacques'
+    main_path = '/mnt/paros_MRI/jacques'
 elif 'santorini' in computer_name:
-	main_path = '/Volumes/Data/Badea/Lab/human/'
+    main_path = '/Volumes/Data/Badea/Lab/human/'
 else:
-	raise Exception('No other computer name yet')
+    raise Exception('No other computer name yet')
 project = "AD_Decode"
 
 if project == "AD_Decode":
-	path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_fixed')
-	path_TRK_output = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_MDT')
-	path_DWI = os.path.join(main_path, 'AD_Decode', 'Analysis', 'DWI')
-	path_transforms = os.path.join(main_path, 'AD_Decode', 'Analysis','Transforms')
-	ref = "md"
-	path_trk_tempdir = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_save_alt2')
-	DWI_save = os.path.join(main_path, 'AD_Decode', 'Analysis', 'NII_tempsave_alt2')
-
-	mkcdir([path_trk_tempdir,path_TRK_output, DWI_save])
-	#Get the values from DTC_launcher_ADDecode. Should probalby create a single parameter file for each project one day
-	stepsize = 2
-	ratio = 1
-	trkroi = ["wholebrain"]
-	str_identifier = get_str_identifier(stepsize, ratio, trkroi)
+    path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_100')
+    path_TRK_output = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_MDT')
+    path_DWI = os.path.join(main_path, 'AD_Decode', 'Analysis', 'DWI')
+    path_transforms = os.path.join(main_path, 'AD_Decode', 'Analysis','Transforms')
+    ref = "md"
+    path_trk_tempdir = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_save_alt2')
+    DWI_save = os.path.join(main_path, 'AD_Decode', 'Analysis', 'NII_tempsave_alt2')
+    mkcdir([path_trk_tempdir,path_TRK_output, DWI_save])
+    #Get the values from DTC_launcher_ADDecode. Should probalby create a single parameter file for each project one day
+    stepsize = 2
+    ratio = 100
+    trkroi = ["wholebrain"]
+    str_identifier = get_str_identifier(stepsize, ratio, trkroi)
 
 overwrite = True
 cleanup = False
@@ -74,7 +73,7 @@ orientation_out = orientation_out.split(':')[1]
 orientation_in = orient_relative.split(',')[1]
 orientation_in = orientation_in.split(':')[1]
 
-nii_test_files = 0
+nii_test_files = 1
 
 for subj in subjects:
     subj_trk, _ = gettrkpath(path_TRK, subj, str_identifier, pruned=True, verbose=verbose)
@@ -139,7 +138,6 @@ for subj in subjects:
                 f'-r {native_ref} -n Linear -t {runno_to_MDT}'
             os.system(cmd)
 
-    overwrite = True
     if not os.path.exists(trk_MDT_space) or overwrite:
         reference = os.path.join(path_DWI, f'{subj}_reference{ext}')
         SAMBA_input_real_file =  os.path.join(path_DWI, f'{subj}_dwi{ext}')
@@ -168,7 +166,7 @@ for subj in subjects:
         subj_dwi_new_path = os.path.join(DWI_save, f'{subj}_subjspace_dwi_eye{ext}')
         nib.save(subj_dwi_new, subj_dwi_new_path)
         subj_affine_new_trk = get_affine_transform_test(subj_affine, subj_affine_new)
-        reorient_trans = np.matmul(subj_torecenter_transform_affine[:3,:3],np.shape(nii_data))-np.shape(nii_data)
+        reorient_trans = np.matmul(subj_torecenter_transform_affine[:3,:3],np.shape(nii_data)[:3])-np.shape(nii_data)[:3]
         reorient_trans = np.array([x / 2 for x in reorient_trans])
         reorient_trans = np.multiply(reorient_trans, [1, 1, -1])
         subj_affine_new_trk[:3,3] = reorient_trans
@@ -216,16 +214,9 @@ for subj in subjects:
         later_trans_mat = mat_struct[var_name]
         new_transmat = np.eye(4)
         vox_dim = [1, 1, -1]
-        new_transmat[:3, 3] = np.squeeze(later_trans_mat[3:6]) * vox_dim
-        #new_transmat[:3, 3] = np.squeeze(np.matmul(subj_torecenter_transform_affine[:3,:3],later_trans_mat[3:6]))
-        #new_transmat[:3, 3] = np.squeeze(np.matmul(subj_torecenter_transform_affine[:3, :3], later_trans_mat[3:6])) + [-1,-1,0]
+        #new_transmat[:3, 3] = np.squeeze(later_trans_mat[3:6]) * vox_dim
         new_transmat[:3, 3] = np.squeeze(np.matmul(subj_torecenter_transform_affine[:3, :3], later_trans_mat[3:6]))
         new_transmat[2, 3] = 0
-        # pix_dim = np.eye(4)
-        # vox_dim = [1,1,2]
-        # for i in np.arange(3):
-        #    pix_dim[i,i]=vox_dim[i]
-        # new_transmat = np.matmul(pix_dim, new_transmat)
         print(new_transmat)
         streamlines_posttrans = transform_streamlines(subj_tocenter_streamlines, (new_transmat))
         if (not os.path.exists(trk_posttrans) or overwrite) and save_temp_files:

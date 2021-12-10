@@ -28,14 +28,28 @@ subjects = ["H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660"
             "H22101", "H27842", "H22228", "H28029", "H22140", "H27852", "H22276", "H27999", "H22369", "H28115", "H22644",
             "H28308", "H22574", "H28377", "H22368", "H28325", "H22320", "H28182", "H22898", "H28748", "H22683", "H28373",
             "H22536", "H28433", "H22825", "H28662", "H22864", "H28698", "H23143", "H28861", "H23157", "H28820", "H23028",
-            "H29002", "H23210", "H29020", "H23309", "H29161", "H26841", "H26862", "H26949", "H26966", "H27100", "H27126",
+            "H29002", "H23210", "H29020", "H23309", "H29161", "H26841", "H26862", "H26949", "H27100", "H27126",
             "H27163", "H27246", "H27488", "H27682", "H27686", "H27719", "H27841", "H27842", "H27852", "H27869", "H27999",
             "H28029", "H28068", "H28208", "H28262", "H28325", "H28820", "H28856", "H28869", "H28955", "H29002", "H29044",
             "H29089", "H29127", "H29161", "H29242", "H29254", "H26578", "H26637", "H26660", "H26745", "H26765", "H26850",
             "H26880", "H26890", "H26958", "H26974", "H27017", "H27111", "H27164", "H27381", "H27391", "H27495", "H27610",
             "H27640", "H27680", "H27778", "H27982", "H28115", "H28308", "H28338", "H28373", "H28377", "H28433", "H28437",
             "H28463", "H28532", "H28662", "H28698", "H28748", "H28809", "H28857", "H28861", "H29013", "H29020", "H29025"]
-
+subjects = ["H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660", "H29304", "H26890",
+            "H29556", "H26862", "H29410", "H29403", "H26841", "H21593", "H27126", "H29618", "H27111", "H29627",
+            "H27164", "H29502", "H27100", "H27381", "H21836", "H27391", "H21850", "H27495", "H21729", "H27488", "H21915",
+            "H27682", "H21956", "H27686", "H22331", "H28208", "H21990", "H28955", "H29878", "H27719", "H22102", "H27841",
+            "H22101", "H27842", "H22228", "H28029", "H22140", "H27852", "H22276", "H27999", "H22369", "H28115", "H22644",
+            "H28308", "H22574", "H28377", "H22368", "H28325", "H22320", "H28182", "H22898", "H28748", "H22683", "H28373",
+            "H22536", "H28433", "H22825", "H28662", "H22864", "H28698", "H23143", "H28861", "H23157", "H28820", "H23028",
+            "H29002", "H23210", "H29020", "H23309", "H29161", "H26841", "H26862", "H26949", "H27100", "H27126",
+            "H27163", "H27246", "H27488", "H27682", "H27686", "H27719", "H27841", "H27842", "H27852", "H27869", "H27999",
+            "H28029", "H28068", "H28208", "H28262", "H28325", "H28820", "H28856", "H28869", "H28955", "H29002", "H29044",
+            "H29089", "H29127", "H29161", "H29242", "H29254", "H26578", "H26637", "H26660", "H26745", "H26765", "H26850",
+            "H26880", "H26890", "H26958", "H26974", "H27017", "H27111", "H27164", "H27381", "H27391", "H27495", "H27610",
+            "H27640", "H27680", "H27778", "H27982", "H28115", "H28308", "H28338", "H28373", "H28377", "H28433", "H28437",
+            "H28463", "H28532", "H28662", "H28698", "H28748", "H28809", "H28857", "H28861", "H29013", "H29020", "H29025"]
+subjects = sorted(subjects)
 #temporarily removing "H29056" to recalculate it
 ext = ".nii.gz"
 computer_name = socket.gethostname()
@@ -43,7 +57,7 @@ computer_name = socket.gethostname()
 if computer_name == 'samos':
     main_path = '/mnt/paros_MRI/jacques/'
 elif 'santorini' in computer_name:
-    main_path = '/Users/alex/jacques/'
+    main_path = '/Volumes/Data/Badea/Lab/human/'
 else:
     raise Exception('No other computer name yet')
 
@@ -58,15 +72,15 @@ if project == "AMD":
     path_DWI = os.path.join(main_path, 'AMD', 'DWI')
     path_transforms = os.path.join(main_path, 'AMD','Transforms')
     ref = "md"
-    path_trk_tempdir = os.path.join(main_path, 'AMD', 'TRK_tempsave_new')
-    path_TRK_output = os.path.join(main_path, 'AMD', 'TRK_MDT_new')
-    DWI_save = os.path.join(main_path, 'AMD', 'NII_tempsave_new')
+    path_trk_tempdir = os.path.join(main_path, 'AMD', 'TRK_tempsave')
+    path_TRK_output = os.path.join(main_path, 'AMD', 'TRK_MDT')
+    DWI_save = os.path.join(main_path, 'AMD', 'NII_tempsave')
     #Get the values from DTC_launcher_ADDecode. Should probably create a single parameter file for each project one day
 
 mkcdir([path_trk_tempdir,path_TRK_output, DWI_save])
 
 stepsize = 2
-ratio = 1
+ratio = 100
 trkroi = ["wholebrain"]
 str_identifier = get_str_identifier(stepsize, ratio, trkroi)
 prune= False
@@ -75,7 +89,7 @@ cleanup = False
 verbose=True
 recenter=1
 
-save_temp_files = True
+save_temp_files = False
 nii_test_files = False
 
 contrast='dwi'
@@ -85,7 +99,6 @@ native_ref=''
 if save_temp_files:
     mkcdir(path_trk_tempdir)
 
-overwrite=True
 for subj in subjects:
     trans = os.path.join(path_transforms, f"{subj}_0DerivedInitialMovingTranslation.mat")
     rigid = os.path.join(path_transforms, f"{subj}_rigid.mat")
@@ -105,7 +118,6 @@ for subj in subjects:
         #SAMBA_preprocess_recentered_1 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_recenter_1{ext}')
         #SAMBA_preprocess_recentered_2 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_recenter_2{ext}')
 
-        overwrite=False
         if recenter and (not os.path.exists(SAMBA_preprocess) or overwrite):
             """
             header_superpose(SAMBA_preprocess_ref, SAMBA_init, outpath=SAMBA_preprocess, verbose=False)
@@ -116,7 +128,6 @@ for subj in subjects:
             """
             recenter_nii_save_test(SAMBA_init, SAMBA_preprocess)
             SAMBA_init = SAMBA_preprocess
-        overwrite=True
 
         SAMBA_preprocess_test_posttrans = os.path.join(DWI_save, f'{subj}_{contrast}_masked_posttrans{ext}')
         SAMBA_preprocess_test_posttrans_2 = os.path.join(DWI_save, f'{subj}_{contrast}_masked_posttrans_2{ext}')
@@ -151,11 +162,11 @@ for subj in subjects:
     trk_preprocess_posttrans = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_preprocess_posttrans.trk')
     trk_preprocess_postrigid = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_preprocess_postrigid.trk')
     trk_preprocess_postrigid_affine = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_preprocess_postrigid_affine.trk')
-    trk_MDT_space = os.path.join(path_trk_tempdir, f'{subj}_MDT.trk')
+    trk_MDT_space = os.path.join(path_TRK_output, f'{subj}_MDT.trk')
 
     if not os.path.exists(trk_MDT_space) or overwrite:
 
-        subj_dwi = os.path.join(path_DWI, f'{subj}_subjspace_dwi{ext}')
+        subj_dwi = os.path.join(path_DWI, f'{subj}_coreg_diff{ext}')
         nii = nib.load(subj_dwi)
         nii_data = nii.get_data()
         subj_affine = nii._affine
@@ -182,17 +193,6 @@ for subj in subjects:
             raise Exception('missing transform file')
         streamlines_prepro, header = unload_trk(subj_trk)
 
-        #if recenter:
-            #new_affine, translation, translate_affine = recenter_nii_affine(SAMBA_preprocess,
-        #                                                                    return_translation=True)
-            #streamlines_prepro_recenter = transform_streamlines(streamlines_prepro, translate_affine)
-            #save_trk_header(filepath= trk_preprocess_recentered_1, streamlines = streamlines_prepro_recenter, header = header,
-            #        affine=np.eye(4), verbose=verbose)
-            #translate_affine = np.eye(4)
-            #translate_affine[:3,3] = [0,0,-33]
-            #streamlines_prepro_recenter = transform_streamlines(streamlines_prepro_recenter, translate_affine)
-            #save_trk_header(filepath= trk_preprocess_recentered_2, streamlines = streamlines_prepro_recenter, header = header,
-            #        affine=np.eye(4), verbose=verbose)
 
         #streamlines_prepro, header_prepro = unload_trk(trk_preprocess)
         mat_struct = loadmat(trans)
@@ -222,7 +222,6 @@ for subj in subjects:
             save_trk_header(filepath=trk_preprocess_postrigid, streamlines=streamlines_postrigid, header=header,
                     affine=np.eye(4), verbose=verbose)
 
-        overwrite=True
         if os.path.exists(affine):
             affine_mat_s = read_affine_txt(affine)
         else:
@@ -258,6 +257,6 @@ for subj in subjects:
 
         if (not os.path.exists(trk_MDT_space) or overwrite):
             save_trk_header(filepath=trk_MDT_space, streamlines=streamlines_post_warp, header=header,
-                    affine=np.eye(4), verbose=verbose)
+                    affine=np.eye(4), fix_streamlines=True, verbose=verbose)
     else:
         print(f'{trk_MDT_space} already exists')

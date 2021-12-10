@@ -72,6 +72,12 @@ def file_rename(folder, initstring, finalstring, identifier_string="*", anti_ide
 def check_files(files):
     exists=[]
     newfiles = []
+
+    if isinstance(files, dict):
+        oldfiles = []
+        for filekey in files:
+            oldfiles.append(files[filekey])
+        files = oldfiles
     for file in files:
         if "*" in file:
             testfile = glob.glob(file)

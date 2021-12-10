@@ -7,10 +7,13 @@ from file_tools import mkcdir
 TRK_folder = '/Users/alex/jacques/AMD_TRK_testing/TRK_MDT'
 TRK_output = '/Users/alex/jacques/AMD_TRK_testing/TRK_MDT_fixed'
 
-hostname = 'samos'
+TRK_folder = '/Volumes/Data/Badea/Lab/human/AMD/TRK_MDT'
+TRK_output = '/Volumes/Data/Badea/Lab/human/AMD/TRK_MDT_fixed'
+
+hostname = 'santorini'
 if hostname == 'samos':
     TRK_folder = '/mnt/paros_MRI/jacques/AMD/TRK_MDT/'
-    TRK_output = '/mnt/paros_MRI/jacques/AMD/TRK_MDT_fixed'
+    TRK_output = '/mnt/paros_MRI/jacques/AMD/TRK_MDT/'
 
 mkcdir(TRK_output)
 for trk_name in os.listdir(TRK_folder):

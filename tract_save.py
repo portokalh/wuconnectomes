@@ -47,7 +47,7 @@ def make_tractogram_object(fname, streamlines, affine, vox_size=None, shape=None
     trk_file = nib.streamlines.TrkFile(tractogram, header=header)
     return tractogram, trk_file
 
-def save_trk_header(filepath, streamlines, header, affine=np.eye(4), verbose=False):
+def save_trk_header(filepath, streamlines, header, affine=np.eye(4), fix_streamlines = False, verbose=False):
 
     myheader = create_tractogram_header(filepath, *header)
     trk_sl = lambda: (s for s in streamlines)
@@ -55,12 +55,13 @@ def save_trk_header(filepath, streamlines, header, affine=np.eye(4), verbose=Fal
         print(f'Saving streamlines to {filepath}')
         time1 = time.perf_counter()
     save_trk_heavy_duty(filepath, streamlines=trk_sl,
-                        affine=affine, header=myheader, return_tractogram=False)
+                        affine=affine, header=myheader, fix_streamlines = fix_streamlines, return_tractogram=False)
     if verbose:
         time2 = time.perf_counter()
         print(f'Saved in {time2 - time1:0.4f} seconds')
 
-def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, header=None, return_tractogram=False):
+def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, header=None, fix_streamlines = False,
+                        return_tractogram=False):
     """ Saves tractogram files (*.trk)
 
     Parameters
@@ -88,6 +89,8 @@ def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, h
 
     tractogram = nib.streamlines.LazyTractogram(streamlines)
     tractogram.affine_to_rasmm = affine
+    if fix_streamlines:
+        tractogram.remove_invalid_streamlines()
     trk_file = nib.streamlines.TrkFile(tractogram, header=header)
     nib.streamlines.save(trk_file, fname)
     if return_tractogram:

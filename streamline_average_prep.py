@@ -62,12 +62,13 @@ if 'samos' in hostname:
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 elif 'santorini' in hostname:
     mainpath = '/Users/alex/jacques/'
+    mainpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 else:
     print(f'no option for {hostname}')
 
 mainpath = os.path.join(mainpath, project)
-TRK_folder = os.path.join(mainpath, 'TRK_MDT')
+TRK_folder = os.path.join(mainpath, 'TRK_MDT_fixed')
 label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
 figures_folder = os.path.join(mainpath, 'Figures_MDT')
@@ -127,9 +128,10 @@ for group in groups:
 
 
 #Setting identification parameters for ratio, labeling type, etc
-ratio = 1
+ratio = 100
 ratio_str = ratio_to_str(ratio)
 str_identifier = '_MDT'+ratio_str
+str_identifier = '_MDT'
 labeltype = 'lrordered'
 verbose=True
 picklesave=True
@@ -187,10 +189,10 @@ for group in groups:
             if function_processes == 1:
                 M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True,
                                         return_mapping=True,
-                                        mapping_as_streamlines=False, verbose=verbose)
+                                        mapping_as_streamlines=False)
             else:
-                M, grouping_temp = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= True, verbose=verbose)
-            M_grouping_excel_save(M,grouping_temp,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
+                M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= True)
+            M_grouping_excel_save(M,grouping,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
         del(trkdata)
         if os.path.exists(grouping_xlsxpath):
             grouping = extract_grouping(grouping_xlsxpath, index_to_struct, np.shape(M), verbose=verbose)

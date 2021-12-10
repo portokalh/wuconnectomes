@@ -62,6 +62,7 @@ if 'samos' in hostname:
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 elif 'santorini' in hostname:
     mainpath = '/Users/alex/jacques/'
+    mainpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 else:
     print(f'no option for {hostname}')
@@ -71,7 +72,7 @@ if project == 'AD_Decode':
 else:
     mainpath = os.path.join(mainpath, project)
 
-TRK_folder = os.path.join(mainpath, 'TRK_MDT')
+TRK_folder = os.path.join(mainpath, 'TRK_MDT_fixed')
 label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
 figures_folder = os.path.join(mainpath, 'Figures_MDT')
@@ -129,6 +130,7 @@ for group in groups:
 ratio = 100
 ratio_str = ratio_to_str(ratio)
 str_identifier = '_MDT'+ratio_str
+str_identifier = '_MDT'
 #str_identifier = '_stepsize_2_all_wholebrain_pruned'
 labeltype = 'lrordered'
 verbose=True
@@ -143,7 +145,7 @@ picklesave=True
 """
 target_tuple = (9,1)
 #target_tuple = (28, 9)
-#target_tuple = (76, 42)
+target_tuple = (76, 42)
 #target_tuple = (28, 1)
 #target_tuple = (62, 9)
 #target_tuple = (22, 9)
@@ -158,6 +160,10 @@ overwrite=False
 
 write_streamlines = True
 skip_subjects = True
+
+overwrite= True
+
+references = ['fa', 'md']
 
 for group in groups:
     group_str = group.replace(' ', '_')

@@ -39,7 +39,7 @@ subjects = ['01912', '02110', '02224', '02227', '02230', '02231', '02266', '0228
 removed_list = ['02230','02490','02523','02745']
 for remove in removed_list:
     subjects.remove(remove)
-
+#subjects = ['02842']
 print(subjects)
 
 #subjects = ["03010", "03033", "03045"]
