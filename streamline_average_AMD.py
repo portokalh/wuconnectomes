@@ -101,7 +101,7 @@ groups_subjects = {}
 
 if project == 'AMD':
     groups_subjects['testing'] = ['H22825']
-    groups_subjects['Initial AMD'] = ['H27640', 'H27778', 'H29020', 'H26637', 'H27680', 'H26765', 'H27017', 'H26880', 'H28308', 'H28433', 'H28338', 'H26660', 'H28809', 'H27610', 'H26745', 'H27111', 'H26974', 'H27391', 'H28748', 'H29025', 'H29013', 'H27381', 'H26958', 'H28662', 'H26578', 'H28698', 'H27495', 'H28861', 'H28115', 'H28437', 'H26850', 'H28532', 'H28377', 'H28463', 'H26890', 'H28373', 'H28857', 'H27164', 'H27982']
+    groups_subjects['Initial AMD'] = ['H27778', 'H27640', 'H29020', 'H26637', 'H27680', 'H26765', 'H27017', 'H26880', 'H28308', 'H28433', 'H28338', 'H26660', 'H28809', 'H27610', 'H26745', 'H27111', 'H26974', 'H27391', 'H28748', 'H29025', 'H29013', 'H27381', 'H26958', 'H28662', 'H26578', 'H28698', 'H27495', 'H28861', 'H28115', 'H28437', 'H26850', 'H28532', 'H28377', 'H28463', 'H26890', 'H28373', 'H28857', 'H27164', 'H27982']
     groups_subjects['Paired 2-YR AMD'] = ['H22825', 'H21850', 'H29225', 'H29304', 'H29060', 'H23210', 'H21836', 'H29618', 'H22644', 'H22574', 'H22369', 'H29627', 'H29056', 'H22536', 'H23143', 'H22320', 'H22898', 'H22864', 'H29264', 'H22683']
     groups_subjects['Initial Control'] = ['H26949', 'H27852', 'H28029', 'H26966', 'H27126', 'H28068', 'H29161', 'H28955', 'H26862', 'H28262', 'H28856', 'H27842', 'H27246', 'H27869', 'H27999', 'H29127', 'H28325', 'H26841', 'H29044', 'H27719', 'H27100', 'H29254', 'H27682', 'H29002', 'H29089', 'H29242', 'H27488', 'H27841', 'H28820', 'H27163', 'H28869', 'H28208', 'H27686']
     groups_subjects['Paired 2-YR Control'] = ['H29403', 'H22102', 'H29502', 'H22276', 'H29878', 'H29410', 'H22331', 'H22368', 'H21729', 'H29556', 'H21956', 'H22140', 'H23309', 'H22101', 'H23157', 'H21593', 'H21990', 'H22228', 'H23028', 'H21915']
@@ -109,7 +109,8 @@ if project == 'AMD':
     groups_subjects['Paired Initial AMD'] = ['H29020', 'H26637', 'H27111', 'H26765', 'H28308', 'H28433', 'H26660', 'H28182', 'H27111', 'H27391', 'H28748', 'H28662', 'H26578', 'H28698', 'H27495', 'H28861', 'H28115', 'H28377', 'H26890', 'H28373', 'H27164']
 
     #groups to go through
-    groups = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
+    groups = ['Initial AMD','Paired 2-YR AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
+    #groups = ['testing']
 
 #groups = ['Paired 2-YR AMD']
 #groups = ['Paired 2-YR Control']
@@ -143,9 +144,14 @@ picklesave=True
     '4 middletemporal_Right---inferiorparietal_Right 64 57 with weight of 434.9106\n'
     '5 fusiform_Left---Cerebellum-Cortex_Left 22 1 with weight of 402.0991\n'
 """
+target_tuples = [(9,1),(76, 42),(76, 64),(77, 9),(43, 9)]
+target_tuples = [(9,1),(76, 42),(76, 64),(77, 9),(43, 9)]
+target_tuples = [(9,1)]
 target_tuple = (9,1)
-#target_tuple = (28, 9)
-target_tuple = (76, 42)
+#target_tuple = (76, 42)
+#target_tuple = (76, 64)
+#target_tuple = (77, 9)
+#target_tuple = (43, 9)
 #target_tuple = (28, 1)
 #target_tuple = (62, 9)
 #target_tuple = (22, 9)
@@ -165,102 +171,140 @@ overwrite= True
 
 references = ['fa', 'md']
 
-for group in groups:
-    group_str = group.replace(' ', '_')
-    _, _, index_to_struct, _ = atlas_converter(ROI_legends)
-    centroid_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_centroid.py')
-    streamline_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_streamlines.trk')
-    grouping_files = {}
-    exists=True
-    for ref in references:
-        grouping_files[ref,'lines']=(os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_lines.py'))
-        grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
-        _, exists = check_files(grouping_files)
-    if not os.path.exists(centroid_file_path) or np.any(exists) is False or overwrite:
-        subjects = groups_subjects[group]
-        labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
-                                                                             labeltype=labeltype, verbose=verbose)
-        for subject in subjects:
-            trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
-            if not exists:
-                txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
-                warnings.warn(txt)
-                continue
-            #streamlines, header, _ = unload_trk(trkpath)
-            trkdata = load_trk(trkpath, 'same')
-            header = trkdata.space_attributes
-            picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectome.p')
-            picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
-            M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectome.xlsx")
-            grouping_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_grouping.xlsx")
-            #if os.path.exists(picklepath_grouping) and not overwrite:
-            #    with open(picklepath_grouping, 'rb') as f:
-            #        grouping = pickle.load(f)
-            if os.path.exists(picklepath_connectome):
-                with open(picklepath_connectome, 'rb') as f:
-                    M = pickle.load(f)
-            if os.path.exists(grouping_xlsxpath):
-                grouping = extract_grouping(grouping_xlsxpath, index_to_struct, None, verbose=verbose)
-            else:
-                print('skipping subject {subject} for now as grouping file is not calculated. Best rerun it afterwards ^^')
-                continue
+for target_tuple in target_tuples:
 
-            target_streamlines_list = grouping[target_tuple[0], target_tuple[1]]
-            target_streamlines = trkdata.streamlines[target_streamlines_list]
-            target_streamlines_set = set_number_of_points(target_streamlines, nb_points=num_points2)
-            #del(target_streamlines, trkdata)
-            target_qb = QuickBundles(threshold=distance1, metric=metric1)
+    for group in groups:
+        group_str = group.replace(' ', '_')
+        _, _, index_to_struct, _ = atlas_converter(ROI_legends)
+        centroid_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_centroid.py')
+        streamline_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_streamlines.trk')
+        grouping_files = {}
+        exists=True
+        for ref in references:
+            grouping_files[ref,'lines']=(os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_lines.py'))
+            grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
+            _, exists = check_files(grouping_files)
+        if not os.path.exists(centroid_file_path) or np.any(exists) is False or overwrite:
+            subjects = groups_subjects[group]
+            labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
+                                                                                 labeltype=labeltype, verbose=verbose)
+            for subject in subjects:
+                trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
+                if not exists:
+                    txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
+                    warnings.warn(txt)
+                    continue
+                #streamlines, header, _ = unload_trk(trkpath)
+                trkdata = load_trk(trkpath, 'same')
+                header = trkdata.space_attributes
+                picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectome.p')
+                picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
+                M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectome.xlsx")
+                grouping_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_grouping.xlsx")
+                #if os.path.exists(picklepath_grouping) and not overwrite:
+                #    with open(picklepath_grouping, 'rb') as f:
+                #        grouping = pickle.load(f)
+                if os.path.exists(picklepath_connectome):
+                    with open(picklepath_connectome, 'rb') as f:
+                        M = pickle.load(f)
+                if os.path.exists(grouping_xlsxpath):
+                    grouping = extract_grouping(grouping_xlsxpath, index_to_struct, None, verbose=verbose)
+                else:
+                    print('skipping subject {subject} for now as grouping file is not calculated. Best rerun it afterwards ^^')
+                    continue
+
+                target_streamlines_list = grouping[target_tuple[0], target_tuple[1]]
+                target_streamlines = trkdata.streamlines[target_streamlines_list]
+                target_streamlines_set = set_number_of_points(target_streamlines, nb_points=num_points2)
+                #del(target_streamlines, trkdata)
+                target_qb = QuickBundles(threshold=distance1, metric=metric1)
+
+                for ref in references:
+                    ref_MDT_folder = '/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/reg_images/'
+                    ref_img_path = get_diff_ref(ref_MDT_folder, subject, ref)
+                    ref_data, ref_affine = load_nifti(ref_img_path)
+
+                    from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
+                    from collections import defaultdict, OrderedDict
+                    from itertools import combinations, groupby
+
+                    edges = np.ndarray(shape=(3, 0), dtype=int)
+                    lin_T, offset = _mapping_to_voxel(trkdata.space_attributes[0])
+                    stream_ref = []
+                    stream_point_ref = []
+                    for sl, _ in enumerate(target_streamlines_set):
+                        # Convert streamline to voxel coordinates
+                        entire = _to_voxel_coordinates(target_streamlines_set[sl], lin_T, offset)
+                        i, j, k = entire.T
+                        ref_values = list(OrderedDict.fromkeys(ref_data[i, j, k]))
+                        stream_point_ref.append(ref_values)
+                        stream_ref.append(np.mean(ref_values))
+
+                    """
+                    stream_ref = []
+                    stream_point_ref = []
+                    for s in range(len(target_streamlines_set)):
+                        point_ref = [ref_data[int(k[0]), int(k[1]), int(k[2])] for k in target_streamlines_set[s]]
+                        stream_point_ref.append(point_ref)
+                        stream_ref.append(np.mean(point_ref))
+                    """
+                    if not (([group, ref]) in groupLines.items()):
+                        groupLines[group, ref]=(stream_ref)
+                    else:
+                        groupLines[group, ref].extend(stream_ref)
+                    #groupPoints[group, ref].extend(stream_point_ref)
+
+                groupstreamlines[group].extend(target_streamlines_set)
+
+            group_qb[group] = QuickBundles(threshold=distance2, metric=metric2)
+            group_clusters[group] = group_qb[group].cluster(groupstreamlines[group])
+            if os.path.exists(centroid_file_path) and overwrite:
+                os.remove(centroid_file_path)
+            if not os.path.exists(centroid_file_path):
+                if verbose:
+                    print(f'Summarized the clusters for group {group} at {centroid_file_path}')
+                pickle.dump(group_clusters[group], open(centroid_file_path, "wb"))
+
+            if os.path.exists(streamline_file_path) and overwrite and write_streamlines:
+                os.remove(streamline_file_path)
+            if not os.path.exists(streamline_file_path) and write_streamlines:
+                if verbose:
+                    print(f'Summarized the streamlines for group {group} at {streamline_file_path}')
+                pickle.dump(groupstreamlines[group], open(streamline_file_path, "wb"))
+                save_trk_header(filepath= streamline_file_path, streamlines = groupstreamlines[group], header = header, affine=np.eye(4), verbose=verbose)
 
             for ref in references:
-                ref_img_path = get_diff_ref(label_folder, subject, ref)
-                ref_data, ref_affine = load_nifti(ref_img_path)
-                stream_ref = []
-                stream_point_ref = []
-                for s in range(len(target_streamlines_set)):
-                    point_ref = [ref_data[int(k[0]), int(k[1]), int(k[2])] for k in target_streamlines_set[s]]
-                    stream_point_ref.append(point_ref)
-                    stream_ref.append(np.mean(point_ref))
+                if overwrite:
+                    if os.path.exists(grouping_files[ref,'lines']):
+                        os.remove(grouping_files[ref,'lines'])
+                    if os.path.exists(grouping_files[ref,'points']):
+                        os.remove(grouping_files[ref,'points'])
+                if not os.path.exists(grouping_files[ref,'lines']):
+                    if verbose:
+                        print(f"Summarized the clusters for group {group} and statistics {ref} at {grouping_files[ref,'lines']}")
+                    pickle.dump(groupLines[group, ref], open(grouping_files[ref,'lines'], "wb"))
+                    #pickle.dump(groupPoints[group, ref], grouping_files[ref,'points'])
 
-                groupLines[group, ref].extend(stream_ref)
-                groupPoints[group, ref].extend(stream_point_ref)
 
-            groupstreamlines[group].extend(target_streamlines_set)
+        else:
+            print(f'Centroid file was found at {centroid_file_path}')
+            with open(centroid_file_path, 'rb') as f:
+                group_clusters[group] = pickle.load(f)
+            for ref in references:
+                ref_path_lines = grouping_files[ref, 'lines']
+                with open(ref_path_lines, 'rb') as f:
+                    groupLines[group,ref] = pickle.load(f)
+                #ref_path_points = grouping_files[ref, 'points']
+                #groupPoints[group, ref] = grouping_files[ref, 'points']
 
-        group_qb[group] = QuickBundles(threshold=distance2, metric=metric2)
-        group_clusters[group] = group_qb[group].cluster(groupstreamlines[group])
-        if os.path.exists(centroid_file_path) and overwrite:
-            os.remove(centroid_file_path)
-        if not os.path.exists(centroid_file_path):
-            if verbose:
-                print(f'Summarized the clusters for group {group} at {centroid_file_path}')
-            pickle.dump(group_clusters[group], open(centroid_file_path, "wb"))
 
-        if os.path.exists(streamline_file_path) and overwrite and write_streamlines:
-            os.remove(streamline_file_path)
-        if not os.path.exists(streamline_file_path) and write_streamlines:
-            if verbose:
-                print(f'Summarized the streamlines for group {group} at {streamline_file_path}')
-            pickle.dump(groupstreamlines[group], open(streamline_file_path, "wb"))
-            save_trk_header(filepath= streamline_file_path, streamlines = groupstreamlines[group], header = header, affine=np.eye(4), verbose=verbose)
+fas = {}
+for group in groups:
+    fas[group] = np.mean(groupLines[group,'fa'])
 
-        for ref in references:
-            if overwrite:
-                os.remove([grouping_files[ref,'lines'], grouping_files[ref,'points']])
-            if not os.path.exists(grouping_files[ref,'lines']):
-                if verbose:
-                    print(f"Summarized the clusters for group {group} and statistics {ref} at {grouping_files[ref,'lines']}")
-                pickle.dump(groupLines[group, ref], grouping_files[ref,'lines'])
-                pickle.dump(groupPoints[group, ref], grouping_files[ref,'points'])
-
-    else:
-        print(f'Centroid file was found at {centroid_file_path}')
-        with open(centroid_file_path, 'rb') as f:
-            group_clusters[group] = pickle.load(f)
-        for ref in references:
-            ref_path_lines = grouping_files[ref, 'lines']
-            groupLines[group, ref] = grouping_files[ref, 'lines']
-            ref_path_points = grouping_files[ref, 'points']
-            groupPoints[group, ref] = grouping_files[ref, 'points']
+mds = {}
+for group in groups:
+    fas[group] = np.mean(groupLines[group,'fa'])
 
 for group in groups:
     cluster = group_clusters[group]

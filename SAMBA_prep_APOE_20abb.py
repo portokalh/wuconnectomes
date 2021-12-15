@@ -3,7 +3,7 @@ from tract_manager import create_tracts
 import multiprocessing as mp
 from Daemonprocess import MyPool
 import glob
-import os
+import os, sys
 from bvec_handler import writebfiles, extractbvals, extractbvals_research, rewrite_subject_bvalues, fix_bvals_bvecs
 from time import time
 import shutil
@@ -46,7 +46,7 @@ subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N582
             "N58229","N58230","N58231","N58232","N58633","N58634","N58635","N58636","N58649","N58650","N58651","N58653","N58654"]
 #atlas = "/Volumes/Data/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
 
-subject_processes, function_processes = parse_arguments(sys.argv, l)
+subject_processes, function_processes = parse_arguments(sys.argv, subjects)
 
 proc_subjn=""
 denoise="None"

@@ -60,6 +60,17 @@ subjects = ['N58712', 'N58790', 'N58606', 'N58350', 'N58608', 'N58779', 'N58500'
 subjects = ['N58302', 'N58612'
     , 'N58784', 'N58706', 'N58361', 'N58355']
 
+subjects_folders = glob.glob(os.path.join(diffpath,'diffusion*/'))
+subjects = []
+for subject_folder in subjects_folders:
+    subjects.append(subject_folder.split('diffusion')[1][:6])
+
+removed_list = ['N58610', 'N58612', 'N58613']
+for remove in removed_list:
+    subjects.remove(remove)
+
+#subjects = ['N58610', 'N58612', 'N58613']
+
 subject_processes, function_processes = parse_arguments(sys.argv, subjects)
 
 #subject 'N58610' retired, weird? to investigate
@@ -100,6 +111,7 @@ elif btables=="copy":
         outpathbvec= os.path.join(outpathsubj, proc_subjn + subject+"_bvecs.txt")
         outpathrelative = os.path.join(outpath, "relative_orientation.txt")
         newoutpathrelative= os.path.join(outpathsubj, "relative_orientation.txt")
+        mkcdir(outpathsubj)
         shutil.copy(outpathrelative, newoutpathrelative)
         if not os.path.exists(outpathbval) or not os.path.exists(outpathbvec) or overwrite:
             mkcdir(outpathsubj)
@@ -131,12 +143,10 @@ if copybtables:
         if not os.path.exists(new_bvec_file):
             shutil.copyfile(bvec_file,new_bvec_file)
 
-max_processors = 3
+max_processors = 20
 if mp.cpu_count() < max_processors:
     max_processors = mp.cpu_count()
-subject_processes = np.size(subjects)
-if max_processors < subject_processes:
-    subject_processes = max_processors
+
 # accepted values are "small" for one in ten streamlines, "all or "large" for all streamlines,
 # "none" or None variable for neither and "both" for both of them
 nominal_bval=4000
@@ -158,10 +168,17 @@ else:
     for subject in subjects:
         max_size=0
         subjectpath = glob.glob(os.path.join(os.path.join(diffpath, "diffusion*"+subject+"*")))[0]
+        subject_outpath = os.path.join(outpath, 'diffusion_prep_' + proc_subjn + subject)
         max_file=largerfile(subjectpath)
-        #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        launch_preprocessing(proc_subjn+subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
-         gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter, verbose)
+        if os.path.exists(os.path.join(subject_outpath, f'{subject}_subjspace_fa.nii.gz')):
+            print(f'already did subject {subject}')
+        elif os.path.exists(os.path.join('/Volumes/Badea/Lab/APOE_symlink_pool/', f'{subject}_subjspace_coreg.nii.gz')):
+            print(f'Could not find subject {subject} in main diffusion folder but result was found in SAMBA prep folder')
+        elif os.path.exists(os.path.join('/Volumes/Data/Badea/Lab/mouse/VBM_20APOE01_chass_symmetric3_allAPOE-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_NoNameYet_n32_i5/reg_images/',f'{subject}_rd_to_MDT.nii.gz')):
+            print(f'Could not find subject {subject} in main diff folder OR samba init but was in results of SAMBA')
+        else:
+            launch_preprocessing(proc_subjn+subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
+             gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter, verbose)
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
 """

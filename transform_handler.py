@@ -11,7 +11,7 @@ from shutil import copy as copyfile
 from nifti_handler import extract_nii_info
 from streamline_nocheck import load_trk
 from dipy.tracking.streamline import transform_streamlines
-
+import shutil
 
 def header_superpose(target_path, origin_path, outpath=None, verbose=False):
     target_nii=nib.load(target_path)
@@ -164,6 +164,7 @@ def affine_superpose(target_path, origin_path, outpath=None, transpose=None):
             nib.save(new_nii, outpath)
             return 1 #returns 1 if it saved a new file
         else:
+            shutil.copy(origin_path,outpath)
             return 0
 
 
@@ -207,10 +208,6 @@ def recenter_affine(shape, affine, return_translation = False):
 
 def recenter_affine_test(shape, affine, return_translation = False):
 
-    origin=np.round([val/2 for val in shape])
-    origin=origin[0:3]
-    trueorigin=-origin
-
     newaffine=np.zeros([4,4])
 
     newaffine[0:3,0:3]=affine[0:3,0:3]
@@ -219,12 +216,19 @@ def recenter_affine_test(shape, affine, return_translation = False):
     #trueorigin = np.matmul(newaffine[0:3,0:3],trueorigin)
 
     signs = np.sign([newaffine[0, 0], newaffine[1, 1], newaffine[2, 2]])
-    trueorigin = signs * trueorigin
+
     newaffine = np.eye(4)
-    newaffine[0,0] = signs[0]
-    newaffine[1,1] = signs[1]
-    newaffine[2,2] = signs[2]
+    axis_ratios = [np.abs(np.round(affine[0,0])), np.abs(np.round(affine[1,1])), np.abs(np.round(affine[2,2]))]
+    newaffine[0,0] = signs[0] * axis_ratios[0]
+    newaffine[1,1] = signs[1] * axis_ratios[1]
+    newaffine[2,2] = signs[2] * axis_ratios[2]
     dct = {-1: 0, 1: 1}
+
+    origin=np.round([val/2 for val in shape])
+    origin = np.round([(val*axis_ratio) / (2) - axis_ratio+1 for val, axis_ratio in zip(shape, axis_ratios)])
+    origin=origin[0:3]
+    trueorigin=-origin
+    trueorigin = signs * trueorigin
     trueorigin = trueorigin+[*map(dct.get, signs)]
 
     newaffine[:3,3]=trueorigin
@@ -317,6 +321,28 @@ def recenter_nii_save_pure(img, output_path, return_translation = False, verbose
     if verbose:
         print(f'Saved')
 
+
+def recenter_nii_save_test(img, output_path, return_translation = False, verbose=False):
+
+    if not os.path.exists(img):
+        raise('Nifti img file does not exists')
+
+    try:
+        nii = nib.load(img)
+    except:
+        raise('Could not load img at '+img)
+
+    nii_data = nii.get_data()
+    affine = nii._affine
+
+    newaffine = recenter_affine_test(np.shape(nii_data),affine)
+    new_nii=nib.Nifti1Image(nii_data, newaffine)
+    output_path = str(output_path)
+    if verbose:
+        print(f'Saving nifti file to {output_path}')
+    nib.save(new_nii, output_path)
+    if verbose:
+        print(f'Saved')
 
 def recenter_nii_save_test(img, output_path, return_translation = False, verbose=False):
 

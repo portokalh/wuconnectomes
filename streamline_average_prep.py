@@ -55,7 +55,7 @@ project = 'AMD'
 huma_projects = ''
 hostname = socket.gethostname()
 
-
+hostname = 'santorini'
 samos = False
 if 'samos' in hostname:
     mainpath = '/mnt/paros_MRI/jacques/'
@@ -159,7 +159,7 @@ save_trk_header(filepath=trk_testpath, streamlines=trkdata.streamlines[0:6], hea
                     affine=np.eye(4), verbose=verbose)
 setup_view(trkdata.streamlines[0:6], ref=labeloutpath, world_coords=True)
 """
-
+overwrite=True
 for group in groups:
     group_str = group.replace(' ', '_')
     _, _, index_to_struct, _ = atlas_converter(ROI_legends)
@@ -180,7 +180,7 @@ for group in groups:
         #if os.path.exists(picklepath_grouping) and not overwrite:
         #    with open(picklepath_grouping, 'rb') as f:
             #        grouping = pickle.load(f)
-        if os.path.exists(picklepath_connectome) or os.path.exists(grouping_xlsxpath):
+        if (os.path.exists(picklepath_connectome) or os.path.exists(grouping_xlsxpath)) and not overwrite:
             print(f'Found written file for subject {subject}')
             continue
         else:

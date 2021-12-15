@@ -20,8 +20,10 @@ for trk_name in os.listdir(TRK_folder):
     if trk_name.endswith('.trk'):
         trk_path = os.path.join(TRK_folder,trk_name)
         trk_newpath = os.path.join(TRK_output, trk_name)
-        trk_fixer(trk_path, trk_newpath, verbose=True)
-
+        if not os.path.exists(trk_newpath):
+            trk_fixer(trk_path, trk_newpath, verbose=True)
+        else:
+            print(f'Already fixed {trk_name}')
 """
 if testing:
     trk_test = '/Users/alex/jacques/AMD_TRK_testing/TRK/H21850_stepsize_2_ratio_100_wholebrain_pruned.trk'
