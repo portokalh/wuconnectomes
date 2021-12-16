@@ -65,10 +65,12 @@ subjects = []
 for subject_folder in subjects_folders:
     subjects.append(subject_folder.split('diffusion')[1][:6])
 
-removed_list = ['N58610', 'N58612', 'N58613']
+removed_list = ['N58610', 'N58612', 'N58613','N58732']
 for remove in removed_list:
     subjects.remove(remove)
 
+print(subjects)
+subjects = sorted(subjects)
 #subjects = ['N58610', 'N58612', 'N58613']
 
 subject_processes, function_processes = parse_arguments(sys.argv, subjects)

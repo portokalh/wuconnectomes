@@ -146,8 +146,8 @@ picklesave=True
 """
 target_tuples = [(9,1),(76, 42),(76, 64),(77, 9),(43, 9)]
 target_tuples = [(9,1),(76, 42),(76, 64),(77, 9),(43, 9)]
-target_tuples = [(9,1)]
-target_tuple = (9,1)
+#target_tuples = [(9,1)]
+#target_tuple = (9,1)
 #target_tuple = (76, 42)
 #target_tuple = (76, 64)
 #target_tuple = (77, 9)
@@ -170,7 +170,6 @@ skip_subjects = True
 overwrite= True
 
 references = ['fa', 'md']
-
 for target_tuple in target_tuples:
 
     for group in groups:
@@ -248,7 +247,7 @@ for target_tuple in target_tuples:
                         stream_point_ref.append(point_ref)
                         stream_ref.append(np.mean(point_ref))
                     """
-                    if not (([group, ref]) in groupLines.items()):
+                    if not (group, ref) in groupLines.keys():
                         groupLines[group, ref]=(stream_ref)
                     else:
                         groupLines[group, ref].extend(stream_ref)
