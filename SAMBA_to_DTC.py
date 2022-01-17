@@ -11,7 +11,7 @@ import getpass
 
 #project = ["AD_Decode", "APOE"]
 project = "APOE"
-project = "AMD"
+#project = "AMD"
 #project = 'AD_Decode'
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
@@ -83,6 +83,7 @@ elif project == "APOE":
     recenter = 0
     # SAMBA_prep_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-inputs")
     SAMBA_prep_folder = os.path.join(mainpath, "APOE_symlink_pool")
+    SAMBA_prep_folder = os.path.join(mainpath, '19abb14')
     atlas_labels = os.path.join(mainpath,"atlases","chass_symmetric3","chass_symmetric3_labels.nii.gz")
 
     DTC_DWI_folder = os.path.join(mainpath,"mouse","APOE_series","DWI")
@@ -107,6 +108,18 @@ elif project == "APOE":
                 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
                 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
                 'N58613', 'N58732', 'N58516', 'N58402']
+
+    #subjects_folders = glob.glob(os.path.join(SAMBA_work_folder, '*affine.mat/'))
+    subjects_all = glob.glob(os.path.join(SAMBA_work_folder, 'preprocess','*_dwi_masked.nii.gz'))
+    subjects = []
+    for subject in subjects_all:
+        subject_name = os.path.basename(subject)
+        subjects.append(subject_name[:6])
+
+    removed_list = ['N58610', 'N58613', 'N58732']
+    for remove in removed_list:
+        subjects.remove(remove)
+
     # subject 'N58610' 'N58612' 'N58813' retired, back on SAMBA_prep, to investigate
 
 elif project == "AMD":
@@ -147,8 +160,8 @@ elif project == "AMD":
 else:
     raise Exception("Unknown project name")
 
-for subject in subjects:
-    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, headfile = SAMBA_headfile, overwrite=overwrite)
+#for subject in subjects:
+#    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, headfile = SAMBA_headfile, overwrite=overwrite)
 
 remote=False
 
@@ -178,6 +191,8 @@ if remote:
 for filename in os.listdir(SAMBA_prep_folder):
     if any(x in filename for x in file_ids) and any(x in filename for x in subjects):
         filepath=os.path.join(SAMBA_prep_folder,filename)
+        if 'N59010' in filename:
+            print('hi')
         if Path(filepath).is_symlink():
             filepath=Path(filepath).resolve()
         filenewpath = os.path.join(DTC_DWI_folder, filename)

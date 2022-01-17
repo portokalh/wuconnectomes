@@ -23,7 +23,7 @@ def connectomes_to_excel(connectome, index_to_struct, output_path):
     workbook = xlsxwriter.Workbook(output_path)
     worksheet = workbook.add_worksheet()
 
-    for num in np.arange(1, np.shape(connectome)[0]):
+    for num in np.arange(1, np.shape(connectome)[0]+1):
         worksheet.write(0, num, index_to_struct[num])
         worksheet.write(num, 0, index_to_struct[num])
 
@@ -44,7 +44,7 @@ def grouping_to_excel(grouping, index_to_struct, output_path):
     workbook = xlsxwriter.Workbook(output_path)
     worksheet = workbook.add_worksheet()
 
-    for num in np.arange(1, np.shape(grouping)[0]):
+    for num in np.arange(1, np.shape(grouping)[0]+1):
         worksheet.write(0, num, index_to_struct[num])
         worksheet.write(num, 0, index_to_struct[num])
 

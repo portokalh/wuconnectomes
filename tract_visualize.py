@@ -7,6 +7,7 @@ from time import sleep
 import os, glob
 from dipy.segment.clustering import ClusterCentroid
 from dipy.tracking.streamline import Streamlines
+import vtk
 
 def show_bundles(bundles, colors=None, show=True, fname=None, str_tube=False, ref=None):
     ren = window.Renderer()
@@ -42,12 +43,14 @@ def show_bundles(bundles, colors=None, show=True, fname=None, str_tube=False, re
 
 
 
-def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=None, str_tube=False, ref=None):
+def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=None, str_tube=False, ref=None,
+               objectvals = None, colorbar=False, record = None):
 
     from dipy.viz import actor, window, ui
 
-
     scene = window.Scene()
+    if objectvals is None:
+        objectvals = np.rand(np.shape(trk_object)[0])
 
     if isinstance(trk_object[0], ClusterCentroid):
         bundles = trk_object
@@ -75,8 +78,14 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
                 # lines_actor.RotateZ(90)
                 scene.add(object_actor)
     elif isinstance(trk_object, Streamlines):
-        object_actor = actor.line(trk_object)
+        if isinstance(colors, vtk.vtkLookupTable):
+            object_actor = actor.line(trk_object,objectvals, linewidth=0.1,
+                               lookup_colormap=colors)
+        else:
+            object_actor = actor.line(trk_object)
+
         scene.add(object_actor)
+
     else:
         raise Exception('Unindentified object')
 
@@ -120,6 +129,10 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
     scene.add(image_actor_z)
     scene.add(image_actor_x)
     scene.add(image_actor_y)
+
+    if colorbar:
+        bar3 = actor.scalar_bar(colors)
+        scene.add(bar3)
 
     show_m = window.ShowManager(scene, size=(1200, 900))
     show_m.initialize()
@@ -230,7 +243,16 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
         show_m.render()
         show_m.start()
 
-    else:
+    if record is not None:
+        if os.path.exists(record):
+            record_name = os.path.basename(record)
+            if record_name.split('.')[0].split('_')[-1].isnumeric():
+                val = int(record_name.split('.')[0].split('_'))
+                newval = val + 1
+                record_name = record_name.replace('_'+val,'_'+newval)
+            else:
+                record_name = record_name.replace('.','_1.')
 
-        window.record(scene, out_path='bundles_and_3_slices.png', size=(1200, 900),
+        window.record(scene, out_path=record, size=(1200, 900),
                       reset_camera=False)
+        print(f'Saved figure at {record}')
