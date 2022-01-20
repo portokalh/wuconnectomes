@@ -72,25 +72,27 @@ if project == 'AD_Decode':
 else:
     mainpath = os.path.join(mainpath, project)
 
-inclusive = True
-print(mainpath)
+
+inclusive = False
 
 if inclusive:
     inclusive_name = '_inclusive'
 else:
     inclusive_name = '_non_inclusive'
 
-print(mainpath)
-TRK_folder = os.path.join(mainpath, 'TRK_MDT_fixed')
+ratio = 100
+if ratio==1:
+    ratio_folder = ''
+else:
+    ratio_folder = f'_{ratio}'
+
+TRK_folder = os.path.join(mainpath, 'TRK_MDT_fixed'+ratio_folder)
 label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
-pickle_folder = os.path.join(mainpath, 'Pickle_MDT'+inclusive_name)
-centroid_folder = os.path.join(mainpath, 'Centroids_MDT'+inclusive_name)
-excel_folder = os.path.join(mainpath, 'Excels_MDT'+inclusive_name)
-ref_MDT_folder = '/mnt/paros_MRI/jacques/AMD/reg_MDT/'
+pickle_folder = os.path.join(mainpath, 'Pickle_MDT'+inclusive_name+ratio_folder)
+centroid_folder = os.path.join(mainpath, 'Centroids_MDT'+inclusive_name+ratio_folder)
+excel_folder = os.path.join(mainpath, 'Excels_MDT'+inclusive_name+ratio_folder)
 mkcdir([pickle_folder, centroid_folder, excel_folder])
-
-
 
 if not os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
@@ -139,10 +141,10 @@ for group in groups:
 
 
 #Setting identification parameters for ratio, labeling type, etc
-ratio = 100
+
 ratio_str = ratio_to_str(ratio)
 str_identifier = '_MDT'+ratio_str
-str_identifier = '_MDT'
+#str_identifier = '_MDT'
 #str_identifier = '_stepsize_2_all_wholebrain_pruned'
 labeltype = 'lrordered'
 verbose=True
@@ -177,6 +179,10 @@ overwrite=False
 
 write_streamlines = True
 skip_subjects = True
+
+overwrite= True
+allow_preprun = True
+
 
 references = ['fa', 'md']
 for target_tuple in target_tuples:
@@ -218,8 +224,16 @@ for target_tuple in target_tuples:
                 if os.path.exists(grouping_xlsxpath):
                     grouping = extract_grouping(grouping_xlsxpath, index_to_struct, None, verbose=verbose)
                 else:
-                    print('skipping subject {subject} for now as grouping file is not calculated. Best rerun it afterwards ^^')
-                    continue
+                    if allow_preprun:
+                        M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask,
+                                                               symmetric=True, mapping_as_streamlines=False,
+                                                               affine_streams=trkdata.space_attributes[0],
+                                                               inclusive=inclusive)
+                        M_grouping_excel_save(M, grouping, M_xlsxpath, grouping_xlsxpath, index_to_struct,
+                                              verbose=False)
+                    else:
+                        print(f'skipping subject {subject} for now as grouping file is not calculated. Best rerun it afterwards ^^')
+                        continue
 
                 target_streamlines_list = grouping[target_tuple[0], target_tuple[1]]
                 target_streamlines = trkdata.streamlines[target_streamlines_list]
