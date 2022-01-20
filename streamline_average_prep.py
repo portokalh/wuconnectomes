@@ -55,27 +55,36 @@ project = 'AMD'
 huma_projects = ''
 hostname = socket.gethostname()
 
-hostname = 'santorini'
 samos = False
 if 'samos' in hostname:
+    print(hostname)
+    print('yeaaah')
     mainpath = '/mnt/paros_MRI/jacques/'
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 elif 'santorini' in hostname:
+    print('nooope')
     mainpath = '/Users/alex/jacques/'
     mainpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 else:
+    print('noooo')
     print(f'no option for {hostname}')
+
+inclusive = False
+
+if inclusive:
+    inclusive_name = '_inclusive'
+else:
+    inclusive_name = '_non_inclusive'
 
 mainpath = os.path.join(mainpath, project)
 TRK_folder = os.path.join(mainpath, 'TRK_MDT_fixed')
 label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
-figures_folder = os.path.join(mainpath, 'Figures_MDT')
-pickle_folder = os.path.join(mainpath, 'Pickle_MDT')
-centroid_folder = os.path.join(mainpath, 'Centroids_MDT')
-excel_folder = os.path.join(mainpath, 'Excels_MDT')
-mkcdir([figures_folder, pickle_folder, centroid_folder, excel_folder])
+pickle_folder = os.path.join(mainpath, 'Pickle_MDT'+inclusive_name)
+centroid_folder = os.path.join(mainpath, 'Centroids_MDT'+inclusive_name)
+excel_folder = os.path.join(mainpath, 'Excels_MDT'+inclusive_name)
+mkcdir([pickle_folder, centroid_folder, excel_folder])
 if not os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
 
@@ -159,7 +168,7 @@ save_trk_header(filepath=trk_testpath, streamlines=trkdata.streamlines[0:6], hea
                     affine=np.eye(4), verbose=verbose)
 setup_view(trkdata.streamlines[0:6], ref=labeloutpath, world_coords=True)
 """
-overwrite=True
+
 for group in groups:
     group_str = group.replace(' ', '_')
     _, _, index_to_struct, _ = atlas_converter(ROI_legends)
@@ -187,11 +196,11 @@ for group in groups:
             trkdata = load_trk(trkpath, 'same')
             header = trkdata.space_attributes
             if function_processes == 1:
-                M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True,
+                M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=inclusive, symmetric=True,
                                         return_mapping=True,
                                         mapping_as_streamlines=False)
             else:
-                M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= True)
+                M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= inclusive)
             M_grouping_excel_save(M,grouping,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
         del(trkdata)
         if os.path.exists(grouping_xlsxpath):

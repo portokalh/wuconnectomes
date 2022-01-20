@@ -1,6 +1,6 @@
 from transform_handler import img_transform_exec
 from file_tools import mkcdir
-import os, socket
+import os, socket, glob
 
 subjects_list = ["N58214", "N58215",
      "N58216", "N58217", "N58218", "N58219", "N58221", "N58222", "N58223", "N58224",
@@ -26,7 +26,14 @@ if 'samos' in computer_name:
     labels_folder = '/mnt/paros_MRI/jacques/APOE/DWI_allsubj/'
     output_folder = '/mnt/paros_MRI/jacques/APOE/DWI_allsubj_RAS/'
 
+subjects_all = glob.glob(os.path.join(DWI_folder,'*_subjspace_coreg.nii.gz'))
+subjects_list = []
+for subject in subjects_all:
+    subject_name = os.path.basename(subject)
+    subjects_list.append(subject_name[:6])
+print(subjects_list)
 mkcdir(output_folder)
+
 
 for subject in subjects_list:
     coreg_file = os.path.join(DWI_folder,f'{subject}_subjspace_coreg.nii.gz')
@@ -37,12 +44,23 @@ for subject in subjects_list:
     labels_RAS_file = os.path.join(output_folder,f'{subject}_labels_RAS.nii.gz')
     labels_RAS_lr_file = os.path.join(output_folder,f'{subject}_labels_lr_ordered_RAS.nii.gz')
     mask_RAS_file = os.path.join(output_folder, f'{subject}_RAS_mask.nii.gz')
+    transferred=0
     if not os.path.exists(coreg_RAS_file):
-         img_transform_exec(coreg_file,'ARI','RAS',coreg_RAS_file)
+        img_transform_exec(coreg_file,'ARI','RAS',coreg_RAS_file)
+        transferred=1
     if not os.path.exists(labels_RAS_file):
         img_transform_exec(labels_file,'ARI','RAS',labels_RAS_file)
-    if not os.path.exists(labels_RAS_lr_file):    
-        img_transform_exec(labels_lr_file,'ARI','RAS',labels_RAS_lr_file)
+        transferred=1
+    if not os.path.exists(labels_RAS_lr_file): 
+        if os.path.exists(labels_lr_file):
+            img_transform_exec(labels_lr_file,'ARI','RAS',labels_RAS_lr_file)
+            transferred=1
     if not os.path.exists(mask_RAS_file):
         img_transform_exec(mask_file,'ARI','RAS',mask_RAS_file)
-    print(f'transferred subject {subject}')
+        transferred=1
+    if transferred:
+        print(f'transferred subject {subject}')
+    else:
+        print(f'already transferred subject {subject}')
+    if subject == 'N58813':
+        print('HIIIIII')

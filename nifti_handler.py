@@ -244,6 +244,7 @@ def get_bvals_bvecs(mypath, subject):
         fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
         fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
     except IndexError:
+        print(mypath + '/' + subject + '*_bvals.txt')
         fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
         fbvecs = glob.glob(mypath + '/' + subject + '*_bvec*.txt')[0]
         fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
@@ -306,8 +307,11 @@ def getlabelmask(mypath, subject, verbose=None):
     if np.size(labelsoption)>0:
         labelspath = labelsoption[0]
     labelsoption = glob.glob(mypath + '/*' + subject + '*labels.nii.gz')
+    print((mypath + '/' + subject + '_labels_RAS.nii.gz'))
     if np.size(labelsoption)>0:
         labelspath = labelsoption[0]
+    elif os.path.exists(mypath + '/' + subject + '_labels_RAS.nii.gz'):
+        labelspath = mypath + '/' + subject + '_labels_RAS.nii.gz'
     elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'):
         labelspath = mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'
     elif os.path.exists(mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'):

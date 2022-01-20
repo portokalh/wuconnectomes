@@ -72,20 +72,31 @@ if project == 'AD_Decode':
 else:
     mainpath = os.path.join(mainpath, project)
 
+inclusive = True
+print(mainpath)
+
+if inclusive:
+    inclusive_name = '_inclusive'
+else:
+    inclusive_name = '_non_inclusive'
+
+print(mainpath)
 TRK_folder = os.path.join(mainpath, 'TRK_MDT_fixed')
 label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
-figures_folder = os.path.join(mainpath, 'Figures_MDT')
-pickle_folder = os.path.join(mainpath, 'Pickle_MDT')
-centroid_folder = os.path.join(mainpath, 'Centroids_MDT')
-excel_folder = os.path.join(mainpath, 'Excels_MDT')
-mkcdir([figures_folder, pickle_folder, centroid_folder, excel_folder])
+pickle_folder = os.path.join(mainpath, 'Pickle_MDT'+inclusive_name)
+centroid_folder = os.path.join(mainpath, 'Centroids_MDT'+inclusive_name)
+excel_folder = os.path.join(mainpath, 'Excels_MDT'+inclusive_name)
+ref_MDT_folder = '/mnt/paros_MRI/jacques/AMD/reg_MDT/'
+mkcdir([pickle_folder, centroid_folder, excel_folder])
+
+
+
 if not os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
 
 #reference_img refers to statistical values that we want to compare to the streamlines, say fa, rd, etc
 references = ['fa', 'md', 'rd', 'ad', 'b0']
-references = []
 
 verbose = True
 
@@ -144,7 +155,7 @@ picklesave=True
     '4 middletemporal_Right---inferiorparietal_Right 64 57 with weight of 434.9106\n'
     '5 fusiform_Left---Cerebellum-Cortex_Left 22 1 with weight of 402.0991\n'
 """
-target_tuples = [(9,1),(76, 42),(76, 64),(77, 9),(43, 9)]
+
 target_tuples = [(9,1),(76, 42),(76, 64),(77, 9),(43, 9)]
 #target_tuples = [(9,1)]
 #target_tuple = (9,1)
@@ -166,8 +177,6 @@ overwrite=False
 
 write_streamlines = True
 skip_subjects = True
-
-overwrite= True
 
 references = ['fa', 'md']
 for target_tuple in target_tuples:
@@ -219,7 +228,6 @@ for target_tuple in target_tuples:
                 target_qb = QuickBundles(threshold=distance1, metric=metric1)
 
                 for ref in references:
-                    ref_MDT_folder = '/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/reg_images/'
                     ref_img_path = get_diff_ref(ref_MDT_folder, subject, ref)
                     ref_data, ref_affine = load_nifti(ref_img_path)
 
