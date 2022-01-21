@@ -31,6 +31,7 @@ for remove in removed_list:
         print(f'could not find {remove}')
 print(subjects)
 subjects = ["S02506"]
+subjects = ["S02967"]
 
 ext = ".nii.gz"
 computer_name = socket.gethostname()
