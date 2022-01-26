@@ -33,7 +33,9 @@ from email.mime.text import MIMEText
 import glob
 from bvec_handler import extractbvals
 from dipy.tracking.utils import unique_rows
+from numpy import ravel_multi_index
 
+from collections import defaultdict, OrderedDict
 
 from time import time
 from dipy.io.image import load_nifti, save_nifti
@@ -451,9 +453,137 @@ def connectivity_matrix_func(pruned_streamlines_SL, function_processes, labelmas
     return M, grouping
 
 
+def connectivity_matrix_test(streamlines, affine, label_volume, inclusive=False,
+                        symmetric=True, return_mapping=False,
+                        mapping_as_streamlines=False):
+    print('success')
+    print(np.shape(streamlines))
+
+def ndbincount(x, weights=None, shape=None):
+    """Like bincount, but for nd-indices.
+
+    Parameters
+    ----------
+    x : array_like (N, M)
+        M indices to a an Nd-array
+    weights : array_like (M,), optional
+        Weights associated with indices
+    shape : optional
+        the shape of the output
+    """
+    x = np.asarray(x)
+    if shape is None:
+        shape = x.max(1) + 1
+
+    x = ravel_multi_index(x, shape)
+    out = np.bincount(x, weights, minlength=np.prod(shape))
+    out.shape = shape
+
+    return out
+
+def connectivity_matrix_test_2(streamlines, affine, label_volume, inclusive=False,
+                        symmetric=True, return_mapping=False,
+                        mapping_as_streamlines=False):
+    # Error checking on label_volume
+    from itertools import combinations, groupby
+
+    kind = label_volume.dtype.kind
+    labels_positive = ((kind == 'u') or
+                       ((kind == 'i') and (label_volume.min() >= 0)))
+    valid_label_volume = (labels_positive and label_volume.ndim == 3)
+    if not valid_label_volume:
+        raise ValueError("label_volume must be a 3d integer array with"
+                         "non-negative label values")
+
+    # If streamlines is an iterator
+    if return_mapping and mapping_as_streamlines:
+        streamlines = list(streamlines)
+
+    if inclusive:
+        # Create ndarray to store streamline connections
+        edges = np.ndarray(shape=(3, 0), dtype=int)
+        lin_T, offset = _mapping_to_voxel(affine)
+        for sl, _ in enumerate(streamlines):
+            # Convert streamline to voxel coordinates
+            entire = _to_voxel_coordinates(streamlines[sl], lin_T, offset)
+            i, j, k = entire.T
+
+            if symmetric:
+                # Create list of all labels streamline passes through
+                entirelabels = list(OrderedDict.fromkeys(label_volume[i, j, k]))
+                # Append all connection combinations with streamline number
+                for comb in combinations(entirelabels, 2):
+                    edges = np.append(edges, [[comb[0]], [comb[1]], [sl]],
+                                      axis=1)
+            else:
+                # Create list of all labels streamline passes through, keeping
+                # order and whether a label was entered multiple times
+                entirelabels = list(groupby(label_volume[i, j, k]))
+                # Append connection combinations along with streamline number,
+                # removing duplicates and connections from a label to itself
+                combs = set(combinations([z[0] for z in entirelabels], 2))
+                for comb in combs:
+                    if comb[0] == comb[1]:
+                        pass
+                    else:
+                        edges = np.append(edges, [[comb[0]], [comb[1]], [sl]],
+                                          axis=1)
+        if symmetric:
+            edges[0:2].sort(0)
+        mx = label_volume.max() + 1
+        matrix = ndbincount(edges[0:2], shape=(mx, mx))
+
+        if symmetric:
+            matrix = np.maximum(matrix, matrix.T)
+        if return_mapping:
+            mapping = defaultdict(list)
+            for i, (a, b, c) in enumerate(edges.T):
+                mapping[a, b].append(c)
+            # Replace each list of indices with the streamlines they index
+            if mapping_as_streamlines:
+                for key in mapping:
+                    mapping[key] = [streamlines[i] for i in mapping[key]]
+
+            return matrix, mapping
+
+        return matrix
+    else:
+        # take the first and last point of each streamline
+        endpoints = [sl[0::len(sl)-1] for sl in streamlines]
+
+        # Map the streamlines coordinates to voxel coordinates
+        lin_T, offset = _mapping_to_voxel(affine)
+        endpoints = _to_voxel_coordinates(endpoints, lin_T, offset)
+
+        # get labels for label_volume
+        i, j, k = endpoints.T
+        endlabels = label_volume[i, j, k]
+        if symmetric:
+            endlabels.sort(0)
+        mx = label_volume.max() + 1
+        matrix = ndbincount(endlabels, shape=(mx, mx))
+        if symmetric:
+            matrix = np.maximum(matrix, matrix.T)
+
+        if return_mapping:
+            mapping = defaultdict(list)
+            for i, (a, b) in enumerate(endlabels.T):
+                mapping[a, b].append(i)
+
+            # Replace each list of indices with the streamlines they index
+            if mapping_as_streamlines:
+                for key in mapping:
+                    mapping[key] = [streamlines[i] for i in mapping[key]]
+
+            # Return the mapping matrix and the mapping
+            return matrix, mapping
+
+        return matrix
+
+
 def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype = "T1",
                               inclusive = False, function_processes = 1, forcestart = False, picklesave = True, labeltype='orig',
-                              verbose = None):
+                              symmetric = True, verbose = None):
 
     picklepath_connect = os.path.join(outpath, subject + str_identifier + '_connectomes.p')
     connectome_xlsxpath = os.path.join(outpath, subject + str_identifier + "_connectomes.xlsx")
@@ -501,6 +631,10 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
     cutoff = 2
 
     converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = atlas_converter(ROI_excel)
+
+
+    print('what is the labeltype: ')
+    print(labeltype)
     if labeltype == 'combined':
         labeloutpath = labelpath.replace('.nii.gz','_comb.nii.gz')
         if not os.path.isfile(labeloutpath):
@@ -521,6 +655,14 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         raise TypeError("Cannot recognize label type (this error raise is a THEORETICALLY a temp patch")
 
     pickle.dump(index_to_struct, open(picklepath_index, "wb"))
+
+    print('test test test remove this next part later')
+    kind = labelmask.dtype.kind
+    print('first instance of kind')
+    print(kind)
+
+    print(np.shape(labelmask))
+
 
     if (trkfilepath is not None and trkpruneexists is False and prunesave):
 
@@ -592,9 +734,24 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
 
     affine_streams = np.eye(4)
     t = time()
+    print('first check')
+
+
+    print('test test test remove this next part later')
+    kind = labelmask.dtype.kind
+    print('second instance of kind')
+    print(kind)
+
 
     if function_processes > 1:
         listcut = []
+        print('second check')
+        print('test test test remove this next part later')
+        kind = labelmask.dtype.kind
+        print('third instance of kind')
+        print(kind)        
+
+
         n = function_processes
         size_SL = np.size(pruned_streamlines_SL)
         listcut.append(0)
@@ -607,14 +764,25 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         for i in np.arange(n):
             pruned_cut.append(pruned_streamlines_SL[listcut[i]:listcut[i+1]])
         pool = Pool()
-        symmetric = True
         return_mapping = True
         mapping_as_streamlines = False
+        print('third check')
+
+        print('test test test remove this next part later')
+        kind = labelmask.dtype.kind
+        print('fourth instance of kind')
+        print(kind)
+
 
         if verbose:
             print("The streamline is split into "+str(function_processes)+" of size "+str(np.int(size_SL / n)))
 
-        connectomic_results = pool.starmap_async(connectivity_matrix, [(Streamlines(pruned_streamlines_SL[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
+        #connectomic_results = pool.starmap_async(connectivity_matrix_test, [(Streamlines(pruned_streamlines_SL[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
+        #                                                                      inclusive, symmetric, return_mapping,
+        #                                                                      mapping_as_streamlines) for i in np.arange(n)]).get()
+        #print('I GUESS THIS WASNT IT THEN DANG IT')
+        print(f'This run has inclusive: {inclusive} and symmetric: {symmetric}')
+        connectomic_results = pool.starmap_async(connectivity_matrix_test_2, [(Streamlines(pruned_streamlines_SL[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
                                                                               inclusive, symmetric, return_mapping,
                                                                               mapping_as_streamlines) for i in np.arange(n)]).get()
         M = np.zeros(np.shape(connectomic_results[0][0]))
@@ -631,7 +799,7 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
 
 
     else:
-        M, grouping = connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask, inclusive=True, symmetric=True,
+        M, grouping = connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask, inclusive=True, symmetric=symmetric,
                                             return_mapping=True,
                                             mapping_as_streamlines=False)
         n = 1

@@ -81,6 +81,7 @@ def convert_labelmask(atlas, converter, atlas_outpath = None, affine_labels=None
                     print('hi')
 
     save_nifti(atlas_outpath, labels_new, affine_labels)
+    return(labels_new)
 
 def run_onall():
 
