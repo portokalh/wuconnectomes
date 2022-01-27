@@ -8,6 +8,7 @@ from file_tools import mkcdir
 from time import time
 from argument_tools import parse_arguments
 import sys
+import glob
 
 def orient_to_str(bvec_orient):
     mystr="_"
@@ -29,30 +30,11 @@ def orient_to_str(bvec_orient):
                 mystr = mystr+"pz"
     return mystr
 
-#datapath = "/Volumes/Data/Badea/ADdecode.01/Data/Anat/"
-subjects = ["S01912", "S02110", "S02224", "S02227", "S02230", "S02231", "S02266", "S02289", "S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02490", "S02491", "S02506"]
-#subjects = ["S02227"]
-#subjects = ["S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02490", "S02491", "S02506"]
-#subjects = ["S024S02", "S02410", "S02421"]
-#subjects = ["S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02490", "S02491", "S02506"]
-subjects = ["S02231", "S02266", "S02289"]
-subjects = ["S02490", "S02491", "S02506"]
-subjects = ["S01912", "S02110", "S02224", "S02227", "S02231", "S02266", "S02289", "S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02491", "S02506"]
-
-subjects = ["S01912", "S02110", "S02224", "S02227", "S02231", "S02266"]
-subjects = ["S02224"]
-subjects = ["S02666","S02670","S02686","S02654", "S02686", "S02695", "S02720", "S02737", "S02753", "S02765", "S02781", "S02802", "S02813", "S02817", "S02840", "S02877", "S02898", "S02938", "S02939", "S02967", "S02987",
-
-            "S02987", "S03010", "S03033", "S03034", "S03045" ]
-subjects= ["S02524","S02535","S02690","S02715","S02771","S02804","S02812","S02817", "S02840","S02871","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028", "S03048", "S03069"]
-#subjects = ["S03017"]
-#subjects = ["S02954"]
-#subjects = ["S01912", "S02110", "S02224", "S02227", "S02231", "S02266", "S02289", "S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S02402", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02491", "S02506"]
-#subjects = ["S02224"]
-#subjects = ["S02765", "S02781", "S02802", "S02813", "S02817", "S02840", "S02877", "S02898", "S02938", "S02939", "S02967", "S02987",
-#removed 02812 02871, 03069
-#            "S02987", "S03010", "S03033", "S03034", "S03045" ]
-#subjects= ["S03045"]
+subjects = ["S02666","S02670","S02686","S02654", "S02686", "S02695", "S02720", "S02737", "S02753", "S02765", "S02781",
+            "S02802", "S02813", "S02817", "S02840", "S02877", "S02898", "S02938", "S02939", "S02967", "S02987", "S02987",
+            "S03010", "S03033", "S03034", "S03045", "S02524","S02535","S02690","S02715","S02771","S02804","S02812",
+            "S02817", "S02840","S02871","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028",
+            "S03048", "S03069"]
 #removed S02666, S02670, S02686 for now
 #"S02230" "S02690" "S02804" these subjects are strange, to investigatei
 #02490 has been since confirmed to be incomplete and can be safely ignored, as it is the same as 02491 subject wise
@@ -70,17 +52,17 @@ for bxhfile in subjbxh:
 
 outpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
 outpath="/mnt/paros_MRI/jacques/AD_Decode/Analysis/"
-import glob
-figspath = os.path.join(outpath, "Figures_MPCA_noninclusive_fixed")
+outpath = '/Volumes/Data/Badea/Lab/jacques/ADDecode_test_connectomes/'
 diff_preprocessed = os.path.join(outpath, "DWI")
 trkpath = os.path.join(outpath, "TRK_MPCA_fixed")
+trkpath = os.path.join(outpath, "TRK_MPCA_100")
 
-mkcdir([outpath, figspath, diff_preprocessed, trkpath])
+mkcdir([outpath, diff_preprocessed, trkpath])
 masktype = "FA"
 masktype = "T1"
 masktype = "subjspace"
 subjects_all = glob.glob(os.path.join(diff_preprocessed,'*subjspace_dwi*.nii.gz'))
-subjects = []
+
 for subject in subjects_all:
     subject_name = os.path.basename(subject)
     subjects.append(subject_name[:6])
@@ -90,25 +72,13 @@ for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
 
+subjects = ['S01912']
 subject_processes, function_processes = parse_arguments(sys.argv,subjects)
-
-
-"""
-if masktype == "dwi":
-    outpathmask = os.path.join(outpath, subject)
-    data, affine, gtab, vox_size, fdwipath, hdr, header = getdwidata(dwipath, subject, None)
-    mask, _ = dwi_to_mask(data, affine, outpathmask, makefig=False, vol_idx=vol_b0, median_radius=5, numpass=6,
-                          dilate=2)
-elif masktype == "T1":
-    #bet bia6_S02491_40006.nii.gz S02491.nii.gz -m -o -f 0.4
-    #mv S02491_mask.nii.gz S02491_T1_binary_mask.nii.gz
-    mask, affinemask = getmask(outpath,subject,"T1",verbose)
-"""
 
 stepsize = 2
 
 
-ratio = 1
+ratio = 100
 if ratio == 1:
     saved_streamlines = "_all"
 else:
@@ -146,7 +116,8 @@ donelist = []
 notdonelist = []
 createmask = masktype
 symmetric = True
-inclusive = False
+inclusive = True
+
 denoise = "coreg"
 savefa = True
 make_connectomes = True
@@ -163,8 +134,21 @@ else:
 
 
 #atlas_legends = None
-#atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-atlas_legends = outpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+#atlas_legends = outpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+
+if inclusive:
+    inclusive_str = '_inclusive'
+else:
+    inclusive_str = '_non_inclusive'
+
+if symmetric:
+    symmetric_str = '_symmetric'
+else:
+    symmetric_str = '_non_symmetric'
+
+figspath = os.path.join(outpath, "Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
+mkcdir(figspath)
 
 if make_connectomes:
     for subject in subjects:
