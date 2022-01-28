@@ -11,12 +11,12 @@ import warnings
 import time
 
 def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=4000, SAMBA_inputs_folder=None,
-                         gunniespath="~/gunnies/", processes=1, masking="bet", ref=None, transpose=None,
-                         overwrite=False, denoise='None', recenter=0, verbose=False):
+                         shortcuts_all_folder = None, gunniespath="~/gunnies/", processes=1, masking="bet", ref=None,
+                         transpose=None, overwrite=False, denoise='None', recenter=0, verbose=False):
 
     proc_name ="diffusion_prep_" # Not gonna call it diffusion_calc so we don't assume it does the same thing as the civm pipeline
     work_dir=os.path.join(outpath,proc_name+subj)
-
+    overwrite = False
     """
     for filePath in glob.glob(os.path.join(work_dir,'*')):
         modTimesinceEpoc = os.path.getmtime(filePath)
@@ -66,6 +66,17 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
         if not os.path.exists(bvecs_new) or not os.path.exists(bvals_new) or overwrite:
             shutil.copyfile(bvecs,bvecs_new)
             shutil.copyfile(bvals,bvals_new)
+
+    if shortcuts_all_folder is not None:
+        raw_nii_link = os.path.join(shortcuts_all_folder, f"{subj}_rawnii{ext}")
+        if not os.path.exists(raw_nii_link) or overwrite:
+            buildlink(raw_nii, raw_nii_link)
+        bvecs_new = os.path.join(shortcuts_all_folder, subj + "_bvecs.txt")
+        bvals_new = os.path.join(shortcuts_all_folder, subj + "_bvals.txt")
+        if not os.path.exists(bvecs_new) or not os.path.exists(bvals_new) or overwrite:
+            shutil.copyfile(bvecs, bvecs_new)
+            shutil.copyfile(bvals, bvals_new)
+
     final_mask = os.path.join(work_dir, f'{subj}_mask{ext}')
 
     #if (not os.path.exists(final_mask) and not os.path.exists(tmp_mask)) or overwrite:
@@ -135,8 +146,9 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             os.system(temp_cmd)
         if cleanup:
             shutil.move(coreg_nii_old,coreg_nii)
-    if SAMBA_inputs_folder is not None:
-        coreg_link = os.path.join(SAMBA_inputs_folder,f'{subj}_subjspace_coreg{ext}')
+
+    if shortcuts_all_folder is not None:
+        coreg_link = os.path.join(shortcuts_all_folder,f'{subj}_subjspace_coreg{ext}')
         if not os.path.exists(coreg_link) or overwrite:
             buildlink(coreg_nii, coreg_link)
 
@@ -217,6 +229,11 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
         if not os.path.exists(bonus_ref_link) or overwrite:
             buildlink(reference_file,bonus_ref_link)
 
+    if shortcuts_all_folder is not None:
+        bonus_ref_link = os.path.join(shortcuts_all_folder, f'{subj}_reference{ext}')
+        if not os.path.exists(bonus_ref_link) or overwrite:
+            buildlink(reference_file,bonus_ref_link)
+
     #give new header to the non-dti files using md as reference
 
 
@@ -240,8 +257,8 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
                     raise Exception("Tmp file was not created, need to rerun previous processes")
                 else:
                     header_superpose(raw_dwi, tmp_file, outpath=subj_file)
-            if SAMBA_inputs_folder is not None:
-                subj_link = os.path.join(SAMBA_inputs_folder, f'{subj}_subjspace_{contrast}{ext}')
+            if shortcuts_all_folder is not None:
+                subj_link = os.path.join(shortcuts_all_folder, f'{subj}_subjspace_{contrast}{ext}')
                 if not os.path.exists(subj_link) or overwrite:
                     buildlink(subj_file, subj_link)
 
@@ -260,6 +277,10 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
 
     if SAMBA_inputs_folder is not None:
         subj_orient_string = os.path.join(SAMBA_inputs_folder, f'{subj}_relative_orientation.txt')
+        shutil.copy(orient_string, subj_orient_string)
+
+    if shortcuts_all_folder is not None:
+        subj_orient_string = os.path.join(shortcuts_all_folder, f'{subj}_relative_orientation.txt')
         shutil.copy(orient_string, subj_orient_string)
 
     #check extracted values from relative orientation vals
@@ -292,6 +313,11 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             if not os.path.exists(inputs_space_link) or overwrite:
                 buildlink(img_out, inputs_space_link)
 
+        if shortcuts_all_folder is not None:
+            inputs_space_link = os.path.join(shortcuts_all_folder, f'{subj}_{contrast}{ext}')
+            if not os.path.exists(inputs_space_link) or overwrite:
+                buildlink(img_out, inputs_space_link)
+
 
     mask = os.path.join(work_dir,f'{subj}_mask{ext}')
     b0 = os.path.join(work_dir,f'{subj}_b0{ext}')
@@ -320,6 +346,16 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
                 buildlink(inputspace, blinked_file)
                 print(f'build link from {inputspace} to {blinked_file}')
 
+        if shortcuts_all_folder is not None:
+            warnings.warn('should reach this!')
+            blinked_file = os.path.join(shortcuts_all_folder, f'{subj}_{contrast}{ext}')
+            if not os.path.exists(blinked_file) or overwrite:
+                buildlink(inputspace, blinked_file)
+                print(f'build link from {inputspace} to {blinked_file}')
+
+
+
+
     if create_subj_space_files:
         for contrast in ['fa0', 'rd', 'ad', 'md']:
 
@@ -338,10 +374,9 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
                         shutil.copy(real_file,subj_file_tmp)
                 header_superpose(raw_dwi, subj_file_tmp, outpath=subj_file)
 
-            if SAMBA_inputs_folder is not None:
-                subj_link = os.path.join(SAMBA_inputs_folder, f'{subj}_subjspace_{contrast}{ext}')
+            if shortcuts_all_folder is not None:
+                subj_link = os.path.join(shortcuts_all_folder, f'{subj}_subjspace_{contrast}{ext}')
                 buildlink(subj_file, subj_link)
-
 
     #if cleanup:
     #    tmp_files = glob.glob(os.path.join(work_dir, '*tmp*'))

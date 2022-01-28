@@ -38,17 +38,16 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
             'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048', 'S03069', 'S03225', 'S03265', 'S03293',
             'S03308', 'S03321']
 
-removed_list = ['S02230', 'S02490', 'S02523', 'S02745']
-removed_list = removed_list + ['S03028', 'S03033', 'S03034', 'S03045', 'S03048', 'S03069', 'S03225', 'S03265', 'S03293',
-                               'S03308', 'S03321']
-for remove in removed_list:
-    try:
-        subjects.remove(remove)
-    except:
-        print(f'could not find {remove}')
+#removed_list = ['S02230', 'S02490', 'S02523', 'S02745']
+#removed_list = removed_list + ['S03028', 'S03033', 'S03034', 'S03045', 'S03048', 'S03069', 'S03225', 'S03265', 'S03293',
+#                               'S03308', 'S03321']
+
+
 print(subjects)
 subjects = ["S03308"]
+subjects = ["S02654"]
 #subjects = ["S02967"]
+subjects = ['S02535']
 
 ext = ".nii.gz"
 computer_name = socket.gethostname()
@@ -77,6 +76,18 @@ if project == "AD_Decode":
     trkroi = ["wholebrain"]
     str_identifier = get_str_identifier(stepsize, ratio, trkroi)
 
+subjects_all = glob.glob(os.path.join(path_DWI,'*subjspace_dwi*.nii.gz'))
+subjects = []
+for subject in subjects_all:
+    subject_name = os.path.basename(subject)
+    subjects.append(subject_name[:6])
+print(subjects)
+removed_list = ['S02804', 'S02898', 'S02871', 'S02877','S03045']
+for remove in removed_list:
+    if remove in subjects:
+        subjects.remove(remove)
+
+
 overwrite = False
 cleanup = False
 verbose = True
@@ -95,7 +106,6 @@ orientation_in = orient_relative.split(',')[1]
 orientation_in = orientation_in.split(':')[1]
 
 nii_test_files = True
-overwrite = True
 
 if save_temp_files:
     mkcdir(path_trk_tempdir)
@@ -106,7 +116,7 @@ for subj in subjects:
     affine_orig = os.path.join(path_transforms, f"{subj}_affine.mat")
     affine = os.path.join(path_transforms, f"{subj}_affine.txt")
     runno_to_MDT = os.path.join(path_transforms, f'{subj}_to_MDT_warp.nii.gz')
-    subj_dwi_path = os.path.join(path_DWI, f'{subj}_subjspace_dwi{ext}')
+    subj_dwi_path = os.path.join(path_DWI, f'{subj}_subjspace_{contrast}{ext}')
 
     if nii_test_files:
         mkcdir([DWI_save, path_DWI_MDT])
@@ -163,9 +173,7 @@ for subj in subjects:
                                                    f'{subj}{str_identifier}_preprocess_postrigid_affine.trk')
     trk_MDT_space = os.path.join(path_TRK_output, f'{subj}_MDT.trk')
 
-    overwrite = True
     if not os.path.exists(trk_MDT_space) or overwrite:
-
         subj_dwi_path = os.path.join(path_DWI, f'{subj}_subjspace_dwi{ext}')
         subj_dwi = nib.load(subj_dwi_path)
         subj_dwi_data = subj_dwi.get_data()
@@ -199,13 +207,29 @@ for subj in subjects:
         subj_torecenter_transform_affine = get_affine_transform_test(subj_affine, subj_affine_new)
         streamlines, header = unload_trk(subj_trk)
 
-        c_of_mass = transform_centers_of_mass(subj_dwi_cr._data, subj_dwi_cr.affine,
-                                              subj_dwi_c._data, subj_dwi_c.affine)
+        if np.size(np.shape(subj_dwi_cr._data))==4:
+            subj_dwi_cr_data = subj_dwi_cr._data[:,:,:,0]
+            print(f'Warning: subj dwi data taken from {subj_dwi_path} is 4D for subject {subj}. Investigate why when possible')
+        elif np.size(np.shape(subj_dwi_cr._data))==3:
+            subj_dwi_cr_data = subj_dwi_cr._data
+        else:
+            raise Exception(f'problem with shape of data from subject {subj}')
+
+        if np.size(np.shape(subj_dwi_c._data))==4:
+            subj_dwi_c_data = subj_dwi_c._data[:,:,:,0]
+            print(f'Warning: subj dwi data taken from {subj_dwi_path} is 4D for subject {subj}. Investigate why when possible')
+        elif np.size(np.shape(subj_dwi_c._data))==3:
+            subj_dwi_c_data = subj_dwi_c._data
+        else:
+            raise Exception(f'problem with shape of data from subject {subj}')
+
+        c_of_mass = transform_centers_of_mass(subj_dwi_cr_data, subj_dwi_cr.affine,
+                                              subj_dwi_c_data, subj_dwi_c.affine)
 
         subj_affine_eye = np.eye(4)
         subj_affine_eye[:3, :3] = subj_torecenter_transform_affine[:3, :3]
         subj_affine_eye_inv = np.linalg.inv(subj_affine_eye)
-        nii_shape = np.array(np.shape(subj_dwi_data))
+        nii_shape = np.array(np.shape(subj_dwi_data))[0:3]
 
         subj_affine_eye_inv[:3, 3] = c_of_mass.affine_inv[:3, 3]
 
@@ -244,7 +268,7 @@ for subj in subjects:
         new_transmat[:3, 3] = np.squeeze(np.matmul(subj_affine[:3, :3], later_trans_mat[3:6])) #should be the AFFINE of the current image, to make sure the slight difference in orientation is ACCOUNTED FOR!!!!!!!!!!
         new_transmat[:3, 3] = np.squeeze(np.matmul(subj_torecenter_transform_affine[:3, :3], later_trans_mat[3:6]))
         new_transmat[:3, 3] = np.squeeze(later_trans_mat[3:6])
-        #new_transmat[2, 3] = 0
+        new_transmat[2, 3] = - new_transmat[2, 3]
         print(new_transmat)
         streamlines_posttrans = transform_streamlines(streamlines_prepro, (new_transmat))
 
@@ -277,6 +301,7 @@ for subj in subjects:
         affine_mat = convert_ants_vals_to_affine(affine_ants)
 
         streamlines_postrigidaffine = transform_streamlines(streamlines_postrigid, np.linalg.inv(affine_mat))
+        overwrite = True
 
         if (not os.path.exists(trk_preprocess_postrigid_affine) or overwrite) and save_temp_files:
             save_trk_header(filepath=trk_preprocess_postrigid_affine, streamlines=streamlines_postrigidaffine,
@@ -286,11 +311,11 @@ for subj in subjects:
         # streamlines_postrigidaffine, header_postrigidaffine = unload_trk(trk_preprocess_postrigid_affine)
 
         warp, affine, vox_size, header_warp, ref_info = extract_nii_info(runno_to_MDT)
-        warp = warp[:, :, :, 0, :]
+        warp = warp[:,:,:,0,:]
 
-        vox_size = tuple(np.linalg.eigvals(affine[:3, :3]))
+        vox_size = tuple(np.linalg.eigvals(affine[:3,:3]))
         vox_size = vox_size[0]
-        target_isocenter = np.diag(np.array([-vox_size, vox_size, vox_size, 1]))
+        target_isocenter = np.diag(np.array([-vox_size, -vox_size, vox_size, 1]))
         streamlines_post_warp = deform_streamlines(
             streamlines_postrigidaffine, deform_field=warp,
             stream_to_current_grid=target_isocenter,
@@ -299,6 +324,6 @@ for subj in subjects:
 
         if (not os.path.exists(trk_MDT_space) or overwrite):
             save_trk_header(filepath=trk_MDT_space, streamlines=streamlines_post_warp, header=header,
-                            affine=np.eye(4), fix_streamlines=False, verbose=verbose)
+                    affine=np.eye(4), fix_streamlines=False, verbose=verbose)
     else:
         print(f'{trk_MDT_space} already exists')
