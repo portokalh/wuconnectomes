@@ -10,14 +10,14 @@ import os
 import getpass
 
 #project = ["AD_Decode", "APOE"]
-project = "APOE"
+#project = "APOE"
 #project = "AMD"
-#project = 'AD_Decode'
+project = 'AD_Decode'
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
 SAMBA_headfile_dir = os.path.join(mainpath, "samba_startup_cache")
-file_ids = ["coreg", "subject_fa", "subjspace_b0", "bval", "bvec", "subjspace_mask", "reference", "subjspace_dwi", "relative_orientation"]
+file_ids = ["coreg", "subjspace_fa", "subjspace_b0", "bval", "bvec", "subjspace_mask", "reference", "subjspace_dwi", "relative_orientation"]
 if project == 'AMD':
     file_ids = ["relative_orientation"]
 
@@ -29,7 +29,7 @@ if project == "AD_Decode":
     gunniespath = "~/gunnies/"
     recenter = 0
     #SAMBA_prep_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-inputs")
-    SAMBA_prep_folder = os.path.join(mainpath, "mouse","ADDeccode_symlink_pool")
+    SAMBA_prep_folder = os.path.join(mainpath, "human","ADDeccode_symlink_pool_allfiles")
     atlas_labels = os.path.join(mainpath, "atlas","IITmean_RPI","IITmean_RPI_labels.nii.gz")
 
     DTC_DWI_folder = os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
@@ -50,7 +50,6 @@ if project == "AD_Decode":
                 "S02804", "S02813", "S02817", "S02840", "S02877", "S02898", "S02926", "S02938", "S02939", "S02954", "S02967",
                 "S02987", "S03010", "S03017", "S03033", "S03034", "S03045", "S03048"]
     subjects = ["S02802","S01912", "S02110", "S02224", "S02227", "S02230", "S02231", "S02266", "S02289", "S02320", "S02361", "S02363", "S02373", "S02386", "S02390", "S024S02", "S02410", "S02421", "S02424", "S02446", "S02451", "S02469", "S02473", "S02485", "S02490", "S02491", "S02506","S02524","S02535","S02690","S02715","S02771","S02804","S02817", "S02840","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028", "S03048","S02524","S02535","S02690","S02715","S02771","S02804","S02812","S02817", "S02840","S02871","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028", "S03048", "S03069","S02817"]
-    subjects = ["S03028"]
 
     subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266', 'S02289', 'S02320', 'S02361', 'S02363',
                 'S02373', 'S02386', 'S02390', 'S02402', 'S02410', 'S02421', 'S02424', 'S02446', 'S02451', 'S02469', 'S02473',
@@ -60,10 +59,13 @@ if project == "AD_Decode":
                 'S02939', 'S02954', 'S02967', 'S02987', 'S03010', 'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048',
                 'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321']
 
+    subjects = ["S02227"]
+
+
     removed_list = ['S02230', 'S02490', 'S02523', 'S02745']
     for remove in removed_list:
-        subjects.remove(remove)
-    subjects = ["S02842"]
+        if remove in subjects:
+            subjects.remove(remove)
 
     #oldsubjects = ["01912", "02110", "02224", "02227", "02230", "02231", "02266", "02289", "02320", "02361",
     # #           "02363", "02373", "02386", "02390", "02402", "02410", "02421", "02424", "02446", "02451",
@@ -118,7 +120,9 @@ elif project == "APOE":
 
     removed_list = ['N58610', 'N58613', 'N58732']
     for remove in removed_list:
-        subjects.remove(remove)
+        if remove in subjects:
+            subjects.remove(remove)
+
 
     # subject 'N58610' 'N58612' 'N58813' retired, back on SAMBA_prep, to investigate
 
@@ -413,7 +417,7 @@ for subject in subjects:
 MDT_refs = ['fa', 'md', 'rd', 'ad', 'b0']
 for subject in subjects:
     for MDT_ref in MDT_refs:
-        filepath = os.path.join(final_template_run, 'MDT_images',f'{subject}_{MDT_ref}_to_MDT.nii.gz')
+        filepath = os.path.join(final_template_run, 'reg_images',f'{subject}_{MDT_ref}_to_MDT.nii.gz')
         if not os.path.exists(filepath):
             txt = f'Could not find {filepath} in {final_template_run} for subject {subject} in project {project}'
             warnings.warn(txt)

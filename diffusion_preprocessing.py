@@ -57,16 +57,6 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     raw_dwi = os.path.join(work_dir,f"{subj}_raw_dwi.nii.gz")
     orient_string = os.path.join(work_dir,"relative_orientation.txt")
 
-    if SAMBA_inputs_folder is not None:
-        raw_nii_link = os.path.join(SAMBA_inputs_folder, f"{subj}_rawnii{ext}")
-        if not os.path.exists(raw_nii_link) or overwrite:
-            buildlink(raw_nii, raw_nii_link)
-        bvecs_new = os.path.join(SAMBA_inputs_folder,subj+"_bvecs.txt")
-        bvals_new = os.path.join(SAMBA_inputs_folder,subj+"_bvals.txt")
-        if not os.path.exists(bvecs_new) or not os.path.exists(bvals_new) or overwrite:
-            shutil.copyfile(bvecs,bvecs_new)
-            shutil.copyfile(bvals,bvals_new)
-
     if shortcuts_all_folder is not None:
         raw_nii_link = os.path.join(shortcuts_all_folder, f"{subj}_rawnii{ext}")
         if not os.path.exists(raw_nii_link) or overwrite:
@@ -224,10 +214,6 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     reference_file = os.path.join(work_dir, f'{subj}_reference{ext}')
     if not os.path.exists(reference_file):
         shutil.copy(reference, reference_file)
-    if SAMBA_inputs_folder is not None:
-        bonus_ref_link = os.path.join(SAMBA_inputs_folder, f'{subj}_reference{ext}')
-        if not os.path.exists(bonus_ref_link) or overwrite:
-            buildlink(reference_file,bonus_ref_link)
 
     if shortcuts_all_folder is not None:
         bonus_ref_link = os.path.join(shortcuts_all_folder, f'{subj}_reference{ext}')

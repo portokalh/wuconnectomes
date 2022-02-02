@@ -29,6 +29,24 @@ from dipy.align.imaffine import (transform_centers_of_mass,
                                  MutualInformationMetric,
                                  AffineRegistration)
 
+def _to_streamlines_coordinates(inds, lin_T, offset):
+    """Applies a mapping from streamline coordinates to voxel_coordinates,
+    raises an error for negative voxel values."""
+    inds = inds - offset
+    streamline = np.dot(inds, np.linalg.inv(lin_T))
+    #streamline = streamline - [1,1,1]
+    return streamline
+
+def _to_voxel_coordinates_notint(streamline, lin_T, offset):
+    """Applies a mapping from streamline coordinates to voxel_coordinates,
+    raises an error for negative voxel values."""
+    inds = np.dot(streamline, lin_T)
+    inds += offset
+    if inds.min().round(decimals=6) < 0:
+        raise IndexError('streamline has points that map to negative voxel'
+                         ' indices')
+    return inds
+
 subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266', 'S02289', 'S02320', 'S02361',
             'S02363', 'S02373', 'S02386', 'S02390', 'S02402', 'S02410', 'S02421', 'S02424', 'S02446', 'S02451',
             'S02469', 'S02473', 'S02485', 'S02491', 'S02490', 'S02506', 'S02523', 'S02524', 'S02535', 'S02654',
@@ -48,6 +66,8 @@ subjects = ["S03308"]
 subjects = ["S02654"]
 #subjects = ["S02967"]
 subjects = ['S02535']
+subjects = ['S02227']
+
 
 ext = ".nii.gz"
 computer_name = socket.gethostname()
@@ -82,10 +102,13 @@ for subject in subjects_all:
     subject_name = os.path.basename(subject)
     subjects.append(subject_name[:6])
 print(subjects)
-removed_list = ['S02804', 'S02898', 'S02871', 'S02877','S03045']
+removed_list = ['S02804', 'S02817', 'S02898', 'S02871', 'S02877','S03045', 'S02939', 'S02840']
 for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
+
+
+subjects = ['S02227']
 
 
 overwrite = False
@@ -93,8 +116,9 @@ cleanup = False
 verbose = True
 save_temp_files = True
 recenter = 1
-contrast = 'dwi'
+contrast = 'fa'
 prune = True
+nii_test_files = True
 
 native_ref = ''
 
@@ -105,7 +129,6 @@ orientation_out = orientation_out.split(':')[1]
 orientation_in = orient_relative.split(',')[1]
 orientation_in = orientation_in.split(':')[1]
 
-nii_test_files = True
 
 if save_temp_files:
     mkcdir(path_trk_tempdir)
@@ -173,10 +196,12 @@ for subj in subjects:
                                                    f'{subj}{str_identifier}_preprocess_postrigid_affine.trk')
     trk_MDT_space = os.path.join(path_TRK_output, f'{subj}_MDT.trk')
 
+    overwrite = True
     if not os.path.exists(trk_MDT_space) or overwrite:
+        overwrite = False
         subj_dwi_path = os.path.join(path_DWI, f'{subj}_subjspace_dwi{ext}')
         subj_dwi = nib.load(subj_dwi_path)
-        subj_dwi_data = subj_dwi.get_data()
+        subj_dwi_data = subj_dwi.dataobj #subj_dwi_data = subj_dwi.get_data()
         subj_affine = subj_dwi._affine
 
         SAMBA_input_real_file = os.path.join(path_DWI, f'{subj}_dwi{ext}')
@@ -196,68 +221,44 @@ for subj in subjects:
         subj_centered[:3, 3] = [0, 0, 0]
         subj_dwi_c = nib.Nifti1Image(subj_dwi_data, subj_centered)
         subj_dwi_c_path = os.path.join(DWI_save, f'{subj}_subjspace_centered{ext}')
+        #nib.save(subj_dwi_c, subj_dwi_c_path)
+
+
 
         subj_centered_rotated = np.copy(subj_affine_new)
         subj_centered_rotated[:3, 3] = [0, 0, 0]
         subj_dwi_cr = nib.Nifti1Image(subj_dwi_data, subj_centered_rotated)
         subj_dwi_cr_path = os.path.join(DWI_save, f'{subj}_subjspace_centered_rotated{ext}')
+        #nib.save(subj_dwi_cr, subj_dwi_cr_path)
 
-        preprocess_target = f'/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/preprocess/{subj}_dwi_masked.nii.gz'
-        subj_affine_new = recenter_affine_test(np.shape(subj_dwi_data), subj_affine)
-        subj_torecenter_transform_affine = get_affine_transform_test(subj_affine, subj_affine_new)
+
+
         streamlines, header = unload_trk(subj_trk)
 
-        if np.size(np.shape(subj_dwi_cr._data))==4:
-            subj_dwi_cr_data = subj_dwi_cr._data[:,:,:,0]
-            print(f'Warning: subj dwi data taken from {subj_dwi_path} is 4D for subject {subj}. Investigate why when possible')
-        elif np.size(np.shape(subj_dwi_cr._data))==3:
-            subj_dwi_cr_data = subj_dwi_cr._data
-        else:
-            raise Exception(f'problem with shape of data from subject {subj}')
+        transform_centered_affine = np.eye(4)
+        transform_centered_affine[:3,3] = - subj_affine[:3,3] + subj_centered[:3,3]
+        subj_centered_streamlines = transform_streamlines(streamlines, transform_centered_affine,
+                                                     in_place=False)
+        trk_centered = os.path.join(path_trk_tempdir, f'{subj}_centered.trk')
 
-        if np.size(np.shape(subj_dwi_c._data))==4:
-            subj_dwi_c_data = subj_dwi_c._data[:,:,:,0]
-            print(f'Warning: subj dwi data taken from {subj_dwi_path} is 4D for subject {subj}. Investigate why when possible')
-        elif np.size(np.shape(subj_dwi_c._data))==3:
-            subj_dwi_c_data = subj_dwi_c._data
-        else:
-            raise Exception(f'problem with shape of data from subject {subj}')
+        if (not os.path.exists(trk_centered) or overwrite) and save_temp_files:
+            save_trk_header(filepath=trk_centered, streamlines=subj_centered_streamlines, header=header,
+                            affine=np.eye(4), verbose=verbose)
 
-        c_of_mass = transform_centers_of_mass(subj_dwi_cr_data, subj_dwi_cr.affine,
-                                              subj_dwi_c_data, subj_dwi_c.affine)
-
-        subj_affine_eye = np.eye(4)
-        subj_affine_eye[:3, :3] = subj_torecenter_transform_affine[:3, :3]
-        subj_affine_eye_inv = np.linalg.inv(subj_affine_eye)
         nii_shape = np.array(np.shape(subj_dwi_data))[0:3]
 
-        subj_affine_eye_inv[:3, 3] = c_of_mass.affine_inv[:3, 3]
-
-        """
-        subj_eye_streamlines = transform_streamlines(streamlines, subj_affine_eye_inv,
-                                                     in_place=False)
-        trk_subjspace_eye = os.path.join(path_trk_tempdir, f'{subj}_subjspace_eye_ctest.trk')
-
-        if (not os.path.exists(trk_subjspace_eye) or overwrite) and save_temp_files:
-            save_trk_header(filepath=trk_subjspace_eye, streamlines=subj_eye_streamlines, header=header,
-                            affine=np.eye(4), verbose=verbose)
-        """
-
-        subj_torecenter_inv = np.eye(4)
-        subj_torecenter_inv[:3, :3] = np.linalg.inv(subj_torecenter_transform_affine[:3, :3])
-        center_array = [element * 0.5 for element in nii_shape + [1, 1, 1]]
-        recentering_translation = subj_affine[:3, 3] - np.multiply(center_array, [1, 1, -1])
-        subj_torecenter_inv[:3, 3] = c_of_mass.affine_inv[:3, 3] - subj_affine[:3, 3] + np.multiply(center_array,
-                                                                                                    [1, 1, -1])
-
+        preprocess_transform = np.eye(4)
+        transform_centered_affine = - subj_affine[:3,3] + subj_centered[:3,3]
+        recentering_translation = recenter_affine_test(nii_shape, subj_affine)
+        preprocess_transform[:3,3] = recentering_translation[:3,3]
+        subj_torecenter_transform_affine = get_affine_transform_test(subj_affine, subj_affine_new)
+        preprocess_transform[:3,:3] = np.linalg.inv(subj_torecenter_transform_affine[:3,:3])
+        streamlines_prepro = transform_streamlines(subj_centered_streamlines, preprocess_transform,
+                              in_place=False)
         trk_preprocess_path = os.path.join(path_trk_tempdir, f'{subj}_preprocess.trk')
-        streamlines_prepro = transform_streamlines(streamlines, subj_torecenter_inv,
-                                                          in_place=False)
         if (not os.path.exists(trk_preprocess_path) or overwrite) and save_temp_files:
             save_trk_header(filepath=trk_preprocess_path, streamlines=streamlines_prepro, header=header,
                             affine=np.eye(4), verbose=verbose)
-
-        #streamlines_prepro, header = unload_trk(trk_preprocess_path)
 
         mat_struct = loadmat(trans)
         var_name = list(mat_struct.keys())[0]
@@ -301,14 +302,79 @@ for subj in subjects:
         affine_mat = convert_ants_vals_to_affine(affine_ants)
 
         streamlines_postrigidaffine = transform_streamlines(streamlines_postrigid, np.linalg.inv(affine_mat))
-        overwrite = True
 
         if (not os.path.exists(trk_preprocess_postrigid_affine) or overwrite) and save_temp_files:
             save_trk_header(filepath=trk_preprocess_postrigid_affine, streamlines=streamlines_postrigidaffine,
                             header=header,
                             affine=np.eye(4), verbose=verbose)
 
-        # streamlines_postrigidaffine, header_postrigidaffine = unload_trk(trk_preprocess_postrigid_affine)
+
+        ############ TEST ZONE FOR WARPING, REMOVE AFTER #########
+        """
+        from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
+        from dipy.align.metrics import CCMetric
+
+        moving = nib.load(SAMBA_preprocess_test_rigid_affine)
+        static = nib.load(SAMBA_preprocess_test_postwarp)
+        metric = CCMetric(3)
+        level_iters = [10, 10, 5]
+        sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)
+        static_data = np.asarray(static.dataobj)
+        moving_data = np.asarray(moving.dataobj)
+
+        #mapping = sdr.optimize(static, moving, static._affine, moving._affine, highres_map.affine)
+        mapping = sdr.optimize(static_data, moving_data, static._affine, moving._affine)
+        warped_moving = mapping.transform(moving_data)
+
+        from dipy.viz import regtools
+
+        #regtools.overlay_slices(static_data, warped_moving, None, 0, 'Static', 'Moving',
+        #                        None)
+        #regtools.overlay_slices(static_data, warped_moving, None, 1, 'Static', 'Moving',
+        #                        None)
+        #regtools.overlay_slices(static_data, warped_moving, None, 2, 'Static', 'Moving',
+        #                        None)
+
+        vox_size = moving.header.get_zooms()[0]
+        target_isocenter = np.diag(np.array([vox_size, vox_size, vox_size, 1]))
+        affine_map = transform_origins(static, static._affine, moving, moving._affine)
+        origin_affine = affine_map.affine.copy()
+
+        #origin_affine[0][3] = -origin_affine[0][3]
+        #origin_affine[1][3] = -origin_affine[1][3]
+        #origin_affine[2][3] = origin_affine[2][3] / vox_size
+        #origin_affine[1][3] = origin_affine[1][3] / vox_size ** 2
+
+        # Apply the deformation and correct for the extents
+
+        lin_T, offset = _mapping_to_voxel(moving._affine)
+        streamlines_tovox = []
+        for streamline in streamlines_postrigidaffine:
+            streamlines_tovox.append(_to_voxel_coordinates_notint(streamline, lin_T, offset))
+        streamlines_tovox_int = []
+        for streamline in streamlines_tovox:
+            streamlines_tovox_int.append(np.around(streamline).astype(int))
+        streamlines_postrigidaffine_test = []
+        for streamline in streamlines_tovox:
+            streamlines_postrigidaffine_test.append(_to_streamlines_coordinates(streamline, lin_T, offset))
+
+        mni_streamlines_vox = deform_streamlines(
+            streamlines_tovox_int, deform_field=mapping.get_forward_field(),
+            stream_to_current_grid=target_isocenter,
+            current_grid_to_world=origin_affine, stream_to_ref_grid=target_isocenter,
+            ref_grid_to_world=np.eye(4))
+
+        mni_streamlines_true = []
+        for streamline in mni_streamlines_vox:
+            mni_streamlines_true.append(_to_streamlines_coordinates(streamline, lin_T, offset))
+
+        trk_MDT_space_test = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_MDT_test.trk')
+
+        if (not os.path.exists(trk_MDT_space_test) or overwrite):
+            save_trk_header(filepath=trk_MDT_space_test, streamlines=mni_streamlines_true, header=header,
+                    affine=np.eye(4), fix_streamlines=False, verbose=verbose)
+        """
+        ############ TEST ZONE FOR WARPING, REMOVE AFTER #########
 
         warp, affine, vox_size, header_warp, ref_info = extract_nii_info(runno_to_MDT)
         warp = warp[:,:,:,0,:]
