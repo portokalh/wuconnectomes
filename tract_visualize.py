@@ -79,8 +79,8 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
 
     if scene is None:
         scene = window.Scene()
-    if objectvals is None:
-        objectvals = np.rand(np.shape(trk_object)[0])
+    #if objectvals is None:
+    #    objectvals = np.random(np.shape(trk_object)[0])
 
     slicer_opacity = 0.6
     image_actor_z.opacity(slicer_opacity)
@@ -140,7 +140,7 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
                 # lines_actor.RotateZ(90)
                 scene.add(object_actor)
     elif isinstance(trk_object, Streamlines):
-        if isinstance(colors, vtk.vtkLookupTable):
+        if isinstance(colors, vtk.vtkLookupTable) and objectvals is not None:
             object_actor = actor.line(trk_object,objectvals, linewidth=0.1,
                                lookup_colormap=colors)
         else:

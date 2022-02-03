@@ -111,7 +111,7 @@ for remove in removed_list:
 subjects = ['S02227']
 
 
-overwrite = False
+overwrite = True
 cleanup = False
 verbose = True
 save_temp_files = True
@@ -308,7 +308,6 @@ for subj in subjects:
                             header=header,
                             affine=np.eye(4), verbose=verbose)
 
-
         ############ TEST ZONE FOR WARPING, REMOVE AFTER #########
         """
         from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
@@ -376,12 +375,20 @@ for subj in subjects:
         """
         ############ TEST ZONE FOR WARPING, REMOVE AFTER #########
 
-        warp, affine, vox_size, header_warp, ref_info = extract_nii_info(runno_to_MDT)
+        warp, warp_affine, vox_size, header_warp, ref_info = extract_nii_info(runno_to_MDT)
         warp = warp[:,:,:,0,:]
 
-        vox_size = tuple(np.linalg.eigvals(affine[:3,:3]))
+        vox_size = tuple(np.linalg.eigvals(warp_affine[:3,:3]))
         vox_size = vox_size[0]
-        target_isocenter = np.diag(np.array([-vox_size, -vox_size, vox_size, 1]))
+
+
+        moving_path = '/Volumes/Data/Badea/Lab/human/AD_Decode/moving_Testing/AD_Decode/Analysis/NII_tempsave_alt2/S02227_fa_postrigid_affine.nii.gz'
+        target_isocenter = nib.load(moving_path)._affine
+        #test_streamlines_1 = transform_streamlines(streamlines_postrigidaffine, target_isocenter,
+        #                                           in_place=False)
+
+        #target_isocenter = np.diag(np.array([-vox_size, -vox_size, vox_size, 1]))
+        target_isocenter = subj_affine_new
         streamlines_post_warp = deform_streamlines(
             streamlines_postrigidaffine, deform_field=warp,
             stream_to_current_grid=target_isocenter,
