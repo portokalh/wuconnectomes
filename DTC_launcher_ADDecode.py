@@ -9,37 +9,22 @@ from time import time
 from argument_tools import parse_arguments
 import sys
 import glob
+from bvec_handler import orient_to_str
 
-def orient_to_str(bvec_orient):
-    mystr="_"
-    for i in np.arange(3):
-        if np.abs(bvec_orient[i]) == 1:
-            if bvec_orient[i]<0:
-                mystr = mystr+"mx"
-            else:
-                mystr = mystr+"px"
-        if np.abs(bvec_orient[i]) == 2:
-            if bvec_orient[i] < 0:
-                mystr = mystr + "my"
-            else:
-                mystr = mystr + "py"
-        if np.abs(bvec_orient[i])==3:
-            if bvec_orient[i]<0:
-                mystr = mystr+"mz"
-            else:
-                mystr = mystr+"pz"
-    return mystr
 
+mainpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
+mainpath="/mnt/paros_MRI/jacques/AD_Decode/Analysis/"
+diff_preprocessed = os.path.join(mainpath, "DWI")
+
+mkcdir([mainpath, diff_preprocessed])
+
+"""
 subjects = ["S02666","S02670","S02686","S02654", "S02686", "S02695", "S02720", "S02737", "S02753", "S02765", "S02781",
             "S02802", "S02813", "S02817", "S02840", "S02877", "S02898", "S02938", "S02939", "S02967", "S02987", "S02987",
             "S03010", "S03033", "S03034", "S03045", "S02524","S02535","S02690","S02715","S02771","S02804","S02812",
             "S02817", "S02840","S02871","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028",
             "S03048", "S03069"]
-#removed S02666, S02670, S02686 for now
-#"S02230" "S02690" "S02804" these subjects are strange, to investigatei
-#02490 has been since confirmed to be incomplete and can be safely ignored, as it is the same as 02491 subject wise
-#02804 seems to have streamlines in negative voxel space, thought I fixed that through pruning, skip FOR NOW
-#02926, 02954 03017 03048 has an out of bounds error, will skip FOR NOW
+"""
 """
 subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]
 subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
@@ -49,40 +34,76 @@ for bxhfile in subjbxh:
         dwipath = bxhfile.replace(".bxh", ".nii.gz")
         break
 """
+subjects = ["S02666","S02670","S02686","S02654", "S02686", "S02695", "S02720", "S02737", "S02753", "S02765", "S02781",
+            "S02802", "S02813", "S02817", "S02840", "S02877", "S02898", "S02938", "S02939", "S02967", "S02987", "S02987",
+            "S03010", "S03033", "S03034", "S03045", "S02524","S02535","S02690","S02715","S02771","S02804","S02812",
+            "S02817", "S02840","S02871","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028",
+            "S03048", "S03069"]
 
-outpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
-outpath="/mnt/paros_MRI/jacques/AD_Decode/Analysis/"
-outpath = '/Volumes/Data/Badea/Lab/jacques/ADDecode_test_connectomes/'
-diff_preprocessed = os.path.join(outpath, "DWI")
-trkpath = os.path.join(outpath, "TRK_MPCA_fixed")
-trkpath = os.path.join(outpath, "TRK_MPCA_100")
 
-mkcdir([outpath, diff_preprocessed, trkpath])
-masktype = "FA"
-masktype = "T1"
-masktype = "subjspace"
 subjects_all = glob.glob(os.path.join(diff_preprocessed,'*subjspace_dwi*.nii.gz'))
-
+subjects = []
 for subject in subjects_all:
     subject_name = os.path.basename(subject)
     subjects.append(subject_name[:6])
 print(subjects)
-removed_list = ['S02821']
+
+subjects = ["S02666","S02670","S02686","S02654", "S02686", "S02695", "S02720", "S02737", "S02753", "S02765", "S02781",
+            "S02802", "S02813", "S02817", "S02840", "S02877", "S02898", "S02938", "S02939", "S02967", "S02987", "S02987",
+            "S03010", "S03033", "S03034", "S03045", "S02524","S02535","S02690","S02715","S02771","S02804","S02812",
+            "S02817", "S02840","S02871","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028",
+            "S03048", "S03069"]
+
+#subjects = ["S03034", "S03045", "S02524","S02535"]
+
+
+
+removed_list = ['S02804','S02771']
 for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
 
-subjects = ['S01912']
+subjects.reverse()
 subject_processes, function_processes = parse_arguments(sys.argv,subjects)
 
+#mask types => ['FA', 'T1', 'subjspace']
+masktype = "subjspace"
 stepsize = 2
+overwrite = False
+get_params = False
+forcestart = False
+picklesave = True
+verbose = True
+get_params = None
+doprune = True
+bvec_orient = [1,2,-3]
+vol_b0 = [0,1,2]
+classifier = "binary"
+symmetric = False
+inclusive = False
+denoise = "coreg"
+savefa = True
+make_connectomes = False
+#classifier types => ["FA", "binary"]
+classifiertype = "binary"
+brainmask = "subjspace"
+labeltype='lrordered'
+ratio = 1
 
 
-ratio = 100
 if ratio == 1:
     saved_streamlines = "_all"
+    trk_folder_name = ""
 else:
     saved_streamlines = "_ratio_" + str(ratio)
+    trk_folder_name = "_" + str(ratio)
+
+trkpath = os.path.join(mainpath, "TRK_MPCA_fixed")
+trkpath = os.path.join(mainpath, "TRK_MPCA_100")
+trkpath = os.path.join(mainpath, "TRK_MPCA_fixed"+trk_folder_name)
+trkpath = os.path.join(mainpath, "TRK_MPCA_neworient"+trk_folder_name)
+mkcdir(trkpath)
+
 
 trkroi = ["wholebrain"]
 if len(trkroi)==1:
@@ -92,40 +113,19 @@ elif len(trkroi)>1:
     for roi in trkroi:
         roistring = roistring + roi[0:4]
     roistring = roistring #+ "_"
-#str_identifier = '_stepsize_' + str(stepsize) + saved_streamlines+ roistring
 str_identifier = '_stepsize_' + str(stepsize).replace(".","_") + saved_streamlines + roistring
 
 duration1=time()
-overwrite = False
-get_params = False
-forcestart = False
+
 if forcestart:
     print("WARNING: FORCESTART EMPLOYED. THIS WILL COPY OVER PREVIOUS DATA")
-picklesave = True
-verbose = True
-get_params = None
-doprune = True
-#classifier = ["FA", "binary"]
-classifier = "binary"
-labelslist = []
-bvec_orient = [1,2,-3]
-vol_b0 = [0,1,2]
 
+
+
+labelslist = []
 dwi_results = []
 donelist = []
 notdonelist = []
-createmask = masktype
-symmetric = True
-inclusive = True
-
-denoise = "coreg"
-savefa = True
-make_connectomes = True
-
-classifiertype = "FA"
-classifiertype = "binary"
-brainmask = "subjspace"
-labeltype='lrordered'
 
 if classifiertype == "FA":
     classifiertype = "_fa"
@@ -134,8 +134,8 @@ else:
 
 
 #atlas_legends = None
-atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-#atlas_legends = outpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+#atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+atlas_legends = mainpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 
 if inclusive:
     inclusive_str = '_inclusive'
@@ -147,7 +147,7 @@ if symmetric:
 else:
     symmetric_str = '_non_symmetric'
 
-figspath = os.path.join(outpath, "Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
+figspath = os.path.join(mainpath, "Figures_testzone","Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
 mkcdir(figspath)
 
 if make_connectomes:
@@ -186,7 +186,7 @@ else:
                           ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
                           verbose))
         #get_diffusionattributes(diff_preprocessed, diff_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
-        #                        createmask, overwrite, verbose)
+        #                        masktype, overwrite, verbose)
         if make_connectomes:
             tract_results.append(tract_connectome_analysis(diff_preprocessed, trkpath, str_identifier, figspath, subject,
                                                            atlas_legends, bvec_orient,  brainmask, inclusive,
@@ -194,6 +194,6 @@ else:
     print(tract_results)
 
 # dwi_results.append(diff_preprocessing(datapath, diff_preprocessed, subject, bvec_orient, denoise, savefa,
-#                                     function_processes, createmask, vol_b0, verbose)) ##Unnecessary, replaced by SAMBA_prep
+#                                     function_processes, masktype, vol_b0, verbose)) ##Unnecessary, replaced by SAMBA_prep
 #dwi_results = pool.starmap_async(diff_preprocessing, [(datapath, diff_preprocessed, subject, bvec_orient, denoise, savefa, function_processes,
-#                                 createmask, vol_b0, verbose) for subject in subjects]).get()
+#                                 masktype, vol_b0, verbose) for subject in subjects]).get()

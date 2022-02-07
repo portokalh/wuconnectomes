@@ -3,6 +3,7 @@ import os
 import shutil
 from tract_handler import trk_fixer
 from file_tools import mkcdir
+from tract_handler import reducetractnumber, ratio_to_str, get_ratio
 
 TRK_folder = '/Users/alex/jacques/AMD_TRK_testing/TRK_MDT'
 TRK_output = '/Users/alex/jacques/AMD_TRK_testing/TRK_MDT_fixed'
@@ -10,10 +11,8 @@ TRK_output = '/Users/alex/jacques/AMD_TRK_testing/TRK_MDT_fixed'
 TRK_folder = '/Volumes/Data/Badea/Lab/human/AMD/TRK_MDT'
 TRK_output = '/Volumes/Data/Badea/Lab/human/AMD/TRK_MDT_fixed'
 
-hostname = 'santorini'
-if hostname == 'samos':
-    TRK_folder = '/mnt/paros_MRI/jacques/AMD/TRK_MDT/'
-    TRK_output = '/mnt/paros_MRI/jacques/AMD/TRK_MDT/'
+TRK_folder = '/mnt/paros_MRI/jacques/AD_Decode/Analysis/TRK_MPCA_neworient/'
+TRK_output = '/mnt/paros_MRI/jacques/AD_Decode/Analysis/TRK_MPCA_neworient_fixed/'
 
 mkcdir(TRK_output)
 for trk_name in os.listdir(TRK_folder):
@@ -21,13 +20,7 @@ for trk_name in os.listdir(TRK_folder):
         trk_path = os.path.join(TRK_folder,trk_name)
         trk_newpath = os.path.join(TRK_output, trk_name)
         if not os.path.exists(trk_newpath):
+            print(f'Beginning the fix of {trk_path}')
             trk_fixer(trk_path, trk_newpath, verbose=True)
         else:
             print(f'Already fixed {trk_name}')
-"""
-if testing:
-    trk_test = '/Users/alex/jacques/AMD_TRK_testing/TRK/H21850_stepsize_2_ratio_100_wholebrain_pruned.trk'
-    trk_new = '/Users/alex/jacques/AMD_TRK_testing/TRK/H21850_ratio100_fixed.trk'
-    trk_fixer(trk_test, trk_new, verbose=True)
-else:
-"""

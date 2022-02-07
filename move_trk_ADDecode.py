@@ -61,14 +61,6 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
 #                               'S03308', 'S03321']
 
 
-print(subjects)
-subjects = ["S03308"]
-subjects = ["S02654"]
-#subjects = ["S02967"]
-subjects = ['S02535']
-subjects = ['S02227']
-
-
 ext = ".nii.gz"
 computer_name = socket.gethostname()
 
@@ -81,7 +73,7 @@ else:
 project = "AD_Decode"
 
 if project == "AD_Decode":
-    path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_100')
+    path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA')
     path_TRK_output = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_MDT')
     path_DWI = os.path.join(main_path, 'AD_Decode', 'Analysis', 'DWI')
     path_DWI_MDT = os.path.join(main_path, 'AD_Decode', 'Analysis', 'DWI_MDT')
@@ -92,7 +84,7 @@ if project == "AD_Decode":
     mkcdir([path_trk_tempdir, path_TRK_output, DWI_save])
     # Get the values from DTC_launcher_ADDecode. Should probalby create a single parameter file for each project one day
     stepsize = 2
-    ratio = 100
+    ratio = 1
     trkroi = ["wholebrain"]
     str_identifier = get_str_identifier(stepsize, ratio, trkroi)
 
@@ -108,8 +100,6 @@ for remove in removed_list:
         subjects.remove(remove)
 
 
-subjects = ['S02227']
-
 
 overwrite = True
 cleanup = False
@@ -118,7 +108,7 @@ save_temp_files = True
 recenter = 1
 contrast = 'fa'
 prune = True
-nii_test_files = True
+nii_test_files = False
 
 native_ref = ''
 
@@ -382,8 +372,8 @@ for subj in subjects:
         vox_size = vox_size[0]
 
 
-        moving_path = '/Volumes/Data/Badea/Lab/human/AD_Decode/moving_Testing/AD_Decode/Analysis/NII_tempsave_alt2/S02227_fa_postrigid_affine.nii.gz'
-        target_isocenter = nib.load(moving_path)._affine
+        #moving_path = '/Volumes/Data/Badea/Lab/human/AD_Decode/moving_Testing/AD_Decode/Analysis/NII_tempsave_alt2/S02227_fa_postrigid_affine.nii.gz'
+        #target_isocenter = nib.load(moving_path)._affine
         #test_streamlines_1 = transform_streamlines(streamlines_postrigidaffine, target_isocenter,
         #                                           in_place=False)
 

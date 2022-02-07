@@ -98,7 +98,6 @@ def QCSA_tractmake(data, affine, vox_size, gtab, mask, masktype, header, step_si
                    ratio=1, overwrite=False, get_params=False, doprune=False, figspath=None, verbose=None):
     # Compute odfs in Brain Mask
     t2 = time()
-
     if os.path.isfile(outpathtrk) and not overwrite:
         txt = "Subject already saved at "+outpathtrk
         print(txt)

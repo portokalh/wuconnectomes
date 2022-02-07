@@ -178,6 +178,17 @@ def ratio_to_str(ratio):
         raise Exception(f'invalid ratio {str(ratio)}')
     return saved_streamlines
 
+def get_ratio(filepath):
+    filename = os.path.basename(filepath)
+    if '_all' in filename:
+        ratio = 1
+    elif '_ratio' in filename:
+        ratio = filename.split('_ratio')[1].split('_')[0]
+    else:
+        ratio = None
+    return(ratio)
+
+
 def gettrkpath(trkpath, subject, str_identifier, pruned=False, verbose=False):
     #Finds the right trk file based on certain established parameters (folder, subject, extra identifiers)
     if os.path.isfile(trkpath):
