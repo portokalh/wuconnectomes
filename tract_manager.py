@@ -582,7 +582,7 @@ def connectivity_matrix_test_2(streamlines, affine, label_volume, inclusive=Fals
 
 
 def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype = "T1",
-                              inclusive = False, function_processes = 1, forcestart = False, picklesave = True, labeltype='orig',
+                              inclusive = False, function_processes = 1, overwrite = False, picklesave = True, labeltype='orig',
                               symmetric = True, verbose = None):
 
     picklepath_connect = os.path.join(outpath, subject + str_identifier + '_connectomes.p')
@@ -598,7 +598,7 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
 
     mkcdir(outpath)
 
-    if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and not forcestart:
+    if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and not overwrite:
         print("The writing of pickle and excel of " + str(subject) + " is already done")
         return
 
@@ -829,10 +829,13 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
     matrix_sl = np.delete(matrix_sl, 0, 0)
     matrix_sl = np.delete(matrix_sl, 0, 1)
 
-    if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and forcestart:
-        os.remove(picklepath_connect)
-        os.remove(connectome_xlsxpath)
-        os.remove(grouping_xlsxpath)
+    if overwrite:
+        if os.path.exists(picklepath_connect):
+            os.remove(picklepath_connect)
+        if os.path.exists(connectome_xlsxpath):
+            os.remove(connectome_xlsxpath)
+        if os.path.exists(grouping_xlsxpath):
+            os.remove(grouping_xlsxpath)
 
     connectomes_to_excel(M, index_to_struct, connectome_xlsxpath)
     grouping_to_excel(matrix_sl, index_to_struct, grouping_xlsxpath)

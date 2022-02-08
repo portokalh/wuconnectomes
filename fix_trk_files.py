@@ -14,8 +14,12 @@ TRK_output = '/Volumes/Data/Badea/Lab/human/AMD/TRK_MDT_fixed'
 TRK_folder = '/mnt/paros_MRI/jacques/AD_Decode/Analysis/TRK_MPCA_neworient/'
 TRK_output = '/mnt/paros_MRI/jacques/AD_Decode/Analysis/TRK_MPCA_neworient_fixed/'
 
+filelist = os.listdir(TRK_folder)
+filelist = sorted(filelist)
+filelist.reverse()
+
 mkcdir(TRK_output)
-for trk_name in os.listdir(TRK_folder):
+for trk_name in filelist:
     if trk_name.endswith('.trk'):
         trk_path = os.path.join(TRK_folder,trk_name)
         trk_newpath = os.path.join(TRK_output, trk_name)

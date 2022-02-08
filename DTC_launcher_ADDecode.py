@@ -52,13 +52,11 @@ subjects = ["S02666","S02670","S02686","S02654", "S02686", "S02695", "S02720", "
             "S02802", "S02813", "S02817", "S02840", "S02877", "S02898", "S02938", "S02939", "S02967", "S02987", "S02987",
             "S03010", "S03033", "S03034", "S03045", "S02524","S02535","S02690","S02715","S02771","S02804","S02812",
             "S02817", "S02840","S02871","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028",
-            "S03048", "S03069"]
+            "S03048", "S03069","S03225", "S03293", "S03308", "S02842"]
 
-#subjects = ["S03034", "S03045", "S02524","S02535"]
+removed_list = ['S02771',"S03343", "S03350", "S03378", "S03391", "S03394","S03225", "S03293", "S03308", "S02842", "S02804", "S02771"]
 
-
-
-removed_list = ['S02804','S02771']
+#removed_list = []
 for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
@@ -69,21 +67,24 @@ subject_processes, function_processes = parse_arguments(sys.argv,subjects)
 #mask types => ['FA', 'T1', 'subjspace']
 masktype = "subjspace"
 stepsize = 2
-overwrite = False
+overwrite = True
 get_params = False
 forcestart = False
 picklesave = True
 verbose = True
 get_params = None
 doprune = True
-bvec_orient = [1,2,-3]
+bvec_orient = [1,2,3]
 vol_b0 = [0,1,2]
 classifier = "binary"
 symmetric = False
 inclusive = False
 denoise = "coreg"
 savefa = True
+
+make_tracts = True
 make_connectomes = False
+
 #classifier types => ["FA", "binary"]
 classifiertype = "binary"
 brainmask = "subjspace"
@@ -101,7 +102,7 @@ else:
 trkpath = os.path.join(mainpath, "TRK_MPCA_fixed")
 trkpath = os.path.join(mainpath, "TRK_MPCA_100")
 trkpath = os.path.join(mainpath, "TRK_MPCA_fixed"+trk_folder_name)
-trkpath = os.path.join(mainpath, "TRK_MPCA_neworient"+trk_folder_name)
+#trkpath = os.path.join(mainpath, "TRK_MPCA_neworient"+trk_folder_name)
 mkcdir(trkpath)
 
 
@@ -163,25 +164,28 @@ if make_connectomes:
 dwi_results = []
 tract_results = []
 
+print(f'Overwrite is {overwrite}')
+
 if subject_processes>1:
     if function_processes>1:
         pool = MyPool(subject_processes)
     else:
         pool = mp.Pool(subject_processes)
-
-    tract_results = pool.starmap_async(create_tracts, [(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
+    if make_tracts:
+        tract_results = pool.starmap_async(create_tracts, [(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
                           ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
                           verbose) for subject
                                                        in subjects]).get()
     if make_connectomes:
         tract_results = pool.starmap_async(tract_connectome_analysis, [(diff_preprocessed, trkpath, str_identifier, figspath,
                                                                        subject, atlas_legends, bvec_orient, inclusive,
-                                                                       function_processes, forcestart, picklesave, labeltype, symmetric, verbose)
+                                                                       function_processes, forcestart, picklesave, labeltype, symmetric, overwrite, verbose)
                                                                      for subject in subjects]).get()
     pool.close()
 else:
     for subject in subjects:
-        tract_results.append(
+        if make_tracts:
+            tract_results.append(
             create_tracts(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
                           ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
                           verbose))
@@ -190,7 +194,7 @@ else:
         if make_connectomes:
             tract_results.append(tract_connectome_analysis(diff_preprocessed, trkpath, str_identifier, figspath, subject,
                                                            atlas_legends, bvec_orient,  brainmask, inclusive,
-                                                           function_processes, forcestart, picklesave, labeltype, symmetric, verbose))
+                                                           function_processes, forcestart, picklesave, labeltype, symmetric, overwrite, verbose))
     print(tract_results)
 
 # dwi_results.append(diff_preprocessing(datapath, diff_preprocessed, subject, bvec_orient, denoise, savefa,
