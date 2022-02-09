@@ -169,36 +169,34 @@ def getdiffpath(mypath, subject, denoise="", verbose=None):
     print(os.path.join(mypath,subject+"_subjspace_coreg.nii.gz"))
     if os.path.isfile(mypath) and os.path.exists(mypath):
         fdiffpath = mypath
-    elif os.path.exists(os.path.join(mypath,subject+"_"+denoise+"_diff.nii.gz")):
-        fdiffpath = (os.path.join(mypath,subject+"_"+denoise+"_diff.nii.gz"))
-    elif os.path.exists(os.path.join(mypath,subject+"_"+denoise+".nii.gz")):
-        fdiffpath = (os.path.join(mypath,subject+"_"+denoise+".nii.gz"))
-    elif os.path.exists(os.path.join(mypath,subject+"_rawnii.nii.gz")):
-        fdiffpath = (os.path.join(mypath,subject+"_rawnii.nii.gz"))
+    #elif os.path.exists(os.path.join(mypath,subject+"_"+denoise+"_diff.nii.gz")):
+    #    fdiffpath = (os.path.join(mypath,subject+"_"+denoise+"_diff.nii.gz"))
+    #elif os.path.exists(os.path.join(mypath,subject+"_"+denoise+".nii.gz")):
+    #    fdiffpath = (os.path.join(mypath,subject+"_"+denoise+".nii.gz"))
+    #elif os.path.exists(os.path.join(mypath,subject+"_rawnii.nii.gz")):
+    #    fdiffpath = (os.path.join(mypath,subject+"_rawnii.nii.gz"))
     elif os.path.exists(os.path.join(mypath,subject+"_subjspace_coreg.nii.gz")):
         fdiffpath = (os.path.join(mypath,subject+"_subjspace_coreg.nii.gz"))
-    elif os.path.exists(os.path.join(mypath,subject+"_coreg.nii.gz")):
-        fdiffpath = (os.path.join(mypath,subject+"_coreg.nii.gz"))
-    elif os.path.exists(os.path.join(mypath,subject+"_coreg.nii.gz")):
-        fdiffpath = (os.path.join(mypath,subject+"_coreg.nii.gz"))
-    elif os.path.exists(os.path.join(mypath,subject+"_subjspace_coreg.nii.gz")):
-        fdiffpath = (os.path.join(mypath,subject+"_subjspace_coreg.nii.gz"))
+    #elif os.path.exists(os.path.join(mypath,subject+"_coreg.nii.gz")):
+    #    fdiffpath = (os.path.join(mypath,subject+"_coreg.nii.gz"))
+    #elif os.path.exists(os.path.join(mypath,subject+"_coreg.nii.gz")):
+    #    fdiffpath = (os.path.join(mypath,subject+"_coreg.nii.gz"))
     elif os.path.exists(os.path.join(mypath,subject+"_coreg_RAS.nii.gz")):
         fdiffpath = (os.path.join(mypath,subject+"_coreg_RAS.nii.gz"))
-    elif np.size(glob.glob(os.path.join(mypath,subject+"*_dwi.nii.gz"))) == 1:
-        fdiffpath = glob.glob(os.path.join(mypath,subject+"*_dwi.nii.gz"))[0]
-    elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
-        fdiffpath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
-    elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
-        fdiffpath = mypath + '/nii4D_' + subject + '.nii'
-    elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
-        fdiffpath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
-    elif os.path.exists(mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'):
-        fdiffpath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
-    elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
-        fdiffpath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
-    elif os.path.exists(mypath + '/' + subject + '/') and np.size(glob.glob(os.path.join(subjfolder, subject + '*nii4D*.nii*'))) > 0:
-        fdiffpath = glob.glob(os.path.join(subjfolder, subject + '*nii4D*.nii*'))[0]
+    #elif np.size(glob.glob(os.path.join(mypath,subject+"*_dwi.nii.gz"))) == 1:
+    #    fdiffpath = glob.glob(os.path.join(mypath,subject+"*_dwi.nii.gz"))[0]
+    #elif os.path.exists(mypath + '/Reg_' + subject + '_nii4D.nii.gz'):
+    #    fdiffpath = mypath + '/Reg_' + subject + '_nii4D.nii.gz'
+    #elif os.path.exists(mypath + '/nii4D_' + subject + '.nii'):
+    #    fdiffpath = mypath + '/nii4D_' + subject + '.nii'
+    #elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
+    #    fdiffpath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
+    #elif os.path.exists(mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'):
+    #    fdiffpath = mypath + '/4Dnii/'+subject+'_nii4D_RAS.nii.gz'
+    #elif os.path.exists(mypath + '/'+subject+'_nii4D_RAS.nii.gz'):
+    #    fdiffpath = mypath + '/'+subject+'_nii4D_RAS.nii.gz'
+    #elif os.path.exists(mypath + '/' + subject + '/') and np.size(glob.glob(os.path.join(subjfolder, subject + '*nii4D*.nii*'))) > 0:
+    #    fdiffpath = glob.glob(os.path.join(subjfolder, subject + '*nii4D*.nii*'))[0]
     #elif os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
     #    fdiffpath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
     elif os.path.exists(mypath) and np.size(glob.glob(os.path.join(subjfolder, "*.bxh"))) > 0:

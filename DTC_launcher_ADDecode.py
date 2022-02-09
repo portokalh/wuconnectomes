@@ -46,7 +46,7 @@ subjects = []
 for subject in subjects_all:
     subject_name = os.path.basename(subject)
     subjects.append(subject_name[:6])
-print(subjects)
+
 
 subjects = ["S02666","S02670","S02686","S02654", "S02686", "S02695", "S02720", "S02737", "S02753", "S02765", "S02781",
             "S02802", "S02813", "S02817", "S02840", "S02877", "S02898", "S02938", "S02939", "S02967", "S02987", "S02987",
@@ -54,20 +54,24 @@ subjects = ["S02666","S02670","S02686","S02654", "S02686", "S02695", "S02720", "
             "S02817", "S02840","S02871","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028",
             "S03048", "S03069","S03225", "S03293", "S03308", "S02842"]
 
-removed_list = ['S02771',"S03343", "S03350", "S03378", "S03391", "S03394","S03225", "S03293", "S03308", "S02842", "S02804", "S02771"]
+removed_list = ['S02771',"S03343", "S03350", "S03378", "S03391", "S03394","S03225", "S03293", "S03308", "S02842", "S02804"]
 
-#removed_list = []
+removed_list = []
+
 for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
 
-subjects.reverse()
+subjects.sort()
+
+
+print(subjects)
 subject_processes, function_processes = parse_arguments(sys.argv,subjects)
 
 #mask types => ['FA', 'T1', 'subjspace']
 masktype = "subjspace"
 stepsize = 2
-overwrite = True
+overwrite = False
 get_params = False
 forcestart = False
 picklesave = True
@@ -101,7 +105,7 @@ else:
 
 trkpath = os.path.join(mainpath, "TRK_MPCA_fixed")
 trkpath = os.path.join(mainpath, "TRK_MPCA_100")
-trkpath = os.path.join(mainpath, "TRK_MPCA_fixed"+trk_folder_name)
+trkpath = os.path.join(mainpath, "TRK_MPCA"+trk_folder_name)
 #trkpath = os.path.join(mainpath, "TRK_MPCA_neworient"+trk_folder_name)
 mkcdir(trkpath)
 
@@ -179,7 +183,7 @@ if subject_processes>1:
     if make_connectomes:
         tract_results = pool.starmap_async(tract_connectome_analysis, [(diff_preprocessed, trkpath, str_identifier, figspath,
                                                                        subject, atlas_legends, bvec_orient, inclusive,
-                                                                       function_processes, forcestart, picklesave, labeltype, symmetric, overwrite, verbose)
+                                                                       function_processes, overwrite, picklesave, labeltype, symmetric, verbose)
                                                                      for subject in subjects]).get()
     pool.close()
 else:
@@ -194,7 +198,7 @@ else:
         if make_connectomes:
             tract_results.append(tract_connectome_analysis(diff_preprocessed, trkpath, str_identifier, figspath, subject,
                                                            atlas_legends, bvec_orient,  brainmask, inclusive,
-                                                           function_processes, forcestart, picklesave, labeltype, symmetric, overwrite, verbose))
+                                                           function_processes, overwrite, picklesave, labeltype, symmetric, verbose))
     print(tract_results)
 
 # dwi_results.append(diff_preprocessing(datapath, diff_preprocessed, subject, bvec_orient, denoise, savefa,
