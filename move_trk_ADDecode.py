@@ -53,7 +53,9 @@ computer_name = socket.gethostname()
 if 'samos' in computer_name:
     main_path = '/mnt/paros_MRI/jacques'
 elif 'santorini' in computer_name:
-    main_path = '/Volumes/Data/Badea/Lab/human/AD_Decode/moving_Testing/'
+    main_path = '/Volumes/Data/Badea/Lab/human/'
+elif 'blade' in computer_name:
+    main_path = '/mnt/munin6/Badea/Lab/human/'
 else:
     raise Exception('No other computer name yet')
 project = "AD_Decode"
@@ -80,7 +82,7 @@ for subject in subjects_all:
     subject_name = os.path.basename(subject)
     subjects.append(subject_name[:6])
 
-removed_list = ['S02804', 'S02817', 'S02898', 'S02871', 'S02877','S03045', 'S02939', 'S02840']
+#removed_list = ['S02804', 'S02817', 'S02898', 'S02871', 'S02877','S03045', 'S02939', 'S02840']
 
 subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266', 'S02289', 'S02320', 'S02361',
             'S02363', 'S02373', 'S02386', 'S02390', 'S02402', 'S02410', 'S02421', 'S02424', 'S02446', 'S02451',
@@ -91,15 +93,17 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
             'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048', 'S03069', 'S03225', 'S03265', 'S03293',
             'S03308', 'S03321', 'S03343', "S03350", "S03378", "S03391", "S03394"]
 
-removed_list = ['S02771',"S03343", "S03350", "S03378", "S03391", "S03394","S03225", "S03293", "S03308", "S02842", "S02804"]
-
+#removed_list = ['S02771',"S03343", "S03350", "S03378", "S03391", "S03394","S03225", "S03293", "S03308", "S02842", "S02804"]
+removed_list = []
 for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
 
+subjects.reverse()
+subjects = subjects[8:]
 print(subjects)
 
-overwrite = True
+overwrite = False
 cleanup = False
 verbose = True
 save_temp_files = False
@@ -116,7 +120,6 @@ orientation_out = orient_relative.split(',')[0]
 orientation_out = orientation_out.split(':')[1]
 orientation_in = orient_relative.split(',')[1]
 orientation_in = orientation_in.split(':')[1]
-
 
 if save_temp_files:
     mkcdir(path_trk_tempdir)
@@ -182,11 +185,19 @@ for subj in subjects:
     trk_preprocess_postrigid = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_preprocess_postrigid.trk')
     trk_preprocess_postrigid_affine = os.path.join(path_trk_tempdir,
                                                    f'{subj}{str_identifier}_preprocess_postrigid_affine.trk')
-    trk_MDT_space = os.path.join(path_TRK_output, f'{subj}_MDT.trk')
 
-    overwrite = True
+    subj_trk, trkexists = gettrkpath(path_TRK, subj, str_identifier, pruned=prune, verbose=False)
+    #trk_MDT_space = os.path.join(path_TRK_output, f'{subj}_MDT.trk')
+    trk_MDT_space = os.path.join(path_TRK_output, os.path.basename(subj_trk))
+    if not os.path.exists(subj_trk):
+        warnings.warn(f'Could not find the trk for sujb {subj} at {subj_trk}, will continue with next subject')
+        continue
+    
     if not os.path.exists(trk_MDT_space) or overwrite:
-        overwrite = False
+        if not os.path.exists(trk_MDT_space):
+            print(f'Did not find {trk_MDT_space} for subject {subj}, beginning the move')
+        else:
+            print(f'Found {trk_MDT_space} for subject {subj} but overwrite is True, beginning the move')
         subj_dwi_path = os.path.join(path_DWI, f'{subj}_subjspace_dwi{ext}')
         subj_dwi = nib.load(subj_dwi_path)
         subj_dwi_data = subj_dwi.dataobj #subj_dwi_data = subj_dwi.get_data()
@@ -195,7 +206,7 @@ for subj in subjects:
         SAMBA_input_real_file = os.path.join(path_DWI, f'{subj}_dwi{ext}')
 
         check_dif_ratio(path_TRK, subj, str_identifier, ratio)
-        subj_trk, trkexists = gettrkpath(path_TRK, subj, str_identifier, pruned=prune, verbose=False)
+
 
         _, exists = check_files([trans, rigid, runno_to_MDT])
         if np.any(exists == 0):
@@ -211,18 +222,13 @@ for subj in subjects:
         subj_dwi_c_path = os.path.join(DWI_save, f'{subj}_subjspace_centered{ext}')
         #nib.save(subj_dwi_c, subj_dwi_c_path)
 
-
-
         subj_centered_rotated = np.copy(subj_affine_new)
         subj_centered_rotated[:3, 3] = [0, 0, 0]
         subj_dwi_cr = nib.Nifti1Image(subj_dwi_data, subj_centered_rotated)
         subj_dwi_cr_path = os.path.join(DWI_save, f'{subj}_subjspace_centered_rotated{ext}')
         #nib.save(subj_dwi_cr, subj_dwi_cr_path)
-
-
-
+        
         streamlines, header = unload_trk(subj_trk)
-
         transform_centered_affine = np.eye(4)
         transform_centered_affine[:3,3] = - subj_affine[:3,3] + subj_centered[:3,3]
         subj_centered_streamlines = transform_streamlines(streamlines, transform_centered_affine,
