@@ -64,8 +64,11 @@ elif 'santorini' in hostname:
     #mainpath = '/Users/alex/jacques/'
     mainpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+elif 'blade' in computer_name:
+    mainpath = '/mnt/munin6/Badea/Lab/human/'
+    ROI_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 else:
-    print(f'no option for {hostname}')
+    raise Exception('No other computer name yet')
 
 if project=='AD_Decode':
     mainpath=os.path.join(mainpath,project,'Analysis')

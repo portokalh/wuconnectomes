@@ -217,7 +217,7 @@ def getdiffpath(mypath, subject, denoise="", verbose=None):
     #    fdiffpath = glob.glob(os.path.join(subjfolder, subject + '*nii4D*.nii*'))[0]
     #elif os.path.exists(os.path.join(mypath,subject+"_dwi.nii.gz")):
     #    fdiffpath = (os.path.join(mypath,subject+"_dwi.nii.gz"))
-    elif os.path.exists(mypath) and np.size(glob.glob(os.path.join(subjfolder, "*.bxh"))) > 0:
+    elif os.path.exists(mypath) and subjfolder is not None and np.size(glob.glob(os.path.join(subjfolder, "*.bxh"))) > 0:
         subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
         for bxhfile in subjbxh:
             bxhtype = checkbxh(bxhfile, False)
