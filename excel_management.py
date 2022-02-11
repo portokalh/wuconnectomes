@@ -15,7 +15,7 @@ set up the excel files for connectomes and grouping
 """
 
 
-def connectomes_to_excel(connectome, index_to_struct, output_path):
+def connectomes_to_excel(connectome, index_to_struct, output_path, verbose=False):
 
     #df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
     #structure = df['Structure']
@@ -32,28 +32,33 @@ def connectomes_to_excel(connectome, index_to_struct, output_path):
         worksheet.write_column(row+1, col+1, data)
 
     workbook.close()
+    if verbose:
+        print(f'Saved connectome at {output_path}')
 
     return
 
 
-def grouping_to_excel(grouping, index_to_struct, output_path):
+def grouping_to_excel(grouping, index_to_struct, output_path, verbose=False):
 
-    #df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
-    #structure = df['Structure']
+    # df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
+    # structure = df['Structure']
 
     workbook = xlsxwriter.Workbook(output_path)
     worksheet = workbook.add_worksheet()
 
-    for num in np.arange(1, np.shape(grouping)[0]+1):
+    for num in np.arange(1, np.shape(grouping)[0]):
         worksheet.write(0, num, index_to_struct[num])
         worksheet.write(num, 0, index_to_struct[num])
 
-    row=0
+    row = 0
     for i in np.arange(np.shape(grouping)[0]):
         for j in np.arange(np.shape(grouping)[1]):
-            worksheet.write(i+1,j+1,str(grouping[i,j]))
+            worksheet.write(i + 1, j + 1, str(grouping[i, j]))
 
     workbook.close()
+
+    if verbose:
+        print(f'Saved connectome at {output_path}')
 
     return
 
@@ -117,28 +122,6 @@ def M_grouping_excel_save(M,grouping,M_path, grouping_path, index_to_struct, ver
         send_mail(txt, subject="Excel save")
         print(txt)
 
-
-
-def grouping_to_excel(grouping, index_to_struct, output_path):
-
-    #df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
-    #structure = df['Structure']
-
-    workbook = xlsxwriter.Workbook(output_path)
-    worksheet = workbook.add_worksheet()
-
-    for num in np.arange(1, np.shape(grouping)[0]):
-        worksheet.write(0, num, index_to_struct[num])
-        worksheet.write(num, 0, index_to_struct[num])
-
-    row=0
-    for i in np.arange(np.shape(grouping)[0]):
-        for j in np.arange(np.shape(grouping)[1]):
-            worksheet.write(i+1,j+1,str(grouping[i,j]))
-
-    workbook.close()
-
-    return
 
 def extract_grouping(grouping_path, index_to_struct, shape=None, verbose=False):
 

@@ -155,6 +155,24 @@ def get_reference_info(reference, affine = np.eye(4).astype(np.float32)):
 
     return affine, dimensions, voxel_sizes, voxel_order
 
+def getrefpath(mypath, subject, reference = 'fa', verbose=None):
+
+    subjfolder = glob.glob(os.path.join(mypath, "*" + subject + "*/"))
+    if os.path.exists(os.path.join(mypath,subject+"_subjspace_"+reference+".nii.gz")):
+        refpath = (os.path.join(mypath,subject+"_subjspace_"+reference+".nii.gz"))
+    elif os.path.exists(os.path.join(mypath,subject+"_"+reference+"_RAS.nii.gz")):
+        refpath = (os.path.join(mypath,subject+"_coreg_RAS.nii.gz"))
+
+    if 'refpath' not in locals():
+        txt = "The subject " + subject + " was not detected, exit"
+        print(txt)
+        send_mail(txt, subject="Error")
+        return None
+
+    return refpath
+
+
+
 def getdiffpath(mypath, subject, denoise="", verbose=None):
 
     if denoise is None:
@@ -211,7 +229,7 @@ def getdiffpath(mypath, subject, denoise="", verbose=None):
         txt = "The subject " + subject + " was not detected, exit"
         print(txt)
         send_mail(txt, subject="Error")
-        return (0, 0, 0, 0, 0, 0, 0, 0)
+        return None
 
     return(fdiffpath)
 
@@ -228,6 +246,13 @@ def extract_nii_info(path, verbose=None):
     del(img)
     ref_info = get_reference_info(path)
     return data, affine, vox_size, header, ref_info
+
+def getrefdata(mypath, subject, reference, verbose=None):
+
+    ref_fpath = getrefpath(mypath, subject, reference, verbose=verbose)
+    ref_data, affine, vox_size, header, ref_info = extract_nii_info(ref_fpath, verbose)
+
+    return ref_data, affine, vox_size, ref_fpath, header, ref_info
 
 
 def getdiffdata(mypath, subject, denoise="", verbose=None):

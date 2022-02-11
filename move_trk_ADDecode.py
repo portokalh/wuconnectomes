@@ -99,8 +99,8 @@ for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
 
-subjects.reverse()
-subjects = subjects[8:]
+#subjects.reverse()
+subjects = subjects[:]
 print(subjects)
 
 overwrite = False

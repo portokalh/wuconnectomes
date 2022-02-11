@@ -10,10 +10,27 @@ from argument_tools import parse_arguments
 import sys
 import glob
 from bvec_handler import orient_to_str
+import socket
 
+computer_name = socket.gethostname()
 
-mainpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
-mainpath="/mnt/paros_MRI/jacques/AD_Decode/Analysis/"
+if 'samos' in computer_name:
+    mainpath = '/mnt/paros_MRI/jacques'
+    atlas_legends = mainpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+elif 'santorini' in computer_name:
+    mainpath = '/Volumes/Data/Badea/Lab/human/'
+    atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+elif 'blade' in computer_name:
+    mainpath = '/mnt/munin6/Badea/Lab/human/'
+    atlas_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+else:
+    raise Exception('No other computer name yet')
+
+project = "AD_Decode"
+
+if project == 'AD_Decode':
+    mainpath = os.path.join(mainpath, 'AD_Decode', 'Analysis')
+
 diff_preprocessed = os.path.join(mainpath, "DWI")
 
 mkcdir([mainpath, diff_preprocessed])
@@ -53,7 +70,7 @@ subjects = ["S02666","S02670","S02686","S02654", "S02686", "S02695", "S02720", "
             "S03010", "S03033", "S03034", "S03045", "S02524","S02535","S02690","S02715","S02771","S02804","S02812",
             "S02817", "S02840","S02871","S02877","S02898","S02926","S02938","S02939","S02954", "S03017", "S03028",
             "S03048", "S03069","S03225", "S03293", "S03308", "S02842"]
-
+subjects = ["S02715"]
 removed_list = ['S02771',"S03343", "S03350", "S03378", "S03391", "S03394","S03225", "S03293", "S03308", "S02842", "S02804"]
 
 removed_list = []
@@ -82,12 +99,14 @@ bvec_orient = [1,2,3]
 vol_b0 = [0,1,2]
 classifier = "binary"
 symmetric = False
-inclusive = False
+inclusive = True
 denoise = "coreg"
 savefa = True
 
-make_tracts = True
-make_connectomes = False
+reference_weighting = 'fa'
+volume_weighting = True
+make_tracts = False
+make_connectomes = True
 
 #classifier types => ["FA", "binary"]
 classifiertype = "binary"
@@ -139,8 +158,7 @@ else:
 
 
 #atlas_legends = None
-#atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-atlas_legends = mainpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+
 
 if inclusive:
     inclusive_str = '_inclusive'
@@ -152,7 +170,7 @@ if symmetric:
 else:
     symmetric_str = '_non_symmetric'
 
-figspath = os.path.join(mainpath, "Figures_testzone","Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
+figspath = os.path.join(mainpath,"Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
 mkcdir(figspath)
 
 if make_connectomes:
@@ -183,7 +201,7 @@ if subject_processes>1:
     if make_connectomes:
         tract_results = pool.starmap_async(tract_connectome_analysis, [(diff_preprocessed, trkpath, str_identifier, figspath,
                                                                        subject, atlas_legends, bvec_orient, inclusive,
-                                                                       function_processes, overwrite, picklesave, labeltype, symmetric, verbose)
+                                                                       function_processes, overwrite, picklesave, labeltype, symmetric, reference_weighting, volume_weighting, verbose)
                                                                      for subject in subjects]).get()
     pool.close()
 else:
@@ -198,7 +216,7 @@ else:
         if make_connectomes:
             tract_results.append(tract_connectome_analysis(diff_preprocessed, trkpath, str_identifier, figspath, subject,
                                                            atlas_legends, bvec_orient,  brainmask, inclusive,
-                                                           function_processes, overwrite, picklesave, labeltype, symmetric, verbose))
+                                                           function_processes, overwrite, picklesave, labeltype, symmetric, reference_weighting, volume_weighting, verbose))
     print(tract_results)
 
 # dwi_results.append(diff_preprocessing(datapath, diff_preprocessed, subject, bvec_orient, denoise, savefa,

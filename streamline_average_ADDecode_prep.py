@@ -61,7 +61,8 @@ if 'samos' in hostname:
     mainpath = '/mnt/paros_MRI/jacques/'
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 elif 'santorini' in hostname:
-    mainpath = '/Users/alex/jacques/'
+    #mainpath = '/Users/alex/jacques/'
+    mainpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 else:
     print(f'no option for {hostname}')
@@ -95,6 +96,7 @@ group_qb = {}
 group_clusters = {}
 groups_subjects = {}
 
+"""
 if project == 'AD_Decode':
     groups_subjects['APOE3'] = ['S02402','S02266','S02720','S02812','S02373','S02231','S02410','S01912','S02451','S02485','S02473','S02506','S02524','S02535','S02686','S02695','S02753','S02765','S02804','S02817','S02842','S02871','S02926','S02938','S02939','S02967','S02320','S02110','S02289','S03017','S03010','S02987','S02227','S03033','S03034','S03069']
     groups_subjects['APOE4']= ['S02363','S02386','S02421','S02424','S02446','S02491','S02654','S02666','S02690','S02715','S02737','S02771','S02781','S02802','S02813','S02840','S02224','S02877','S02898','S02954','S02361','S02390','S02670','S03045','S03048']
@@ -108,7 +110,15 @@ for group in groups:
     for ref in references:
         groupLines[group, ref]=[]
         groupPoints[group, ref]=[]
+"""
 
+subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266', 'S02289', 'S02320', 'S02361', 'S02363',
+        'S02373', 'S02386', 'S02390', 'S02402', 'S02410', 'S02421', 'S02424', 'S02446', 'S02451', 'S02469', 'S02473',
+        'S02485', 'S02491', 'S02490', 'S02506', 'S02523', 'S02524', 'S02535', 'S02654', 'S02666', 'S02670', 'S02686',
+        'S02690', 'S02695', 'S02715', 'S02720', 'S02737', 'S02745', 'S02753', 'S02765', 'S02771', 'S02781', 'S02802',
+        'S02804', 'S02813', 'S02812', 'S02817', 'S02840', 'S02842', 'S02871', 'S02877', 'S02898', 'S02926', 'S02938',
+        'S02939', 'S02954', 'S02967', 'S02987', 'S03010', 'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048',
+        'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321', 'S03343', 'S03350', 'S03378', 'S03391', 'S03394']
 
 #Setting identification parameters for ratio, labeling type, etc
 ratio = 1
@@ -143,42 +153,40 @@ save_trk_header(filepath=trk_testpath, streamlines=trkdata.streamlines[0:6], hea
 setup_view(trkdata.streamlines[0:6], ref=labeloutpath, world_coords=True)
 """
 
-for group in groups:
-    group_str = group.replace(' ', '_')
-    _, _, index_to_struct, _ = atlas_converter(ROI_legends)
-    subjects = groups_subjects[group]
-    labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
+
+_, _, index_to_struct, _ = atlas_converter(ROI_legends)
+labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
                                                                              labeltype=labeltype, verbose=verbose)
-    for subject in subjects:
-        trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
-        if not exists:
-            txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
-            warnings.warn(txt)
-            continue
-        #streamlines, header, _ = unload_trk(trkpath)
-        picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectome.p')
-        picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
-        M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectome.xlsx")
-        grouping_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_grouping.xlsx")
-        #if os.path.exists(picklepath_grouping) and not overwrite:
-        #    with open(picklepath_grouping, 'rb') as f:
-            #        grouping = pickle.load(f)
-        if os.path.exists(picklepath_connectome) or os.path.exists(grouping_xlsxpath):
-            print(f'Found written file for subject {subject}')
-            continue
+for subject in subjects:
+    trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
+    if not exists:
+        txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
+        warnings.warn(txt)
+        continue
+    #streamlines, header, _ = unload_trk(trkpath)
+    picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectome.p')
+    picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
+    M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectome.xlsx")
+    grouping_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_grouping.xlsx")
+    #if os.path.exists(picklepath_grouping) and not overwrite:
+    #    with open(picklepath_grouping, 'rb') as f:
+        #        grouping = pickle.load(f)
+    if os.path.exists(picklepath_connectome) or os.path.exists(grouping_xlsxpath):
+        print(f'Found written file for subject {subject}')
+        continue
+    else:
+        trkdata = load_trk(trkpath, 'same')
+        header = trkdata.space_attributes
+        if function_processes == 1:
+            M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True,
+                                    return_mapping=True,
+                                    mapping_as_streamlines=False, verbose=verbose)
         else:
-            trkdata = load_trk(trkpath, 'same')
-            header = trkdata.space_attributes
-            if function_processes == 1:
-                M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True,
-                                        return_mapping=True,
-                                        mapping_as_streamlines=False, verbose=verbose)
-            else:
-                M, grouping_temp = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= True, verbose=verbose)
-            M_grouping_excel_save(M,grouping_temp,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
-        del(trkdata)
-        if os.path.exists(grouping_xlsxpath):
-            grouping = extract_grouping(grouping_xlsxpath, index_to_struct, np.shape(M), verbose=verbose)
-        else:
-            raise Exception(f'saving of the excel at {grouping_xlsxpath} did not work')
+            M, grouping_temp = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= True, verbose=verbose)
+        M_grouping_excel_save(M,grouping_temp,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
+    del(trkdata)
+    if os.path.exists(grouping_xlsxpath):
+        grouping = extract_grouping(grouping_xlsxpath, index_to_struct, np.shape(M), verbose=verbose)
+    else:
+        raise Exception(f'saving of the excel at {grouping_xlsxpath} did not work')
 
