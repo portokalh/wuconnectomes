@@ -53,14 +53,14 @@ metric2 = AveragePointwiseEuclideanMetric(feature=feature2)
 project = 'AD_Decode'
 
 huma_projects = ''
-hostname = socket.gethostname()
+computer_name = socket.gethostname()
 
 
 samos = False
-if 'samos' in hostname:
+if 'samos' in computer_name:
     mainpath = '/mnt/paros_MRI/jacques/'
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'santorini' in hostname:
+elif 'santorini' in computer_name:
     #mainpath = '/Users/alex/jacques/'
     mainpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
