@@ -41,23 +41,9 @@ def get_diff_ref(label_folder, subject, ref):
     else:
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), diff_path)
 
-#set parameter
-num_points1 = 50
-distance1 = 1
-feature1 = ResampleFeature(nb_points=num_points1)
-metric1 = AveragePointwiseEuclideanMetric(feature=feature1)
-
-#group cluster parameter
-num_points2 = 50
-distance2 = 2
-feature2 = ResampleFeature(nb_points=num_points2)
-metric2 = AveragePointwiseEuclideanMetric(feature=feature2)
-
 project = 'AD_Decode'
 
-huma_projects = ''
 computer_name = socket.gethostname()
-
 
 samos = False
 if 'samos' in computer_name:
@@ -73,18 +59,39 @@ elif 'blade' in computer_name:
 else:
     raise Exception('No other computer name yet')
 
+#Setting identification parameters for ratio, labeling type, etc
+ratio = 1
+ratio_str = ratio_to_str(ratio)
+print(ratio_str)
+if ratio_str == '_all':
+    folder_ratio_str = ''
+else:
+    folder_ratio_str = ratio_str.replace('_ratio','')
+
+str_identifier = f'_stepsize_2{ratio_str}_wholebrain_pruned'
+labeltype = 'lrordered'
+verbose=True
+picklesave=True
+
+function_processes = parse_arguments_function(sys.argv)
+print(f'there are {function_processes} function processes')
+overwrite=False
+
+
+
 if project=='AD_Decode':
     mainpath=os.path.join(mainpath,project,'Analysis')
 else:
     mainpath = os.path.join(mainpath, project)
-TRK_folder = os.path.join(mainpath, 'TRK_MPCA_MDT_fixed')
+
+TRK_folder = os.path.join(mainpath, 'TRK_MPCA_MDT_fixed'+folder_ratio_str)
 label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
-figures_folder = os.path.join(mainpath, 'Figures_MDT')
-pickle_folder = os.path.join(mainpath, 'Pickle_MDT')
-centroid_folder = os.path.join(mainpath, 'Centroids_MDT')
-excel_folder = os.path.join(mainpath, 'Excels_MDT')
-mkcdir([figures_folder, pickle_folder, centroid_folder, excel_folder])
+#pickle_folder = os.path.join(mainpath, 'Pickle_MDT'+folder_ratio_str)
+#centroid_folder = os.path.join(mainpath, 'Centroids_MDT'+folder_ratio_str)
+excel_folder = os.path.join(mainpath, 'Excels_MDT'+folder_ratio_str)
+print(excel_folder)
+mkcdir(excel_folder)
 if not os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
 
@@ -132,39 +139,6 @@ removed_list = ['S02266']
 for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
-
-#Setting identification parameters for ratio, labeling type, etc
-ratio = 1
-ratio_str = ratio_to_str(ratio)
-str_identifier = '_MDT'+ratio_str
-str_identifier = '_stepsize_2_all_wholebrain_pruned'
-labeltype = 'lrordered'
-verbose=True
-picklesave=True
-
-function_processes = parse_arguments_function(sys.argv)
-print(f'there are {function_processes} function processes')
-overwrite=False
-
-"""
-labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
-                                                                         labeltype=labeltype, verbose=verbose)
-trkpath = '/Users/alex/jacques/AMD/TRK_MDT/H29403_MDT_ratio_100.trk'
-trkdata = load_trk(trkpath, 'same')
-streamlines = trkdata.streamlines
-
-setup_view(streamlines[0:6], ref=labeloutpath, world_coords=True)
-
-labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
-                                                                         labeltype=labeltype, verbose=verbose)
-trkpath = '/Users/alex/jacques/AMD/TRK_MDT/H29403_MDT_ratio_100.trk'
-trk_testpath = '/Users/alex/jacques/AMD/TRK_MDT/H29403_MDT_ratio_firststreamlines.trk'
-trkdata = load_trk(trkpath, 'same')
-header = trkdata.space_attributes
-save_trk_header(filepath=trk_testpath, streamlines=trkdata.streamlines[0:6], header=header,
-                    affine=np.eye(4), verbose=verbose)
-setup_view(trkdata.streamlines[0:6], ref=labeloutpath, world_coords=True)
-"""
 
 
 _, _, index_to_struct, _ = atlas_converter(ROI_legends)
