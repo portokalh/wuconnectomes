@@ -250,6 +250,8 @@ def extract_nii_info(path, verbose=None):
 def getrefdata(mypath, subject, reference, verbose=None):
 
     ref_fpath = getrefpath(mypath, subject, reference, verbose=verbose)
+    if ref_fpath is None:
+        return None, None, None, None, None, None
     ref_data, affine, vox_size, header, ref_info = extract_nii_info(ref_fpath, verbose)
 
     return ref_data, affine, vox_size, ref_fpath, header, ref_info
