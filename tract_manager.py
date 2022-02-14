@@ -425,9 +425,11 @@ def connectivity_matrix_func(pruned_streamlines_SL, function_processes, labelmas
     listcut.append(0)
     for i in np.arange(n - 1):
         listcut.append(np.int(((i + 1) * size_SL) / n))
-        print(size_SL, i + 1, n)
+        if verbose:
+            print(size_SL, i + 1, n)
     listcut.append(size_SL)
-    print(listcut)
+    if verbose:
+        print(listcut)
     pruned_cut = []
     for i in np.arange(n):
         pruned_cut.append(pruned_streamlines_SL[listcut[i]:listcut[i+1]])
@@ -466,7 +468,10 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
 
     if reference_weighting_type is not None:
         reference_weight, ref_affine, _, ref_fpath, _, _ = getrefdata(diffpath, subject, reference_weighting_type, verbose)
-
+    if reference_weight is None:
+        txt = f'Subject is {subject} did not have reference {reference_weighting_type}' 
+        warnings.warn(txt)
+        return None
 
     if volume_weighting:
         picklepath_connect_vol = os.path.join(outpath, subject + str_identifier + '_volweighted' + '_connectomes.p')
@@ -640,7 +645,11 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
                                                                               inclusive, symmetric, return_mapping,
                                                                               mapping_as_streamlines,reference_weight,volume_weighting) for i in np.arange(n)]).get()
 
-        matrix, matrix_vol, matrix_refweighted, matrix_vol_refweighted, grouping = np.zeros(np.shape(connectomic_results[0][0]))
+        #matrix, matrix_vol, matrix_refweighted, matrix_vol_refweighted, grouping = np.zeros(np.shape(connectomic_results[0][0]))
+        matrix =  np.zeros(np.shape(connectomic_results[0][0]))
+        matrix_vol = np.zeros(np.shape(connectomic_results[0][0]))
+        matrix_refweighted = np.zeros(np.shape(connectomic_results[0][0]))
+        matrix_vol_refweighted = np.zeros(np.shape(connectomic_results[0][0]))
         grouping = {}
         i=0
         for connectome_results in connectomic_results:

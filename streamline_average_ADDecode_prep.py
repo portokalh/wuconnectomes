@@ -27,6 +27,9 @@ from excel_management import M_grouping_excel_save, extract_grouping
 import sys
 from argument_tools import parse_arguments_function
 from tract_manager import connectivity_matrix_func
+import random
+
+from time import time
 
 def get_grouping(grouping_xlsx):
     print('not done yet')
@@ -53,19 +56,22 @@ metric2 = AveragePointwiseEuclideanMetric(feature=feature2)
 project = 'AD_Decode'
 
 huma_projects = ''
-hostname = socket.gethostname()
+computer_name = socket.gethostname()
 
 
 samos = False
-if 'samos' in hostname:
+if 'samos' in computer_name:
     mainpath = '/mnt/paros_MRI/jacques/'
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'santorini' in hostname:
+elif 'santorini' in computer_name:
     #mainpath = '/Users/alex/jacques/'
     mainpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+elif 'blade' in computer_name:
+    mainpath = '/mnt/munin6/Badea/Lab/human/'
+    ROI_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 else:
-    print(f'no option for {hostname}')
+    raise Exception('No other computer name yet')
 
 if project=='AD_Decode':
     mainpath=os.path.join(mainpath,project,'Analysis')
@@ -83,6 +89,7 @@ if not os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
 
 #reference_img refers to statistical values that we want to compare to the streamlines, say fa, rd, etc
+
 references = ['fa', 'md', 'rd', 'ad', 'b0']
 references = []
 
@@ -119,6 +126,12 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
         'S02804', 'S02813', 'S02812', 'S02817', 'S02840', 'S02842', 'S02871', 'S02877', 'S02898', 'S02926', 'S02938',
         'S02939', 'S02954', 'S02967', 'S02987', 'S03010', 'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048',
         'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321', 'S03343', 'S03350', 'S03378', 'S03391', 'S03394']
+
+random.shuffle(subjects)
+removed_list = ['S02266']
+for remove in removed_list:
+    if remove in subjects:
+        subjects.remove(remove)
 
 #Setting identification parameters for ratio, labeling type, etc
 ratio = 1
@@ -163,30 +176,33 @@ for subject in subjects:
         txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
         warnings.warn(txt)
         continue
-    #streamlines, header, _ = unload_trk(trkpath)
-    picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectome.p')
-    picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
+
+    #picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectome.p')
+    #picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
     M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectome.xlsx")
     grouping_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_grouping.xlsx")
-    #if os.path.exists(picklepath_grouping) and not overwrite:
-    #    with open(picklepath_grouping, 'rb') as f:
-        #        grouping = pickle.load(f)
-    if os.path.exists(picklepath_connectome) or os.path.exists(grouping_xlsxpath):
-        print(f'Found written file for subject {subject}')
+
+    if os.path.exists(M_xlsxpath) or os.path.exists(grouping_xlsxpath):
+        print(f'Found written file for subject {subject} at {M_xlsxpath} and {grouping_xlsxpath}')
         continue
     else:
+        t1 = time()
         trkdata = load_trk(trkpath, 'same')
+        if verbose:
+            print(f"Time taken for loading the trk file {trkpath} set was {str((- t1 + time())/60)} minutes")
+        t2 = time()
         header = trkdata.space_attributes
         if function_processes == 1:
-            M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True,
-                                    return_mapping=True,
-                                    mapping_as_streamlines=False, verbose=verbose)
+            M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=True, symmetric=True, return_mapping=True, mapping_as_streamlines=False)
         else:
-            M, grouping_temp = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= True, verbose=verbose)
-        M_grouping_excel_save(M,grouping_temp,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
-    del(trkdata)
-    if os.path.exists(grouping_xlsxpath):
-        grouping = extract_grouping(grouping_xlsxpath, index_to_struct, np.shape(M), verbose=verbose)
-    else:
-        raise Exception(f'saving of the excel at {grouping_xlsxpath} did not work')
+            M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= True, verbose=False)
+        M_grouping_excel_save(M,grouping,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
+        del(trkdata)
+        if verbose:
+            print(f"Time taken for creating this connectome was set at {str((- t2 + time())/60)} minutes")
+        if os.path.exists(grouping_xlsxpath) and verbose:
+            print(f'Saved grouping for subject {subject} at {grouping_xlsxpath}')
+        #grouping = extract_grouping(grouping_xlsxpath, index_to_struct, np.shape(M), verbose=verbose)
+        else:
+            raise Exception(f'saving of the excel at {grouping_xlsxpath} did not work')
 

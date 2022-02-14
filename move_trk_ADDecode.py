@@ -94,7 +94,7 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
             'S03308', 'S03321', 'S03343', "S03350", "S03378", "S03391", "S03394"]
 
 #removed_list = ['S02771',"S03343", "S03350", "S03378", "S03391", "S03394","S03225", "S03293", "S03308", "S02842", "S02804"]
-removed_list = []
+removed_list = ["S02654"]
 for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)

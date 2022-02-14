@@ -11,12 +11,15 @@ TRK_output = '/Users/alex/jacques/AMD_TRK_testing/TRK_MDT_fixed'
 TRK_folder = '/Volumes/Data/Badea/Lab/human/AMD/TRK_MDT'
 TRK_output = '/Volumes/Data/Badea/Lab/human/AMD/TRK_MDT_fixed'
 
-TRK_folder = '/mnt/paros_MRI/jacques/AD_Decode/Analysis/TRK_MPCA_neworient/'
-TRK_output = '/mnt/paros_MRI/jacques/AD_Decode/Analysis/TRK_MPCA_neworient_fixed/'
+TRK_folder = '/mnt/munin6/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_MDT/'
+TRK_output = '/mnt/munin6/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_MDT_fixed/'
+
+TRK_folder = '/mnt/paros_MRI/jacques/AD_Decode/Analysis/TRK_MPCA_MDT/'
+TRK_output = '/mnt/paros_MRI/jacques/AD_Decode/Analysis/TRK_MPCA_MDT_fixed/'
 
 filelist = os.listdir(TRK_folder)
 filelist = sorted(filelist)
-filelist.reverse()
+#filelist.reverse()
 
 mkcdir(TRK_output)
 for trk_name in filelist:
