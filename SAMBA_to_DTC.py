@@ -165,8 +165,8 @@ elif project == "AMD":
 else:
     raise Exception("Unknown project name")
 
-#for subject in subjects:
-#    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, headfile = SAMBA_headfile, overwrite=overwrite)
+for subject in subjects:
+    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, headfile = SAMBA_headfile, overwrite=overwrite)
 
 remote=False
 

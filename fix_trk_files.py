@@ -15,8 +15,14 @@ TRK_output = '/Volumes/Data/Badea/Lab/human/AMD/TRK_MDT_fixed'
 TRK_folder = '/mnt/munin6/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_MDT/'
 TRK_output = '/mnt/munin6/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_MDT_fixed/'
 
-TRK_folder = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_MDT_fixed/'
-TRK_output = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_MDT_fixed_refixed/'
+TRK_folder = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_MDT/'
+TRK_output = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_MDT_fixed/'
+
+TRK_folder = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/Centroids_MDT_non_inclusive_100/'
+TRK_output = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/Centroids_MDT_non_inclusive_100_fixed/'
+
+TRK_folder = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA/'
+TRK_output = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_fixed/'
 
 filelist = os.listdir(TRK_folder)
 filelist = sorted(filelist)

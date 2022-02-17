@@ -74,6 +74,7 @@ else:
 
 
 inclusive = False
+ref_MDT_folder =
 
 if inclusive:
     inclusive_name = '_inclusive'
@@ -158,7 +159,7 @@ picklesave=True
     '5 fusiform_Left---Cerebellum-Cortex_Left 22 1 with weight of 402.0991\n'
 """
 
-target_tuples = [(9,1),(76, 42),(76, 64),(77, 9),(43, 9)]
+target_tuples = [(9, 1),(24, 1),(76, 42),(76, 64),(77, 9),(43, 9)]
 #target_tuples = [(9,1)]
 #target_tuple = (9,1)
 #target_tuple = (76, 42)
@@ -317,7 +318,7 @@ for target_tuple in target_tuples:
                 #ref_path_points = grouping_files[ref, 'points']
                 #groupPoints[group, ref] = grouping_files[ref, 'points']
 
-
+"""
 fas = {}
 for group in groups:
     fas[group] = np.mean(groupLines[group,'fa'])
@@ -325,6 +326,12 @@ for group in groups:
 mds = {}
 for group in groups:
     fas[group] = np.mean(groupLines[group,'fa'])
+"""
+
+ref_mean = {}
+for reference in references:
+    for group in groups:
+        ref[reference,group] = np.mean(groupLines[group,ref])
 
 for group in groups:
     cluster = group_clusters[group]

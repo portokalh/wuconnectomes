@@ -60,7 +60,7 @@ def launch_interactive_view(scene):
     show_m.start()
 
 def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=None, str_tube=False, ref=None,
-               objectvals = None, colorbar=False, record = None, scene = None):
+               objectvals = None, colorbar=False, record = None, scene = None, interactive = True):
 
     from dipy.viz import actor, window, ui
 
@@ -140,7 +140,7 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
                 # lines_actor.RotateZ(90)
                 scene.add(object_actor)
     elif isinstance(trk_object, Streamlines):
-        if isinstance(colors, vtk.vtkLookupTable) and objectvals is not None:
+        if isinstance(colors, vtk.vtkLookupTable) and objectvals[0] is not None:
             object_actor = actor.line(trk_object,objectvals, linewidth=0.1,
                                lookup_colormap=colors)
         else:
@@ -288,8 +288,6 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
 
     global size
     size = scene.GetSize()
-
-    interactive = True
 
     scene.zoom(1.5)
     scene.reset_clipping_range()
