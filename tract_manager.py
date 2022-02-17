@@ -544,7 +544,7 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
     else:
         raise TypeError("Cannot recognize label type (this error raise is a THEORETICALLY a temp patch")
 
-    pickle.dump(index_to_struct, open(picklepath_index, "wb"))
+    #pickle.dump(index_to_struct, open(picklepath_index, "wb"))
 
     if (trkfilepath is not None and trkpruneexists is False and prunesave):
 

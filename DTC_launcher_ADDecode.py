@@ -92,6 +92,7 @@ denoise = "coreg"
 savefa = True
 
 reference_weighting = 'fa'
+reference_weighting = None
 volume_weighting = False
 make_tracts = False
 make_connectomes = True
@@ -112,7 +113,7 @@ else:
 
 trkpath = os.path.join(mainpath, "TRK_MPCA_fixed")
 trkpath = os.path.join(mainpath, "TRK_MPCA_100")
-trkpath = os.path.join(mainpath, "TRK_MPCA"+trk_folder_name)
+trkpath = os.path.join(mainpath, "TRK_MPCA_fixed"+trk_folder_name)
 #trkpath = os.path.join(mainpath, "TRK_MPCA_neworient"+trk_folder_name)
 mkcdir(trkpath)
 

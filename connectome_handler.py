@@ -186,7 +186,7 @@ def connectivity_matrix_custom(streamlines, affine, label_volume,
         # get labels for label_volume
 
         i, j, k = endpoints.T
-        endlabels = label_volume[i, j, k]
+        endlabels = label_volume[i, j, k]  ## CREATE CONSTRAIN FUNCTION SO WE STOP HAVING THE out of bounds error!!!!
         if symmetric:
             endlabels.sort(0)
         mx = label_volume.max() + 1

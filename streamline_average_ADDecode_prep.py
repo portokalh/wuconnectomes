@@ -27,7 +27,7 @@ import sys
 from argument_tools import parse_arguments_function
 from tract_manager import connectivity_matrix_func
 import random
-
+from nibabel.streamlines.array_sequence import ArraySequence
 from time import time
 
 def get_grouping(grouping_xlsx):
@@ -174,8 +174,20 @@ for subject in subjects:
 
         streamlines = trkdata.streamlines
         lin_T, offset = _mapping_to_voxel(header[0])
-        streamlines_world = _to_voxel_coordinates(streamlines, lin_T, offset)
+        streamlines_world_connectome = []
+        for i in np.arange(10000):
+            entire = _to_voxel_coordinates(streamlines[i], lin_T, offset)
+            streamlines_world_connectome.append(entire)
+        streamlines_world_connectome = ArraySequence(streamlines_world_connectome)
 
+        """
+        target_isocenter = np.array([[-1., 0., 0., 128.], [0., -1., 0., 128.], [0., 0., 1., -67.], [0., 0., 0., 1.]])
+        target_isocenter[2, 3] = 67
+        streamlines_prewarp_world = transform_streamlines(streamlines_prewarp, target_isocenter)
+        scene = setup_view(streamlines_prewarp_world[:], colors=lut_cmap, ref=moving_path, world_coords=False,
+                           objectvals=[None],
+                           colorbar=True, record=None, scene=scene)
+        """
         for i in np.arange(2,85):
             for j in np.arange(1,85):
                 print(i, j)
