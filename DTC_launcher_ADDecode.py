@@ -59,14 +59,14 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
         'S02939', 'S02954', 'S02967', 'S02987', 'S03010', 'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048',
         'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321', 'S03343', 'S03350', 'S03378', 'S03391', 'S03394']
 
-removed_list = []
+removed_list = ["S02745","S02230","S02490","S02523"]
 
 for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
 
 subjects.sort()
-
+subjects.reverse()
 
 print(subjects)
 subject_processes, function_processes = parse_arguments(sys.argv,subjects)
@@ -85,7 +85,7 @@ bvec_orient = [1,2,3]
 vol_b0 = [0,1,2]
 classifier = "binary"
 symmetric = False
-inclusive = True
+inclusive = False
 denoise = "coreg"
 savefa = True
 
@@ -186,7 +186,7 @@ if subject_processes>1:
                                                        in subjects]).get()
     if make_connectomes:
         tract_results = pool.starmap_async(tract_connectome_analysis, [(diff_preprocessed, trkpath, str_identifier, figspath,
-                                                                       subject, atlas_legends, bvec_orient, inclusive,
+                                                                       subject, atlas_legends, bvec_orient, brainmask, inclusive,
                                                                        function_processes, overwrite, picklesave, labeltype, symmetric, reference_weighting, volume_weighting, verbose)
                                                                      for subject in subjects]).get()
     pool.close()

@@ -484,6 +484,7 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         connectome_xlsxpath_volref = os.path.join(outpath, subject + str_identifier + '_volweighted' + '_' + reference_weighting_type + "_connectomes.xlsx")
 
     mkcdir(outpath)
+    print(f'Volume weighting is {volume_weighting}, reference weighting is {reference_weighting_type}\ninclusive is {inclusive}, symmetric is {symmetric}, saving connectomes at {outpath}')
 
     if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and not overwrite:
         print(f"The writing of pickle and excel of {str(subject)} at {connectome_xlsxpath} is already done")
