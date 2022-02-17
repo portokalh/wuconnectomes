@@ -11,6 +11,7 @@ import sys
 import glob
 from bvec_handler import orient_to_str
 import socket
+import random
 
 computer_name = socket.gethostname()
 
@@ -67,6 +68,7 @@ for remove in removed_list:
 
 subjects.sort()
 subjects.reverse()
+random.shuffle(subjects)
 
 print(subjects)
 subject_processes, function_processes = parse_arguments(sys.argv,subjects)
