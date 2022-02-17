@@ -18,7 +18,7 @@ computer_name = socket.gethostname()
 if 'samos' in computer_name:
     mainpath = '/mnt/paros_MRI/jacques'
     atlas_legends = mainpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'santorini' in computer_name:
+elif 'santorini' or 'hydra' in computer_name:
     mainpath = '/Volumes/Data/Badea/Lab/human/'
     atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 elif 'blade' in computer_name:
@@ -92,7 +92,7 @@ denoise = "coreg"
 savefa = True
 
 reference_weighting = 'fa'
-volume_weighting = True
+volume_weighting = False
 make_tracts = False
 make_connectomes = True
 

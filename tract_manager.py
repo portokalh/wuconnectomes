@@ -468,11 +468,13 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
 
     if reference_weighting_type is not None:
         reference_weight, ref_affine, _, ref_fpath, _, _ = getrefdata(diffpath, subject, reference_weighting_type, verbose)
-    if reference_weight is None:
-        txt = f'Subject is {subject} did not have reference {reference_weighting_type}' 
-        warnings.warn(txt)
-        return None
-
+        if reference_weight is None:
+            txt = f'Subject is {subject} did not have reference {reference_weighting_type}'
+            warnings.warn(txt)
+            return None
+    else:
+        reference_weight = None
+        
     if volume_weighting:
         picklepath_connect_vol = os.path.join(outpath, subject + str_identifier + '_volweighted' + '_connectomes.p')
         connectome_xlsxpath_vol = os.path.join(outpath, subject + str_identifier + '_volweighted' + "_connectomes.xlsx")
