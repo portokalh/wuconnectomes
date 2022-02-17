@@ -474,7 +474,7 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
             return None
     else:
         reference_weight = None
-        
+
     if volume_weighting:
         picklepath_connect_vol = os.path.join(outpath, subject + str_identifier + '_volweighted' + '_connectomes.p')
         connectome_xlsxpath_vol = os.path.join(outpath, subject + str_identifier + '_volweighted' + "_connectomes.xlsx")
