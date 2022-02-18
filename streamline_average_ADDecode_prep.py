@@ -25,7 +25,7 @@ from tract_save import save_trk_header
 from excel_management import M_grouping_excel_save, extract_grouping
 import sys
 from argument_tools import parse_arguments_function
-from tract_manager import connectivity_matrix_func
+from connectome_handler import connectivity_matrix_custom, connectivity_matrix_func
 import random
 from nibabel.streamlines.array_sequence import ArraySequence
 from time import time
@@ -120,7 +120,9 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
         'S02804', 'S02813', 'S02812', 'S02817', 'S02840', 'S02842', 'S02871', 'S02877', 'S02898', 'S02926', 'S02938',
         'S02939', 'S02954', 'S02967', 'S02987', 'S03010', 'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048',
         'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321', 'S03343', 'S03350', 'S03378', 'S03391', 'S03394']
-subjects = ['S02363']
+#subjects = ['S02363']
+#subjects = ['S02686']
+#subjects = ['S02987']
 random.shuffle(subjects)
 #removed_list = ['S02266']
 removed_list = ['S02523']
@@ -128,12 +130,11 @@ for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
 
+overwrite = False
 
 _, _, index_to_struct, _ = atlas_converter(ROI_legends)
 labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
                                                                              labeltype=labeltype, verbose=verbose)
-
-overwrite = True
 for subject in subjects:
     trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
     if not exists:
@@ -158,55 +159,51 @@ for subject in subjects:
         header = trkdata.space_attributes
 
 
+        streamlines_world = transform_streamlines(trkdata.streamlines, np.linalg.inv(labelaffine))
 
-        if function_processes == 1:
-            M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=inclusive, symmetric=True, return_mapping=True, mapping_as_streamlines=False)
-        else:
-            M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= inclusive, verbose=False)
+        """
+        ref_MDT_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_dwi.nii.gz'
+        scene = None
 
         lut_cmap = actor.colormap_lookup_table(
             scale_range=(0.01, 0.55))
-
-        ref_MDT_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_dwi.nii.gz'
-
-        from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
-        scene = None
-
-        streamlines = trkdata.streamlines
-        lin_T, offset = _mapping_to_voxel(header[0])
-        streamlines_world_connectome = []
-        for i in np.arange(10000):
-            entire = _to_voxel_coordinates(streamlines[i], lin_T, offset)
-            streamlines_world_connectome.append(entire)
-        streamlines_world_connectome = ArraySequence(streamlines_world_connectome)
-
-        """
-        target_isocenter = np.array([[-1., 0., 0., 128.], [0., -1., 0., 128.], [0., 0., 1., -67.], [0., 0., 0., 1.]])
-        target_isocenter[2, 3] = 67
-        streamlines_prewarp_world = transform_streamlines(streamlines_prewarp, target_isocenter)
-        scene = setup_view(streamlines_prewarp_world[:], colors=lut_cmap, ref=moving_path, world_coords=False,
+        scene = setup_view(trkdata.streamlines[:2000], colors=lut_cmap, ref=ref_MDT_path, world_coords=True,
+                           objectvals=[None],
+                           colorbar=True, record=None, scene=scene)
+        scene = setup_view(streamlines_world[:2000], colors=lut_cmap, ref=ref_MDT_path, world_coords=False,
                            objectvals=[None],
                            colorbar=True, record=None, scene=scene)
         """
-        for i in np.arange(2,85):
-            for j in np.arange(1,85):
-                print(i, j)
-                target_streamlines_list = grouping[i, j]
-                #print(index_to_struct[i] + '_to_' + index_to_struct[j])
-                if len(target_streamlines_list) > 0:
-                    target_streamlines = trkdata.streamlines[np.array(target_streamlines_list)]
-                    print(f'viewing {index_to_struct[i]} to {index_to_struct[j]}')
-                    scene = setup_view(target_streamlines, colors=lut_cmap, ref=ref_MDT_path, world_coords=True, objectvals=[None],
-                              colorbar=False, record=None, scene=scene, interactive=True)
-                else:
-                    print(f'skipping {index_to_struct[i]} to {index_to_struct[j]}')
+        if function_processes == 1:
+            #M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=inclusive, symmetric=True, return_mapping=True, mapping_as_streamlines=False)
+            M, _, _, _, grouping = connectivity_matrix_custom(streamlines_world, np.eye(4), labelmask,
+                                              inclusive=inclusive, symmetric=True, return_mapping=True,
+                                              mapping_as_streamlines=False, reference_weighting = None, volume_weighting=False)
+        else:
+            #M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= inclusive, verbose=False)
+            M, _, _, _, grouping = connectivity_matrix_func(streamlines_world, np.eye(4), labelmask, inclusive = inclusive,
+                                                   symmetric=True, return_mapping=True, mapping_as_streamlines=False, reference_weighting = None,
+                                                   volume_weighting=False, verbose = False)
 
-                #setup_view(target_streamlines, colors=lut_cmap, ref=ref_MDT_path, world_coords=True, objectvals=[None],
-                 #          colorbar=False, record=None, scene=None, interactive=True)
-        #setup_view(target_streamlines, colors=lut_cmap, ref=labeloutpath, world_coords=True, objectvals=[None],
-        #           colorbar=False, record=None, scene=None, interactive=True)
+        """
+        lut_cmap = actor.colormap_lookup_table(
+            scale_range=(0.01, 0.55))
+        scene = None
+        ref_MDT_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_dwi.nii.gz'
+        i = 1
+        j = 9
+        print(i, j)
+        target_streamlines_list = grouping[i, j]
+        #print(index_to_struct[i] + '_to_' + index_to_struct[j])
 
+        if len(target_streamlines_list) > 0:
+            target_streamlines = trkdata.streamlines[np.array(target_streamlines_list)]
+            print(f'viewing {index_to_struct[i]} to {index_to_struct[j]}')
+            scene = setup_view(target_streamlines, colors=lut_cmap, ref=ref_MDT_path, world_coords=True, objectvals=[None],
+                      colorbar=False, record=None, scene=scene, interactive=True)
+        """
         M_grouping_excel_save(M,grouping,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
+
 
 
         del(trkdata)
@@ -218,3 +215,52 @@ for subject in subjects:
         else:
             raise Exception(f'saving of the excel at {grouping_xlsxpath} did not work')
 
+
+#old testing grounds, good visualization tools
+"""
+#ref_MDT_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_dwi.nii.gz'
+
+from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
+scene = None
+
+streamlines = trkdata.streamlines
+lin_T, offset = _mapping_to_voxel(header[0])
+streamlines_world_connectome = []
+for i in np.arange(10000):
+    entire = _to_voxel_coordinates(streamlines[i], lin_T, offset)
+    streamlines_world_connectome.append(entire)
+streamlines_world_connectome = ArraySequence(streamlines_world_connectome)
+
+target_isocenter = np.array([[-1., 0., 0., 128.], [0., -1., 0., 128.], [0., 0., 1., -67.], [0., 0., 0., 1.]])
+target_isocenter[2, 3] = 67
+MDT_affine = load_nifti(ref_MDT_path)[1]
+streamlines_world_affine = transform_streamlines(streamlines, MDT_affine)
+
+scene = setup_view(streamlines_world_affine[:2000], colors=lut_cmap, ref=ref_MDT_path, world_coords=False,
+                   objectvals=[None],
+                   colorbar=True, record=None, scene=scene)
+scene = setup_view(streamlines_world_connectome[:2000], colors=lut_cmap, ref=ref_MDT_path, world_coords=False,
+                   objectvals=[None],
+                   colorbar=True, record=None, scene=scene)
+
+
+for i in np.arange(1,85):
+    for j in np.arange(1,85):
+        i = 1
+        j = 9
+        print(i, j)
+        target_streamlines_list = grouping[i, j]
+        #print(index_to_struct[i] + '_to_' + index_to_struct[j])
+        if len(target_streamlines_list) > 0:
+            target_streamlines = trkdata.streamlines[np.array(target_streamlines_list)]
+            print(f'viewing {index_to_struct[i]} to {index_to_struct[j]}')
+            scene = setup_view(target_streamlines, colors=lut_cmap, ref=ref_MDT_path, world_coords=True, objectvals=[None],
+                      colorbar=False, record=None, scene=scene, interactive=True)
+        else:
+            print(f'skipping {index_to_struct[i]} to {index_to_struct[j]}')
+
+        #setup_view(target_streamlines, colors=lut_cmap, ref=ref_MDT_path, world_coords=True, objectvals=[None],
+         #          colorbar=False, record=None, scene=None, interactive=True)
+#setup_view(target_streamlines, colors=lut_cmap, ref=labeloutpath, world_coords=True, objectvals=[None],
+#           colorbar=False, record=None, scene=None, interactive=True)
+"""

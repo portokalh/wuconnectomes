@@ -62,7 +62,7 @@ if project == "AD_Decode":
     subjects = ["S03343", "S03350", "S03378", "S03391", "S03394"]
 
     #subjects = ["S02695", "S02686", "S02670", "S02666", "S02654","S03010"]
-
+    subjects = ["S01912"]
     removed_list = ['S02230', 'S02490', 'S02745']
     for remove in removed_list:
         if remove in subjects:
