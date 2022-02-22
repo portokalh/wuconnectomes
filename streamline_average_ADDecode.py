@@ -26,7 +26,7 @@ from tract_save import save_trk_header
 from excel_management import M_grouping_excel_save, extract_grouping
 import sys
 from argument_tools import parse_arguments_function
-from tract_manager import connectivity_matrix_func
+from connectome_handler import connectivity_matrix_func
 
 def get_grouping(grouping_xlsx):
     print('not done yet')

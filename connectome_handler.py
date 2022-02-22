@@ -182,7 +182,7 @@ def retweak_points(points, shape):
             pointsT[axis][pointsT[axis]<0] = 0
         if np.max(pointsT[axis]>=shape[axis]):
             print(f'There are {np.sum(pointsT[axis]>=shape[axis])} points that are above maximum in axis {axis}')
-            pointsT[axis][pointsT[axis]>0] = shape[axis] - 1
+            pointsT[axis][pointsT[axis]>=shape[axis]] = shape[axis] - 1
     pointsnew = pointsT.T
 
     return pointsnew
@@ -295,6 +295,7 @@ def connectivity_matrix_custom(streamlines, affine, label_volume,
         lin_T, offset = _mapping_to_voxel(affine)
 
         endpoints = _to_voxel_coordinates_warning(endpoints, lin_T, offset)
+        #endpoints = endpoints[7559:7595]
         endpoints = retweak_points(endpoints, np.shape(label_volume))
 
         # get labels for label_volume

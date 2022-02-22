@@ -48,7 +48,7 @@ samos = False
 if 'samos' in computer_name:
     mainpath = '/mnt/paros_MRI/jacques/'
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'santorini' in computer_name:
+elif 'santorini' in computer_name or 'hydra' in computer_name:
     #mainpath = '/Users/alex/jacques/'
     mainpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
@@ -59,7 +59,7 @@ else:
     raise Exception('No other computer name yet')
 
 #Setting identification parameters for ratio, labeling type, etc
-ratio = 100
+ratio = 1
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
 if ratio_str == '_all':
@@ -68,10 +68,17 @@ else:
     folder_ratio_str = ratio_str.replace('_ratio','')
 
 inclusive = False
+symmetric = True
 if inclusive:
     inclusive_str = '_inclusive'
 else:
     inclusive_str = '_non_inclusive'
+
+if symmetric:
+    symmetric_str = '_symmetric'
+else:
+    symmetric_str = '_non_symmetric'
+
 
 str_identifier = f'_stepsize_2{ratio_str}_wholebrain_pruned'
 labeltype = 'lrordered'
@@ -91,7 +98,7 @@ label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
 #pickle_folder = os.path.join(mainpath, 'Pickle_MDT'+folder_ratio_str)
 #centroid_folder = os.path.join(mainpath, 'Centroids_MDT'+folder_ratio_str)
-excel_folder = os.path.join(mainpath, f'Excels_MDT{inclusive_str}{folder_ratio_str}')
+excel_folder = os.path.join(mainpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 
 print(excel_folder)
 mkcdir(excel_folder)
@@ -123,6 +130,8 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
 #subjects = ['S02363']
 #subjects = ['S02686']
 #subjects = ['S02987']
+#subjects = ['S02386']
+#subjects = ['S02813']
 random.shuffle(subjects)
 #removed_list = ['S02266']
 removed_list = ['S02523']
@@ -130,7 +139,7 @@ for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
 
-overwrite = False
+overwrite = True
 
 _, _, index_to_struct, _ = atlas_converter(ROI_legends)
 labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
@@ -161,6 +170,16 @@ for subject in subjects:
 
         streamlines_world = transform_streamlines(trkdata.streamlines, np.linalg.inv(labelaffine))
 
+        #endlabels_list_all = [7559, 8618, 10070, 10872, 13321, 14375, 14390, 14752, 15397, 15795, 15829, 15876, 16160,
+        #                      16919, 18050, 18446, 18843, 19263, 19633, 19695, 20046, 20065, 20069, 20076, 20493, 20497,
+        #                      20501, 20523, 20927, 21359, 21373, 21683, 22167, 22570, 22586, 22914, 23390, 23838, 23842,
+        #                      23851, 23877, 24172, 24945, 24950, 25344, 25383, 25416, 25746, 26064, 26124, 26158, 26820,
+        #                      27854, 30558, 30918, 32315, 32366, 33667, 33711, 35699, 35745]
+
+        #streamlines_world = streamlines_world[endlabels_list_all]
+
+        #endpoingts[7559] = [[167 100 135] [ 95  82 135]]
+        #endpoints_realones[7559] = [167,100,23] [95 82 26]
         """
         ref_MDT_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_dwi.nii.gz'
         scene = None
@@ -177,12 +196,12 @@ for subject in subjects:
         if function_processes == 1:
             #M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=inclusive, symmetric=True, return_mapping=True, mapping_as_streamlines=False)
             M, _, _, _, grouping = connectivity_matrix_custom(streamlines_world, np.eye(4), labelmask,
-                                              inclusive=inclusive, symmetric=True, return_mapping=True,
+                                              inclusive=inclusive, symmetric=symmetric, return_mapping=True,
                                               mapping_as_streamlines=False, reference_weighting = None, volume_weighting=False)
         else:
             #M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= inclusive, verbose=False)
             M, _, _, _, grouping = connectivity_matrix_func(streamlines_world, np.eye(4), labelmask, inclusive = inclusive,
-                                                   symmetric=True, return_mapping=True, mapping_as_streamlines=False, reference_weighting = None,
+                                                   symmetric=symmetric, return_mapping=True, mapping_as_streamlines=False, reference_weighting = None,
                                                    volume_weighting=False, verbose = False)
 
         """
@@ -201,10 +220,10 @@ for subject in subjects:
             print(f'viewing {index_to_struct[i]} to {index_to_struct[j]}')
             scene = setup_view(target_streamlines, colors=lut_cmap, ref=ref_MDT_path, world_coords=True, objectvals=[None],
                       colorbar=False, record=None, scene=scene, interactive=True)
+        else:
+            print('hi')
         """
         M_grouping_excel_save(M,grouping,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
-
-
 
         del(trkdata)
         if verbose:
@@ -215,6 +234,45 @@ for subject in subjects:
         else:
             raise Exception(f'saving of the excel at {grouping_xlsxpath} did not work')
 
+
+        """
+        from connectome_handler import _mapping_to_voxel, _to_voxel_coordinates_warning, retweak_points
+
+        endpoints = np.array([sl[0::len(sl) - 1] for sl in streamlines_world[grouping[1,9]]])
+        lin_T, offset = _mapping_to_voxel(np.eye(4))
+        endpoints = _to_voxel_coordinates_warning(endpoints, lin_T, offset)
+        endpoints = retweak_points(endpoints, np.shape(labelmask))
+        i, j, k = endpoints.T
+        endlabels = labelmask[i, j, k]
+        print(endlabels)
+        endlabels_list = []
+        for i in np.arange(np.shape(endlabels)[1]):
+            if (endlabels[0,i] == 1 and endlabels[1,i] == 9) or (endlabels[0,i] == 9 and endlabels[1,i] == 1):
+                endlabels_list.append(i)
+        'S02813'
+        endlabels_list = [81, 113, 162, 198, 313, 373, 374, 391, 433, 460, 465, 471, 483, 532, 601, 629, 661, 705, 737, 758, 771, 775, 777, 779, 815, 817, 818, 825, 856, 900, 906, 918, 964, 996, 1002, 1023, 1069, 1108, 1109, 1110, 1115, 1125, 1176, 1178, 1206, 1213, 1219, 1237, 1258, 1271, 1277, 1313, 1389, 1532, 1547, 1610, 1615, 1663, 1673, 1734, 1736]
+        endlabels_list_all = []
+        for endlabels_sl in endlabels_list:
+            np.append(grouping[1,9][endlabels_sl])
+        endlabels_list_all = [7559, 8618, 10070, 10872, 13321, 14375, 14390, 14752, 15397, 15795, 15829, 15876, 16160, 16919, 18050, 18446, 18843, 19263, 19633, 19695, 20046, 20065, 20069, 20076, 20493, 20497, 20501, 20523, 20927, 21359, 21373, 21683, 22167, 22570, 22586, 22914, 23390, 23838, 23842, 23851, 23877, 24172, 24945, 24950, 25344, 25383, 25416, 25746, 26064, 26124, 26158, 26820, 27854, 30558, 30918, 32315, 32366, 33667, 33711, 35699, 35745]
+            
+        
+        scene = setup_view(streamlines[11], colors=lut_cmap, ref=label_volume, world_coords=False,
+                   objectvals=[None],
+                   colorbar=True, record=None, scene=scene)
+                   
+                   
+        from connectome_handler import _mapping_to_voxel, _to_voxel_coordinates_warning, retweak_points
+from collections import defaultdict, OrderedDict
+
+for streamline in streamlines_world[target_streamlines_list]:
+    entire = _to_voxel_coordinates_warning(streamline, lin_T, offset)
+    entire = retweak_points(entire, np.shape(labelmask))
+    i, j, k = entire.T
+    entirelabels = list(OrderedDict.fromkeys(labelmask[i, j, k]))
+    print(entirelabels)
+    print('\n\n')
+        """
 
 #old testing grounds, good visualization tools
 """

@@ -8,6 +8,7 @@ import os, glob
 from dipy.segment.clustering import ClusterCentroid
 from dipy.tracking.streamline import Streamlines
 import vtk
+import nibabel as nib
 
 
 def win_callback(obj, event):
@@ -64,14 +65,24 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
 
     from dipy.viz import actor, window, ui
 
-    if os.path.exists(ref):
-        data, affine = load_nifti(ref)
-        shape = data.shape
-        # data, affine = load_nifti('/Volumes/Data/Badea/Lab/mouse/VBM_19IntractEP01_IITmean_RPI-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_NoNameYet_n7_i6/median_images/MDT_fa.nii.gz')
-    else:
-        txt = f'Was asked to find reference file for background at {ref} but path did not exist'
-        warnings.warn(txt)
-
+    if isinstance(ref, str):
+        if os.path.exists(ref):
+            data, affine = load_nifti(ref)
+            shape = data.shape
+            # data, affine = load_nifti('/Volumes/Data/Badea/Lab/mouse/VBM_19IntractEP01_IITmean_RPI-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_NoNameYet_n7_i6/median_images/MDT_fa.nii.gz')
+        else:
+            txt = f'Was asked to find reference file for background at {ref} but path did not exist'
+            warnings.warn(txt)
+    if isinstance(ref, np.ndarray):
+        data = ref
+        shape = np.shape(ref)
+    if isinstance(ref, nib.Nifti1Image):
+        data = np.asarray(ref.dataobj)
+        shape = np.shape(data)
+        affine = ref._affine
+    if np.size(shape)==4:
+        data = np.squeeze(data[:,:,:,0])
+        shape = shape[:3]
     if not world_coords:
         image_actor_z = actor.slicer(data, affine=np.eye(4))
     else:

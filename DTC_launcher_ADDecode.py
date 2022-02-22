@@ -92,8 +92,7 @@ denoise = "coreg"
 savefa = True
 
 reference_weighting = 'fa'
-reference_weighting = None
-volume_weighting = False
+volume_weighting = True
 make_tracts = False
 make_connectomes = True
 
@@ -159,7 +158,10 @@ if symmetric:
 else:
     symmetric_str = '_non_symmetric'
 
-figspath = os.path.join(mainpath,"Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
+if reference_weighting is not None or volume_weighting:
+    figspath = os.path.join(mainpath,"volume_testing","Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
+else:
+    figspath = os.path.join(mainpath,"Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
 mkcdir(figspath)
 
 if make_connectomes:
