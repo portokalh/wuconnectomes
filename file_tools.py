@@ -95,10 +95,10 @@ def check_files(files):
         else:
             if not os.path.exists(file):
                 print(f"{file} does not exist")
-                exists.append(0)
+                exists.append(False)
                 newfiles.append("")
             else:
-                exists.append(1)
+                exists.append(True)
                 newfiles.append(file)
     return newfiles, exists
 

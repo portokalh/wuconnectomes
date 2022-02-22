@@ -66,7 +66,7 @@ ratio = 100
 project = 'AD_Decode'
 skip_subjects = True
 write_streamlines = True
-allow_preprun = True
+allow_preprun = False
 verbose=True
 picklesave=True
 overwrite=False
@@ -121,10 +121,17 @@ else:
 TRK_folder = os.path.join(mainpath, f'TRK_MPCA_MDT_fixed{folder_ratio_str}')
 
 label_folder = os.path.join(mainpath, 'DWI')
+symmetric = True
+if symmetric:
+    symmetric_str = '_symmetric'
+else:
+    symmetric_str = '_non_symmetric'
+
+
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
-pickle_folder = os.path.join(mainpath, f'Pickle_MDT{inclusive_str}{folder_ratio_str}')
-centroid_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{folder_ratio_str}')
-excel_folder = os.path.join(mainpath, f'Excels_MDT{inclusive_str}{folder_ratio_str}')
+pickle_folder = os.path.join(mainpath, f'Pickle_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+centroid_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+excel_folder = os.path.join(mainpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 mkcdir([pickle_folder, centroid_folder, excel_folder])
 if not os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
@@ -171,27 +178,27 @@ metric2 = AveragePointwiseEuclideanMetric(feature=feature2)
 
 for target_tuple in target_tuples:
 
+    _, _, index_to_struct, _ = atlas_converter(ROI_legends)
+    print(f'Starting the run for {index_to_struct[target_tuple[0]]} to {index_to_struct[target_tuple[1]]}')
+
     for group in groups:
+        print(f'Going through group {group}')
+
         group_str = group.replace(' ', '_')
-        _, _, index_to_struct, _ = atlas_converter(ROI_legends)
         centroid_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_centroid.py')
         streamline_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_streamlines.trk')
         grouping_files = {}
         exists=True
 
-        print(target_tuple[0], target_tuple[1])
-        print(index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]])
-
         for ref in references:
             grouping_files[ref,'lines']=(os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_lines.py'))
-            grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
+            #grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
             _, exists = check_files(grouping_files)
-        if not os.path.exists(centroid_file_path) or not np.any(exists) is False or overwrite:
+        if not os.path.exists(centroid_file_path) or not np.all(exists) or overwrite:
             subjects = groups_subjects[group]
-            labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
-                                                                                 labeltype=labeltype, verbose=verbose)
+
             for subject in subjects:
-                trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
+                trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=False)
                 if not exists:
                     txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
                     warnings.warn(txt)
@@ -213,10 +220,20 @@ for target_tuple in target_tuples:
                     grouping = extract_grouping(grouping_xlsxpath, index_to_struct, None, verbose=verbose)
                 else:
                     if allow_preprun:
-                        M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask,
-                                                               symmetric=True, mapping_as_streamlines=False,
-                                                               affine_streams=trkdata.space_attributes[0],
-                                                               inclusive=inclusive)
+                        labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT',
+                                                                                                 ROI_legends,
+                                                                                                 labeltype=labeltype,
+                                                                                                 verbose=verbose)
+                        streamlines_world = transform_streamlines(trkdata.streamlines, np.linalg.inv(labelaffine))
+
+                        #M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask,
+                        #                                       symmetric=True, mapping_as_streamlines=False,
+                        #                                       affine_streams=trkdata.space_attributes[0],
+                        #                                       inclusive=inclusive)
+                        M, grouping = connectivity_matrix_func(streamlines_world, np.eye(4), labelmask, inclusive=inclusive,
+                                                 symmetric=symmetric, return_mapping=True, mapping_as_streamlines=False,
+                                                 reference_weighting=None,
+                                                 volume_weighting=False, verbose=False)
                         M_grouping_excel_save(M, grouping, M_xlsxpath, grouping_xlsxpath, index_to_struct,
                                               verbose=False)
                     else:
@@ -224,6 +241,10 @@ for target_tuple in target_tuples:
                         continue
 
                 target_streamlines_list = grouping[target_tuple[0], target_tuple[1]]
+                if np.size(target_streamlines_list) == 0:
+                    txt = f'Did not have any streamlines for {index_to_struct[target_tuple[0]]} to {index_to_struct[target_tuple[1]]} for subject {subject}'
+                    warnings.warn(txt)
+                    continue
                 target_streamlines = trkdata.streamlines[np.array(target_streamlines_list)]
                 target_streamlines_set = set_number_of_points(target_streamlines, nb_points=num_points2)
                 #del(target_streamlines, trkdata)

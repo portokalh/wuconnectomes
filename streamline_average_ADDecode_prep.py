@@ -13,7 +13,7 @@ from tract_save import unload_trk
 import pickle
 from dipy.tracking.utils import connectivity_matrix
 from nifti_handler import getlabeltypemask
-from file_tools import mkcdir, check_files
+from file_tools import mkcdir
 from tract_handler import ratio_to_str, gettrkpath
 from convert_atlas_mask import convert_labelmask, atlas_converter
 import errno
@@ -59,7 +59,7 @@ else:
     raise Exception('No other computer name yet')
 
 #Setting identification parameters for ratio, labeling type, etc
-ratio = 1
+ratio = 100
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
 if ratio_str == '_all':
