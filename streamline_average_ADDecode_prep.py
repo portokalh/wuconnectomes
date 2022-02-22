@@ -59,7 +59,7 @@ else:
     raise Exception('No other computer name yet')
 
 #Setting identification parameters for ratio, labeling type, etc
-ratio = 100
+ratio = 1
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
 if ratio_str == '_all':
@@ -69,6 +69,8 @@ else:
 
 inclusive = False
 symmetric = True
+overwrite = False
+
 if inclusive:
     inclusive_str = '_inclusive'
 else:
@@ -87,7 +89,6 @@ picklesave=True
 
 function_processes = parse_arguments_function(sys.argv)
 print(f'there are {function_processes} function processes')
-overwrite=False
 
 if project=='AD_Decode':
     mainpath=os.path.join(mainpath,project,'Analysis')
@@ -127,11 +128,7 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
         'S02804', 'S02813', 'S02812', 'S02817', 'S02840', 'S02842', 'S02871', 'S02877', 'S02898', 'S02926', 'S02938',
         'S02939', 'S02954', 'S02967', 'S02987', 'S03010', 'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048',
         'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321', 'S03343', 'S03350', 'S03378', 'S03391', 'S03394']
-#subjects = ['S02363']
-#subjects = ['S02686']
-#subjects = ['S02987']
-#subjects = ['S02386']
-#subjects = ['S02813']
+
 random.shuffle(subjects)
 #removed_list = ['S02266']
 removed_list = ['S02523']
@@ -139,7 +136,6 @@ for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
 
-overwrite = True
 
 _, _, index_to_struct, _ = atlas_converter(ROI_legends)
 labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
