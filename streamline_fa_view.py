@@ -25,10 +25,11 @@ write_txt = True
 ratio = 100
 top_percentile = 1
 
+#,(23,30)
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57),  (23,24), (64, 57)]
 target_tuples = [(58, 57), (9, 1), (24,1), (22, 1), (64, 57),(23,24),(24,30),(23,30)]
-target_tuples = [(23,24),(24,30),(23,30)]
+target_tuples = [(23,24),(24,30)]
 
 changewindow_eachtarget = False
 
