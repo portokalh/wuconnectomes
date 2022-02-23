@@ -19,9 +19,16 @@ record = ''
 
 computer_name = socket.gethostname()
 
-inclusive = False
+inclusive = True
 symmetric = True
 write_txt = True
+ratio = 100
+top_percentile = 1
+
+target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
+target_tuples = [(9, 1), (24,1), (22, 1), (58, 57),  (23,24), (64, 57)]
+target_tuples = [(58, 57), (9, 1), (24,1), (22, 1), (64, 57),(23,24),(24,30),(23,30)]
+target_tuples = [(23,24),(24,30),(23,30)]
 
 changewindow_eachtarget = False
 
@@ -55,12 +62,10 @@ else:
     raise Exception('No other computer name yet')
 
 #target_tuple = (24,1)
-target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
-target_tuples = [(9, 1), (24,1), (22, 1), (58, 57),  (23,24), (64, 57)]
-target_tuples = [(58, 57),  (23,24), (64, 57)]
 #target_tuple = [(58, 57)]
 #target_tuples = [(64, 57)]
-ratio = 100
+
+
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
 if ratio_str == '_all':
@@ -96,7 +101,6 @@ mkcdir([figures_path, centroid_folder])
 #anat_path = '/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/median_images/MDT_dwi.nii.gz'
 
 
-top_percentile = 1
 
 #superior frontal right to cerebellum right
 

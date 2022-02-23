@@ -45,9 +45,9 @@ def get_diff_ref(label_folder, subject, ref):
     '4 middletemporal_Right---inferiorparietal_Right 64 57 with weight of 434.9106\n'
     '5 fusiform_Left---Cerebellum-Cortex_Left 22 1 with weight of 402.0991\n'
 """
-target_tuple = (9, 1)
+#target_tuple = (9, 1)
 #target_tuple = (64, 57)
-target_tuple = (24, 1)
+#target_tuple = (24, 1)
 #target_tuple = (58, 57)
 #target_tuple = (64, 57)
 #target_tuple = (22, 1)
@@ -62,7 +62,7 @@ distance1 = 1
 num_points2 = 50
 distance2 = 2
 
-ratio = 1
+ratio = 100
 project = 'AD_Decode'
 skip_subjects = True
 write_streamlines = True
@@ -70,9 +70,13 @@ allow_preprun = False
 verbose=True
 picklesave=True
 overwrite=False
-inclusive = False
-target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57),(23,24)]
-#target_tuples = [(23,24)]
+inclusive = True
+symmetric = True
+
+target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57),(23,24),(24,30),(23,30)]
+target_tuples = [(24,30),(23,30)]
+
+
 labeltype = 'lrordered'
 #reference_img refers to statistical values that we want to compare to the streamlines, say fa, rd, etc
 references = ['fa', 'md', 'rd', 'ad', 'b0']
@@ -90,7 +94,7 @@ samos = False
 if 'samos' in computer_name:
     mainpath = '/mnt/paros_MRI/jacques/'
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'santorini' in computer_name:
+elif 'santorini' in computer_name or 'hydra' in computer_name:
     #mainpath = '/Users/alex/jacques/'
     mainpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
@@ -122,7 +126,6 @@ else:
 TRK_folder = os.path.join(mainpath, f'TRK_MPCA_MDT_fixed{folder_ratio_str}')
 
 label_folder = os.path.join(mainpath, 'DWI')
-symmetric = True
 if symmetric:
     symmetric_str = '_symmetric'
 else:
