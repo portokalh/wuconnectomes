@@ -20,7 +20,8 @@ record = ''
 computer_name = socket.gethostname()
 
 inclusive = False
-write_txt = False
+symmetric = True
+write_txt = True
 
 changewindow_eachtarget = False
 
@@ -29,10 +30,15 @@ if inclusive:
 else:
     inclusive_str = '_non_inclusive'
 
-if fixed:
-    fixed_str = '_fixed'
+if symmetric:
+    symmetric_str = '_symmetric'
 else:
-    fixed_str = ''
+    symmetric_str = '_non_symmetric'
+
+#if fixed:
+#    fixed_str = '_fixed'
+#else:
+#    fixed_str = ''
 
 samos = False
 if 'samos' in computer_name:
@@ -50,7 +56,8 @@ else:
 
 #target_tuple = (24,1)
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
-target_tuples = [(9, 1), (24,1), (22, 1), (64, 57)]
+target_tuples = [(9, 1), (24,1), (22, 1), (58, 57),  (23,24), (64, 57)]
+target_tuples = [(58, 57),  (23,24), (64, 57)]
 #target_tuple = [(58, 57)]
 #target_tuples = [(64, 57)]
 ratio = 100
@@ -78,9 +85,9 @@ if project == 'AD_Decode':
 
 #figures_path = '/Volumes/Data/Badea/Lab/human/AMD/Figures_MDT_non_inclusive/'
 #centroid_folder = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive/'
-figures_path = os.path.join(mainpath, f'Figures_MDT{inclusive_str}{folder_ratio_str}')
-centroid_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{folder_ratio_str}')
-trk_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{folder_ratio_str}{fixed_str}')
+figures_path = os.path.join(mainpath, f'Figures_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+centroid_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+trk_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 mkcdir([figures_path, centroid_folder])
 
 #groups = ['Initial AMD', 'Paired 2-YR AMD', 'Initial Control', 'Paired 2-YR Control', 'Paired Initial Control',
@@ -89,7 +96,7 @@ mkcdir([figures_path, centroid_folder])
 #anat_path = '/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/median_images/MDT_dwi.nii.gz'
 
 
-top_percentile = 20
+top_percentile = 1
 
 #superior frontal right to cerebellum right
 

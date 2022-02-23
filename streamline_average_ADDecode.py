@@ -62,7 +62,7 @@ distance1 = 1
 num_points2 = 50
 distance2 = 2
 
-ratio = 100
+ratio = 1
 project = 'AD_Decode'
 skip_subjects = True
 write_streamlines = True
@@ -71,7 +71,8 @@ verbose=True
 picklesave=True
 overwrite=False
 inclusive = False
-target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
+target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57),(23,24)]
+#target_tuples = [(23,24)]
 labeltype = 'lrordered'
 #reference_img refers to statistical values that we want to compare to the streamlines, say fa, rd, etc
 references = ['fa', 'md', 'rd', 'ad', 'b0']
@@ -330,7 +331,7 @@ for target_tuple in target_tuples:
 ref_mean = {}
 for reference in references:
     for group in groups:
-        ref[reference,group] = np.mean(groupLines[group,ref])
+        ref_mean[reference,group] = np.mean(groupLines[group,ref])
 
 for group in groups:
     cluster = group_clusters[group]

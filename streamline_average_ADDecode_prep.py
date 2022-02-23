@@ -67,8 +67,9 @@ if ratio_str == '_all':
 else:
     folder_ratio_str = ratio_str.replace('_ratio','')
 
-inclusive = False
+inclusive = True
 symmetric = True
+fixed = True
 overwrite = False
 
 if inclusive:
@@ -81,6 +82,10 @@ if symmetric:
 else:
     symmetric_str = '_non_symmetric'
 
+if fixed:
+    fixed_str = '_fixed'
+else:
+    fixed_str = ''
 
 str_identifier = f'_stepsize_2{ratio_str}_wholebrain_pruned'
 labeltype = 'lrordered'
@@ -94,7 +99,7 @@ if project=='AD_Decode':
     mainpath=os.path.join(mainpath,project,'Analysis')
 else:
     mainpath = os.path.join(mainpath, project)
-TRK_folder = os.path.join(mainpath, 'TRK_MPCA_MDT_fixed'+folder_ratio_str)
+TRK_folder = os.path.join(mainpath, f'TRK_MPCA_MDT{fixed_str}{folder_ratio_str}')
 label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
 #pickle_folder = os.path.join(mainpath, 'Pickle_MDT'+folder_ratio_str)
