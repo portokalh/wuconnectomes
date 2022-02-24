@@ -19,17 +19,17 @@ record = ''
 
 computer_name = socket.gethostname()
 
-inclusive = True
+inclusive = False
 symmetric = True
 write_txt = True
 ratio = 1
-top_percentile = 1
+top_percentile = 25
 
 #,(23,30)
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57),  (23,24), (64, 57)]
 target_tuples = [(58, 57), (9, 1), (24,1), (22, 1), (64, 57),(23,24),(24,30),(23,30)]
-#target_tuples = [(24,30),(23,24)]
+target_tuples = [(24,30),(23,24)]
 
 changewindow_eachtarget = False
 
@@ -157,6 +157,14 @@ for target_tuple in target_tuples:
                 streamlines_data = load_trk_spe(trk_path, 'same')
         streamlines = streamlines_data.streamlines
 
+        if write_txt:
+            testfile = open(text_path, "a")
+            testfile.write(f"Mean, Median, max and std FA for streamlines in group {group}: \n{np.mean(fa_lines)}, "
+                           f"{np.median(fa_lines)}, {np.max(fa_lines)}, {np.std(fa_lines)}\n")
+            testfile.write(f"Mean, Median, max and std MD for streamlines in group {group}: \n{np.mean(md_lines)}, "
+                           f"{np.median(md_lines)}, {np.max(md_lines)}, {np.std(md_lines)}\n")
+            testfile.write(f"Number of streamlines in group {group}: \n{np.shape(streamlines)[0]}\n")
+            testfile.close()
 
         if 'fa_lines' in locals():
             cutoff = np.percentile(fa_lines,100 - top_percentile)
@@ -170,15 +178,6 @@ for target_tuple in target_tuples:
             txt = f'Cannot find {fa_path}, could not select streamlines based on fa'
             warnings.warn(txt)
             fa_lines = [None]
-
-        if write_txt:
-            testfile = open(text_path, "a")
-            testfile.write(f"Mean, Median, max and std FA for streamlines in group {group}: \n{np.mean(fa_lines)}, "
-                           f"{np.median(fa_lines)}, {np.max(fa_lines)}, {np.std(fa_lines)}\n")
-            testfile.write(f"Mean, Median, max and std MD for streamlines in group {group}: \n{np.mean(md_lines)}, "
-                           f"{np.median(md_lines)}, {np.max(md_lines)}, {np.std(md_lines)}\n")
-            testfile.write(f"Number of streamlines in group {group}: \n{np.shape(streamlines)[0]}\n")
-            testfile.close()
 
         """
         scene = window.Scene()
@@ -195,8 +194,10 @@ for target_tuple in target_tuples:
             hue_range=hue,
             saturation_range=saturation)
 
+        #lut_cmap = actor.colormap_lookup_table(
+         #   scale_range=(0.01, 0.55))
         lut_cmap = actor.colormap_lookup_table(
-            scale_range=(0.01, 0.55))
+            scale_range=(0.05, 0.3))
 
         record_path = os.path.join(figures_path, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' +
                                           index_to_struct[target_tuple[1]] + '_figure.png')
@@ -206,6 +207,7 @@ for target_tuple in target_tuples:
         else:
             interactive = False
         #scene = None
+        interactive = True
         scene = setup_view(streamlines_new[:], colors = lut_cmap,ref = anat_path, world_coords = True, objectvals = fa_lines_new[:], colorbar=True, record = record_path, scene = scene, interactive = interactive)
         #add something to help make the camera static over multiple iterations? Would be VERY nice.
         del(fa_lines,fa_lines_new,streamlines,streamlines_new)

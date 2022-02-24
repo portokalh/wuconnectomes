@@ -27,6 +27,8 @@ from excel_management import M_grouping_excel_save, extract_grouping
 import sys
 from argument_tools import parse_arguments_function
 from connectome_handler import connectivity_matrix_func
+from dipy.tracking.utils import length
+
 
 def get_grouping(grouping_xlsx):
     print('not done yet')
@@ -62,7 +64,7 @@ distance1 = 1
 num_points2 = 50
 distance2 = 2
 
-ratio = 1
+ratio = 100
 project = 'AD_Decode'
 skip_subjects = True
 write_streamlines = True
@@ -70,10 +72,15 @@ allow_preprun = False
 verbose=True
 picklesave=True
 overwrite=False
-inclusive = True
+inclusive = False
 symmetric = True
+write_excel = True
+write_txt = True
 
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57),(23,24),(24,30),(23,30)]
+#target_tuples.reverse()
+#target_tuples = target_tuples[:3]
+#target_tuples = [(9,1)]
 #target_tuples = [(24,30),(23,30),(23,24)]
 
 
@@ -81,7 +88,7 @@ labeltype = 'lrordered'
 #reference_img refers to statistical values that we want to compare to the streamlines, say fa, rd, etc
 references = ['fa', 'md', 'rd', 'ad', 'b0']
 references = ['fa', 'md']
-references = ['fa', 'md']
+references = ['fa', 'md', 'ln']
 
 if inclusive:
     inclusive_str = '_inclusive'
@@ -144,6 +151,7 @@ if not os.path.exists(TRK_folder):
 stream_point = {}
 stream = {}
 groupstreamlines={}
+groupstreamlines_orig={}
 groupLines = {}
 groupPoints = {}
 group_qb = {}
@@ -153,8 +161,10 @@ groups_subjects = {}
 if project == 'AD_Decode':
     groups_subjects['APOE3'] = ['S02402','S02720','S02812','S02373','S02231','S02410','S01912','S02451','S02485','S02473','S02506','S02524','S02535','S02686','S02695','S02753','S02765','S02804','S02817','S02842','S02871','S02926','S02938','S02939','S02967','S02320','S02110','S02289','S03017','S03010','S02987','S02227','S03033','S03034','S03069','S03308','S03321','S03350','S02266',]
     groups_subjects['APOE4']= ['S02363','S02386','S02421','S02424','S02446','S02491','S02654','S02666','S02690','S02715','S02737','S02771','S02781','S02802','S02813','S02840','S02224','S02877','S02898','S02954','S02361','S02390','S02670','S03045','S03048','S03225','S03265','S03293','S03343','S03378','S03391']
+    groups_subjects['APOEtestrun'] = ['S02386','S02363']
     #groups to go through
     groups = ['APOE4','APOE3']
+    #groups = ['APOEtestrun']
 
 removed_list = ['S02654','S02523']
 
@@ -175,10 +185,12 @@ metric1 = AveragePointwiseEuclideanMetric(feature=feature1)
 feature2 = ResampleFeature(nb_points=num_points2)
 metric2 = AveragePointwiseEuclideanMetric(feature=feature2)
 
+
 for target_tuple in target_tuples:
 
     for group in groups:
         groupstreamlines[group] = []
+        groupstreamlines_orig[group] = []
         for ref in references:
             groupLines[group, ref] = []
             groupPoints[group, ref] = []
@@ -192,6 +204,21 @@ for target_tuple in target_tuples:
         group_str = group.replace(' ', '_')
         centroid_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_centroid.py')
         streamline_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_streamlines.trk')
+        excel_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_stats.xlsx')
+        if write_excel:
+            import xlsxwriter
+            workbook = xlsxwriter.Workbook(excel_path)
+            worksheet = workbook.add_worksheet()
+            l=1
+            for ref in references:
+                worksheet.write(0,l, ref + ' mean')
+                worksheet.write(0,l+1, ref + ' min')
+                worksheet.write(0,l+2, ref + ' max')
+                worksheet.write(0,l+3, ref + ' std')
+                l=l+4
+            #if verbose:
+            #    print(f'Saved connectome at {output_path}')
+            #streamline_file_path_orig = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_streamlines.trk')
         grouping_files = {}
         exists=True
 
@@ -199,9 +226,9 @@ for target_tuple in target_tuples:
             grouping_files[ref,'lines']=(os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_lines.py'))
             #grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
             _, exists = check_files(grouping_files)
-        if not os.path.exists(centroid_file_path) or not np.all(exists) or (not os.path.exists(streamline_file_path) and write_streamlines) or overwrite:
+        if not os.path.exists(centroid_file_path) or not np.all(exists) or (not os.path.exists(streamline_file_path) and write_streamlines) or (not os.path.exists(excel_path) and write_excel) or overwrite:
             subjects = groups_subjects[group]
-
+            subj = 1
             for subject in subjects:
                 trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=True)
                 if not exists:
@@ -257,41 +284,73 @@ for target_tuple in target_tuples:
                 #del(target_streamlines, trkdata)
                 target_qb = QuickBundles(threshold=distance1, metric=metric1)
 
+                if write_excel:
+                    l = 1
+                    worksheet.write(subj, 0, subject)
                 for ref in references:
-                    ref_img_path = get_diff_ref(ref_MDT_folder, subject, ref)
-                    ref_data, ref_affine = load_nifti(ref_img_path)
 
-                    from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
-                    from collections import defaultdict, OrderedDict
-                    from itertools import combinations, groupby
+                    if ref is not 'ln':
+                        ref_img_path = get_diff_ref(ref_MDT_folder, subject, ref)
+                        ref_data, ref_affine = load_nifti(ref_img_path)
 
-                    edges = np.ndarray(shape=(3, 0), dtype=int)
-                    lin_T, offset = _mapping_to_voxel(trkdata.space_attributes[0])
-                    stream_ref = []
-                    stream_point_ref = []
-                    for sl, _ in enumerate(target_streamlines_set):
-                        # Convert streamline to voxel coordinates
-                        entire = _to_voxel_coordinates(target_streamlines_set[sl], lin_T, offset)
-                        i, j, k = entire.T
-                        ref_values = list(OrderedDict.fromkeys(ref_data[i, j, k]))
-                        stream_point_ref.append(ref_values)
-                        stream_ref.append(np.mean(ref_values))
+                        from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
+                        from collections import defaultdict, OrderedDict
+                        from itertools import combinations, groupby
 
+                        edges = np.ndarray(shape=(3, 0), dtype=int)
+                        lin_T, offset = _mapping_to_voxel(trkdata.space_attributes[0])
+                        stream_ref = []
+                        stream_point_ref = []
+                        for sl, _ in enumerate(target_streamlines_set):
+                            # Convert streamline to voxel coordinates
+                            entire = _to_voxel_coordinates(target_streamlines_set[sl], lin_T, offset)
+                            i, j, k = entire.T
+                            ref_values = list(OrderedDict.fromkeys(ref_data[i, j, k]))
+                            stream_point_ref.append(ref_values)
+                            stream_ref.append(np.mean(ref_values))
+                    else:
+                        stream_ref = list(length(target_streamlines))
                     """
-                    stream_ref = []
-                    stream_point_ref = []
-                    for s in range(len(target_streamlines_set)):
-                        point_ref = [ref_data[int(k[0]), int(k[1]), int(k[2])] for k in target_streamlines_set[s]]
-                        stream_point_ref.append(point_ref)
-                        stream_ref.append(np.mean(point_ref))
+                    from dipy.viz import window, actor
+                    from tract_visualize import show_bundles, setup_view
+                    import nibabel as nib
+
+                    lut_cmap = actor.colormap_lookup_table(
+                        scale_range=(0.05, 0.3))
+
+                    scene = setup_view(nib.streamlines.ArraySequence(target_streamlines[33:34]), colors=lut_cmap,
+                                       ref=ref_img_path, world_coords=True,
+                                       objectvals=[None], colorbar=True, record=None, scene=None, interactive=True)
                     """
+
+                    if write_excel:
+                        worksheet.write(subj, l, np.mean(stream_ref))
+                        worksheet.write(subj, l+1, np.min(stream_ref))
+                        worksheet.write(subj, l+2, np.max(stream_ref))
+                        worksheet.write(subj, l+3, np.std(stream_ref))
+                        l=l+4
                     if not (group, ref) in groupLines.keys():
                         groupLines[group, ref]=(stream_ref)
                     else:
                         groupLines[group, ref].extend(stream_ref)
-                    #groupPoints[group, ref].extend(stream_point_ref)
-
+                        # groupPoints[group, ref].extend(stream_point_ref)
+                subj += 1
                 groupstreamlines[group].extend(target_streamlines_set)
+
+
+            if write_excel:
+                worksheet.write(subj, 0, group)
+                l=1
+                for ref in references:
+                    worksheet.write(subj, l, np.mean(groupLines[group, ref]))
+                    worksheet.write(subj, l + 1, np.min(groupLines[group, ref]))
+                    worksheet.write(subj, l + 2, np.max(groupLines[group, ref]))
+                    worksheet.write(subj, l + 3, np.std(groupLines[group, ref]))
+                    l=l+4
+                workbook.close()
+
+                #groupstreamlines_orig[group].extend(target_streamlines)
+
 
             group_qb[group] = QuickBundles(threshold=distance2, metric=metric2)
             group_clusters[group] = group_qb[group].cluster(groupstreamlines[group])
@@ -314,16 +373,25 @@ for target_tuple in target_tuples:
                 pickle.dump(groupstreamlines[group], open(streamline_file_path, "wb"))
                 save_trk_header(filepath= streamline_file_path, streamlines = groupstreamlines[group], header = header, affine=np.eye(4), verbose=verbose)
 
+            """
+            if not os.path.exists(streamline_file_path_orig) and write_streamlines:
+                if verbose:
+                    print(f'Summarized the streamlines for group {group} at {streamline_file_path}')
+                pickle.dump(groupstreamlines_orig[group], open(streamline_file_path, "wb"))
+                save_trk_header(filepath= streamline_file_path, streamlines = groupstreamlines_orig[group], header = header, affine=np.eye(4), verbose=verbose)
+            """
+
             for ref in references:
                 if overwrite:
                     if os.path.exists(grouping_files[ref,'lines']):
                         os.remove(grouping_files[ref,'lines'])
-                    if os.path.exists(grouping_files[ref,'points']):
-                        os.remove(grouping_files[ref,'points'])
+                    #if os.path.exists(grouping_files[ref,'points']):
+                    #    os.remove(grouping_files[ref,'points'])
                 if not os.path.exists(grouping_files[ref,'lines']):
                     if verbose:
                         print(f"Summarized the clusters for group {group} and statistics {ref} at {grouping_files[ref,'lines']}")
                     pickle.dump(groupLines[group, ref], open(grouping_files[ref,'lines'], "wb"))
+            pickle.dump(groupLines[group, 'ln'], open(grouping_files['ln', 'lines'], "wb"))
                     #pickle.dump(groupPoints[group, ref], grouping_files[ref,'points'])
 
 
