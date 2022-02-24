@@ -138,7 +138,7 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
                 object_actor = actor.line(bundle, color, linewidth=1.0)
                 # lines_actor.RotateX(-90)
                 # lines_actor.RotateZ(90)
-                scene.add(object_actor)
+                #scene.add(object_actor)
     elif isinstance(trk_object[0][0], ClusterCentroid):
         for group in np.arange(np.shape(trk_object)[0]):
             color = colors[group]
@@ -149,7 +149,7 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
                 object_actor = actor.line(bundle, color, linewidth=1.0)
                 # lines_actor.RotateX(-90)
                 # lines_actor.RotateZ(90)
-                scene.add(object_actor)
+                #scene.add(object_actor)
     elif isinstance(trk_object, Streamlines):
         if isinstance(colors, vtk.vtkLookupTable) and objectvals[0] is not None:
             object_actor = actor.line(trk_object,objectvals, linewidth=0.1,
@@ -157,7 +157,7 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
         else:
             object_actor = actor.line(trk_object)
 
-        scene.add(object_actor)
+        #scene.add(object_actor)
 
     else:
         raise Exception('Unindentified object')

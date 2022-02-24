@@ -74,7 +74,7 @@ inclusive = True
 symmetric = True
 
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57),(23,24),(24,30),(23,30)]
-target_tuples = [(24,30),(23,30)]
+target_tuples = [(24,30),(23,30),(23,24)]
 
 
 labeltype = 'lrordered'
@@ -168,11 +168,6 @@ group_toview = groups[0]
 if project == 'APOE':
     raise Exception('not implemented')
 
-for group in groups:
-    groupstreamlines[group]=[]
-    for ref in references:
-        groupLines[group, ref]=[]
-        groupPoints[group, ref]=[]
 
 feature1 = ResampleFeature(nb_points=num_points1)
 metric1 = AveragePointwiseEuclideanMetric(feature=feature1)
@@ -181,6 +176,12 @@ feature2 = ResampleFeature(nb_points=num_points2)
 metric2 = AveragePointwiseEuclideanMetric(feature=feature2)
 
 for target_tuple in target_tuples:
+
+    for group in groups:
+        groupstreamlines[group] = []
+        for ref in references:
+            groupLines[group, ref] = []
+            groupPoints[group, ref] = []
 
     _, _, index_to_struct, _ = atlas_converter(ROI_legends)
     print(f'Starting the run for {index_to_struct[target_tuple[0]]} to {index_to_struct[target_tuple[1]]}')
@@ -198,16 +199,18 @@ for target_tuple in target_tuples:
             grouping_files[ref,'lines']=(os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_lines.py'))
             #grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
             _, exists = check_files(grouping_files)
-        if not os.path.exists(centroid_file_path) or not np.all(exists) or overwrite:
+        if not os.path.exists(centroid_file_path) or not np.all(exists) or (not os.path.exists(streamline_file_path) and write_streamlines) or overwrite:
             subjects = groups_subjects[group]
 
             for subject in subjects:
-                trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=False)
+                trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=True)
                 if not exists:
                     txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
                     warnings.warn(txt)
                     continue
                 #streamlines, header, _ = unload_trk(trkpath)
+                if np.shape(groupLines[group, ref])[0] != np.shape(groupstreamlines[group])[0]:
+                    raise Exception('happened from there')
                 trkdata = load_trk(trkpath, 'same')
                 header = trkdata.space_attributes
                 picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectome.p')
@@ -298,6 +301,10 @@ for target_tuple in target_tuples:
                 if verbose:
                     print(f'Summarized the clusters for group {group} at {centroid_file_path}')
                 pickle.dump(group_clusters[group], open(centroid_file_path, "wb"))
+
+
+            if np.shape(groupLines[group, ref])[0] != np.shape(groupstreamlines[group])[0]:
+                raise Exception('happened from there')
 
             if os.path.exists(streamline_file_path) and overwrite and write_streamlines:
                 os.remove(streamline_file_path)

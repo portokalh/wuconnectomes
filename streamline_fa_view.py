@@ -29,7 +29,7 @@ top_percentile = 1
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57),  (23,24), (64, 57)]
 target_tuples = [(58, 57), (9, 1), (24,1), (22, 1), (64, 57),(23,24),(24,30),(23,30)]
-target_tuples = [(23,24),(24,30)]
+target_tuples = [(24,30),(23,24)]
 
 changewindow_eachtarget = False
 
@@ -149,13 +149,27 @@ for target_tuple in target_tuples:
         if os.path.exists(md_path):
             with open(md_path, 'rb') as f:
                 md_lines = pickle.load(f)
-
+#'/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/Centroids_MDT_non_inclusive_symmetric_100/APOE4_MDT_ratio_100_ctx-lh-inferiorparietal_left_to_ctx-lh-inferiortemporal_left_streamlines.trk'
         if os.path.exists(trk_path):
             try:
                 streamlines_data = load_trk(trk_path,'same')
             except:
                 streamlines_data = load_trk_spe(trk_path, 'same')
         streamlines = streamlines_data.streamlines
+
+
+        if 'fa_lines' in locals():
+            cutoff = np.percentile(fa_lines,100 - top_percentile)
+            select_streams = fa_lines>cutoff
+            fa_lines_new = list(compress(fa_lines, select_streams))
+            streamlines_new = list(compress(streamlines, select_streams))
+            streamlines_new = nib.streamlines.ArraySequence(streamlines_new)
+            if np.shape(streamlines)[0] != np.shape(fa_lines)[0]:
+                raise Exception('Inconsistency between streamlines and fa lines')
+        else:
+            txt = f'Cannot find {fa_path}, could not select streamlines based on fa'
+            warnings.warn(txt)
+            fa_lines = [None]
 
         if write_txt:
             testfile = open(text_path, "a")
@@ -165,17 +179,6 @@ for target_tuple in target_tuples:
                            f"{np.median(md_lines)}, {np.max(md_lines)}, {np.std(md_lines)}\n")
             testfile.write(f"Number of streamlines in group {group}: \n{np.shape(streamlines)[0]}\n")
             testfile.close()
-
-        if 'fa_lines' in locals():
-            cutoff = np.percentile(fa_lines,100 - top_percentile)
-            select_streams = fa_lines>cutoff
-            fa_lines = list(compress(fa_lines, select_streams))
-            streamlines = list(compress(streamlines, select_streams))
-            streamlines = nib.streamlines.ArraySequence(streamlines)
-        else:
-            txt = f'Cannot find {fa_path}, could not select streamlines based on fa'
-            warnings.warn(txt)
-            fa_lines = [None]
 
         """
         scene = window.Scene()
@@ -203,9 +206,9 @@ for target_tuple in target_tuples:
         else:
             interactive = False
         #scene = None
-        scene = setup_view(streamlines[:], colors = lut_cmap,ref = anat_path, world_coords = True, objectvals = fa_lines[:], colorbar=True, record = record_path, scene = scene, interactive = interactive)
+        scene = setup_view(streamlines_new[:], colors = lut_cmap,ref = anat_path, world_coords = True, objectvals = fa_lines_new[:], colorbar=True, record = record_path, scene = scene, interactive = interactive)
         #add something to help make the camera static over multiple iterations? Would be VERY nice.
-        del(fa_lines)
+        del(fa_lines,fa_lines_new,streamlines,streamlines_new)
         firstrun = False
 
         ##write text file here that summarizes fa, md for each group, would be very helpful
