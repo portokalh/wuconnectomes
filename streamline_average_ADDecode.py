@@ -62,7 +62,7 @@ distance1 = 1
 num_points2 = 50
 distance2 = 2
 
-ratio = 100
+ratio = 1
 project = 'AD_Decode'
 skip_subjects = True
 write_streamlines = True
@@ -74,7 +74,7 @@ inclusive = True
 symmetric = True
 
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57),(23,24),(24,30),(23,30)]
-target_tuples = [(24,30),(23,30),(23,24)]
+#target_tuples = [(24,30),(23,30),(23,24)]
 
 
 labeltype = 'lrordered'
