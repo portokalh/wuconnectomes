@@ -74,7 +74,7 @@ picklesave=True
 overwrite=False
 inclusive = False
 symmetric = True
-write_excel = True
+write_stats = True
 write_txt = True
 
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57),(23,24),(24,30),(23,30)]
@@ -88,7 +88,7 @@ labeltype = 'lrordered'
 #reference_img refers to statistical values that we want to compare to the streamlines, say fa, rd, etc
 references = ['fa', 'md', 'rd', 'ad', 'b0']
 references = ['fa', 'md']
-references = ['fa', 'md', 'ln']
+references = ['fa', 'md', 'ln', 'rd', 'ad']
 
 if inclusive:
     inclusive_str = '_inclusive'
@@ -142,6 +142,7 @@ else:
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
 pickle_folder = os.path.join(mainpath, f'Pickle_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 centroid_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+stats_folder = os.path.join(mainpath, f'Statistics_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 excel_folder = os.path.join(mainpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 mkcdir([pickle_folder, centroid_folder, excel_folder])
 if not os.path.exists(TRK_folder):
@@ -204,10 +205,10 @@ for target_tuple in target_tuples:
         group_str = group.replace(' ', '_')
         centroid_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_centroid.py')
         streamline_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_streamlines.trk')
-        excel_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_stats.xlsx')
-        if write_excel:
+        stats_path = os.path.join(stats_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_stats.xlsx')
+        if write_stats:
             import xlsxwriter
-            workbook = xlsxwriter.Workbook(excel_path)
+            workbook = xlsxwriter.Workbook(stats_path)
             worksheet = workbook.add_worksheet()
             l=1
             for ref in references:
@@ -226,7 +227,7 @@ for target_tuple in target_tuples:
             grouping_files[ref,'lines']=(os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_lines.py'))
             #grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
             _, exists = check_files(grouping_files)
-        if not os.path.exists(centroid_file_path) or not np.all(exists) or (not os.path.exists(streamline_file_path) and write_streamlines) or (not os.path.exists(excel_path) and write_excel) or overwrite:
+        if not os.path.exists(centroid_file_path) or not np.all(exists) or (not os.path.exists(streamline_file_path) and write_streamlines) or (not os.path.exists(stats_path) and write_stats) or overwrite:
             subjects = groups_subjects[group]
             subj = 1
             for subject in subjects:
@@ -284,7 +285,7 @@ for target_tuple in target_tuples:
                 #del(target_streamlines, trkdata)
                 target_qb = QuickBundles(threshold=distance1, metric=metric1)
 
-                if write_excel:
+                if write_stats:
                     l = 1
                     worksheet.write(subj, 0, subject)
                 for ref in references:
@@ -323,7 +324,7 @@ for target_tuple in target_tuples:
                                        objectvals=[None], colorbar=True, record=None, scene=None, interactive=True)
                     """
 
-                    if write_excel:
+                    if write_stats:
                         worksheet.write(subj, l, np.mean(stream_ref))
                         worksheet.write(subj, l+1, np.min(stream_ref))
                         worksheet.write(subj, l+2, np.max(stream_ref))
@@ -338,7 +339,7 @@ for target_tuple in target_tuples:
                 groupstreamlines[group].extend(target_streamlines_set)
 
 
-            if write_excel:
+            if write_stats:
                 worksheet.write(subj, 0, group)
                 l=1
                 for ref in references:
