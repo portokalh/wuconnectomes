@@ -144,7 +144,7 @@ pickle_folder = os.path.join(mainpath, f'Pickle_MDT{inclusive_str}{symmetric_str
 centroid_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 stats_folder = os.path.join(mainpath, f'Statistics_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 excel_folder = os.path.join(mainpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
-mkcdir([pickle_folder, centroid_folder, excel_folder])
+mkcdir([pickle_folder, centroid_folder, stats_folder, excel_folder])
 if not os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
 
