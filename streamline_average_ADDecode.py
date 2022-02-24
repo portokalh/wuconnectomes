@@ -290,7 +290,7 @@ for target_tuple in target_tuples:
                     worksheet.write(subj, 0, subject)
                 for ref in references:
 
-                    if ref is not 'ln':
+                    if ref != 'ln':
                         ref_img_path = get_diff_ref(ref_MDT_folder, subject, ref)
                         ref_data, ref_affine = load_nifti(ref_img_path)
 
