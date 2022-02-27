@@ -78,7 +78,7 @@ write_stats = True
 write_txt = True
 
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57),(23,24),(24,30),(23,30)]
-#target_tuples.reverse()
+target_tuples.reverse()
 #target_tuples = target_tuples[:3]
 #target_tuples = [(9,1)]
 #target_tuples = [(24,30),(23,30),(23,24)]

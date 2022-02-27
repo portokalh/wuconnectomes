@@ -22,14 +22,14 @@ computer_name = socket.gethostname()
 inclusive = False
 symmetric = True
 write_txt = True
-ratio = 1
+ratio = 100
 top_percentile = 25
 
 #,(23,30)
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57),  (23,24), (64, 57)]
 target_tuples = [(58, 57), (9, 1), (24,1), (22, 1), (64, 57),(23,24),(24,30),(23,30)]
-target_tuples = [(24,30),(23,24)]
+target_tuples = [(24,30),(23,24),(24,30)]
 
 changewindow_eachtarget = False
 
@@ -86,7 +86,7 @@ if project == 'AMD':
 if project == 'AD_Decode':
     mainpath = os.path.join(mainpath, project, 'Analysis')
     groups = ['APOE4','APOE3']
-    anat_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_dwi.nii.gz'
+    anat_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_b0.nii.gz'
 
 
 #figures_path = '/Volumes/Data/Badea/Lab/human/AMD/Figures_MDT_non_inclusive/'
@@ -107,10 +107,10 @@ mkcdir([figures_path, centroid_folder])
 
 scene = None
 
-
-firstrun = True
+interactive = True
 
 for target_tuple in target_tuples:
+
 
     print(target_tuple[0], target_tuple[1])
     print(index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]])
@@ -149,7 +149,6 @@ for target_tuple in target_tuples:
         if os.path.exists(md_path):
             with open(md_path, 'rb') as f:
                 md_lines = pickle.load(f)
-#'/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/Centroids_MDT_non_inclusive_symmetric_100/APOE4_MDT_ratio_100_ctx-lh-inferiorparietal_left_to_ctx-lh-inferiortemporal_left_streamlines.trk'
         if os.path.exists(trk_path):
             try:
                 streamlines_data = load_trk(trk_path,'same')
@@ -197,34 +196,14 @@ for target_tuple in target_tuples:
         #lut_cmap = actor.colormap_lookup_table(
          #   scale_range=(0.01, 0.55))
         lut_cmap = actor.colormap_lookup_table(
-            scale_range=(0.05, 0.3))
+            scale_range=(0.1, 0.25))
 
         record_path = os.path.join(figures_path, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' +
                                           index_to_struct[target_tuple[1]] + '_figure.png')
 
-        if firstrun:
-            interactive = True
-        else:
-            interactive = False
         #scene = None
-        interactive = True
+        #interactive = True
+        #record_path = None
         scene = setup_view(streamlines_new[:], colors = lut_cmap,ref = anat_path, world_coords = True, objectvals = fa_lines_new[:], colorbar=True, record = record_path, scene = scene, interactive = interactive)
-        #add something to help make the camera static over multiple iterations? Would be VERY nice.
         del(fa_lines,fa_lines_new,streamlines,streamlines_new)
-        firstrun = False
-
-        ##write text file here that summarizes fa, md for each group, would be very helpful
-
-
-"""
-centroids_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive_100/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_centroid.py'
-fa_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive_100/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_fa_lines.py'
-md_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive_100/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_fa_lines.py'
-trk_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive_100/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_streamlines.trk'
-
-
-centroids_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_centroid.py'
-fa_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_fa_lines.py'
-md_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_fa_lines.py'
-trk_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_streamlines.trk'
-"""
+        interactive = False
