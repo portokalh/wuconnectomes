@@ -599,16 +599,11 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         if verbose:
             print("The streamline is split into "+str(function_processes)+" of size "+str(np.int(size_SL / n)))
 
-        #connectomic_results = pool.starmap_async(connectivity_matrix_test, [(Streamlines(pruned_streamlines_SL[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
-        #                                                                      inclusive, symmetric, return_mapping,
-        #                                                                      mapping_as_streamlines) for i in np.arange(n)]).get()
-        #print('I GUESS THIS WASNT IT THEN DANG IT')
         print(f'This run has inclusive: {inclusive} and symmetric: {symmetric}')
         connectomic_results = pool.starmap_async(connectivity_matrix_custom, [(Streamlines(pruned_streamlines_SL[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
                                                                               inclusive, symmetric, return_mapping,
                                                                               mapping_as_streamlines,reference_weight,volume_weighting) for i in np.arange(n)]).get()
 
-        #matrix, matrix_vol, matrix_refweighted, matrix_vol_refweighted, grouping = np.zeros(np.shape(connectomic_results[0][0]))
         matrix =  np.zeros(np.shape(connectomic_results[0][0]))
         matrix_vol = np.zeros(np.shape(connectomic_results[0][0]))
         matrix_refweighted = np.zeros(np.shape(connectomic_results[0][0]))
@@ -636,9 +631,6 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         matrix, matrix_vol, matrix_refweighted, matrix_vol_refweighted, grouping = connectivity_matrix_custom(pruned_streamlines_SL, affine_streams, labelmask, inclusive=inclusive, symmetric=symmetric,
                                             return_mapping=True,
                                             mapping_as_streamlines=False, reference_weighting = reference_weight, volume_weighting=volume_weighting)
-        #matrix, matrix_vol, matrix_refweighted, matrix_vol_refweighted, grouping = connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask, inclusive=True, symmetric=symmetric,
-        #                                    return_mapping=True,
-        #                                    mapping_as_streamlines=False)
 
         n = 1
 
