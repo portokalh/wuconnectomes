@@ -43,7 +43,7 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
         'S02804', 'S02813', 'S02812', 'S02817', 'S02840', 'S02842', 'S02871', 'S02877', 'S02898', 'S02926', 'S02938',
         'S02939', 'S02954', 'S02967', 'S02987', 'S03010', 'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048',
         'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321', 'S03343', 'S03350', 'S03378', 'S03391', 'S03394']
-
+subjects = ["S01912"]
 removed_list = ["S02745","S02230","S02490","S02523"]
 
 for remove in removed_list:
@@ -83,7 +83,7 @@ make_connectomes = True
 classifiertype = "binary"
 brainmask = "subjspace"
 labeltype='lrordered'
-ratio = 1
+ratio = 100
 
 if ratio == 1:
     saved_streamlines = "_all"
@@ -133,7 +133,7 @@ else:
     symmetric_str = '_non_symmetric'
 
 if reference_weighting is not None or volume_weighting:
-    figspath = os.path.join(mainpath,"volume_testing","Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
+    figspath = os.path.join(mainpath,"Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
 else:
     figspath = os.path.join(mainpath,"Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
 mkcdir(figspath)

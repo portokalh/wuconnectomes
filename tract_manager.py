@@ -671,11 +671,11 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
     matrix = np.delete(matrix, 0, 0)
     matrix = np.delete(matrix, 0, 1)
     matrix_vol = np.delete(matrix_vol, 0, 0)
-    matrix_vol = np.delete(matrix_vol, 0, 0)
+    matrix_vol = np.delete(matrix_vol, 0, 1)
     matrix_refweighted = np.delete(matrix_refweighted, 0, 0)
-    matrix_refweighted = np.delete(matrix_refweighted, 0, 0)
+    matrix_refweighted = np.delete(matrix_refweighted, 0, 1)
     matrix_vol_refweighted = np.delete(matrix_vol_refweighted, 0, 0)
-    matrix_vol_refweighted = np.delete(matrix_vol_refweighted, 0, 0)
+    matrix_vol_refweighted = np.delete(matrix_vol_refweighted, 0, 1)
     matrix_sl = np.delete(matrix_sl, 0, 0)
     matrix_sl = np.delete(matrix_sl, 0, 1)
 
@@ -689,11 +689,11 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
 
     connectomes_to_excel(matrix, index_to_struct, connectome_xlsxpath)
     if volume_weighting:
-        connectomes_to_excel(matrix, index_to_struct, connectome_xlsxpath_vol, verbose=verbose)
+        connectomes_to_excel(matrix_vol, index_to_struct, connectome_xlsxpath_vol, verbose=verbose)
     if reference_weighting_type is not None:
-        connectomes_to_excel(matrix, index_to_struct, connectome_xlsxpath_ref, verbose=verbose)
+        connectomes_to_excel(matrix_refweighted, index_to_struct, connectome_xlsxpath_ref, verbose=verbose)
     if volume_weighting and reference_weighting_type is not None:
-        connectomes_to_excel(matrix, index_to_struct, connectome_xlsxpath_volref, verbose=verbose)
+        connectomes_to_excel(matrix_vol_refweighted, index_to_struct, connectome_xlsxpath_volref, verbose=verbose)
 
     grouping_to_excel(matrix_sl, index_to_struct, grouping_xlsxpath, verbose = verbose)
     if verbose:
