@@ -64,7 +64,7 @@ distance1 = 1
 num_points2 = 50
 distance2 = 2
 
-ratio = 100
+ratio = 1
 project = 'AD_Decode'
 skip_subjects = True
 write_streamlines = True
@@ -114,6 +114,7 @@ elif 'santorini' in computer_name or 'hydra' in computer_name:
 elif 'blade' in computer_name:
     mainpath = '/mnt/munin6/Badea/Lab/human/'
     ROI_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+    ref_MDT_folder = '/mnt/munin6/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_images/'
 else:
     raise Exception('No other computer name yet')
 
