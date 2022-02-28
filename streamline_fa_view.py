@@ -22,7 +22,7 @@ computer_name = socket.gethostname()
 inclusive = False
 symmetric = True
 write_txt = True
-ratio = 100
+ratio = 1
 top_percentile = 25
 
 #,(23,30)
@@ -30,6 +30,7 @@ target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57),  (23,24), (64, 57)]
 target_tuples = [(58, 57), (9, 1), (24,1), (22, 1), (64, 57),(23,24),(24,30),(23,30)]
 target_tuples = [(24,30),(23,24),(24,30)]
+target_tuples = [(64,30)]
 
 changewindow_eachtarget = False
 
