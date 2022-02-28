@@ -82,7 +82,7 @@ target_tuples = [(9, 1), (77,43), (58,57), (24,1), (22,1)]
 target_tuples = [(58, 30), (58,45), (64,30), (58,24), (64,45)]
 target_tuples = [(64,57,(58,57),(64,58))]
 target_tuples = [(58,24), (58, 30), (64,30), (64,24), (58,48)]
-
+target_tuples = [(9,1), (57, 9), (61,23), (84,23), (80,9)]
 
 target_tuples.reverse()
 #target_tuples = target_tuples[:3]
@@ -177,6 +177,7 @@ if project == 'AD_Decode':
     #groups to go through
     groups = ['APOE4','APOE3']
     groups = ['Male','Female']
+    groups =['Male']
     #groups = ['APOEtestrun']
 
 removed_list = ['S02654','S02523']

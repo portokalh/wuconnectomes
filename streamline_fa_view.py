@@ -23,14 +23,16 @@ inclusive = False
 symmetric = True
 write_txt = True
 ratio = 1
-top_percentile = 25
-
+top_percentile = 2
+groups = ['APOE4', 'APOE3']
+#groups = ['Male','Female']
 #,(23,30)
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57),  (23,24), (64, 57)]
 target_tuples = [(58, 57), (9, 1), (24,1), (22, 1), (64, 57),(23,24),(24,30),(23,30)]
 target_tuples = [(24,30),(23,24),(24,30)]
-target_tuples = [(64,30)]
+target_tuples = [(24,30)]
+
 
 changewindow_eachtarget = False
 
@@ -86,7 +88,6 @@ if project == 'AMD':
 
 if project == 'AD_Decode':
     mainpath = os.path.join(mainpath, project, 'Analysis')
-    groups = ['APOE4','APOE3']
     anat_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_b0.nii.gz'
 
 
