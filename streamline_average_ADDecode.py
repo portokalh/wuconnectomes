@@ -78,6 +78,11 @@ write_stats = True
 write_txt = True
 
 target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57),(23,24),(24,30),(23,30)]
+target_tuples = [(9, 1), (77,43), (58,57), (24,1), (22,1)]
+target_tuples = [(58, 30), (58,45), (64,30), (58,24), (64,45)]
+target_tuples = [(58,24), (58, 30), (64,30), (64,24), (58,48)]
+
+
 target_tuples.reverse()
 #target_tuples = target_tuples[:3]
 #target_tuples = [(9,1)]
@@ -241,9 +246,9 @@ for target_tuple in target_tuples:
                     raise Exception('happened from there')
                 trkdata = load_trk(trkpath, 'same')
                 header = trkdata.space_attributes
-                picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectome.p')
+                picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectomes.p')
                 picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
-                M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectome.xlsx")
+                M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectomes.xlsx")
                 grouping_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_grouping.xlsx")
                 #if os.path.exists(picklepath_grouping) and not overwrite:
                 #    with open(picklepath_grouping, 'rb') as f:

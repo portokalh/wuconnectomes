@@ -150,7 +150,7 @@ for subject in subjects:
         warnings.warn(txt)
         continue
 
-    M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectome.xlsx")
+    M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectomes.xlsx")
     grouping_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_grouping.xlsx")
 
     if (os.path.exists(M_xlsxpath) or os.path.exists(grouping_xlsxpath)) and not overwrite:

@@ -625,8 +625,6 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
                 else:
                     grouping[key] = val
             i = i + 1
-
-
     else:
         matrix, matrix_vol, matrix_refweighted, matrix_vol_refweighted, grouping = connectivity_matrix_custom(pruned_streamlines_SL, affine_streams, labelmask, inclusive=inclusive, symmetric=symmetric,
                                             return_mapping=True,
