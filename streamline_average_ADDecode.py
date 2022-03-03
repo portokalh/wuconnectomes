@@ -71,23 +71,36 @@ write_streamlines = True
 allow_preprun = False
 verbose=True
 picklesave=True
-overwrite=False
+overwrite=True
 inclusive = False
 symmetric = True
 write_stats = True
 write_txt = True
+constrain_groups = True
 
-target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57),(23,24),(24,30),(23,30)]
-target_tuples = [(9, 1), (77,43), (58,57), (24,1), (22,1)]
-target_tuples = [(58, 30), (58,45), (64,30), (58,24), (64,45)]
-target_tuples = [(64,57,(58,57),(64,58))]
-target_tuples = [(58,24), (58, 30), (64,30), (64,24), (58,48)]
-target_tuples = [(9,1), (57, 9), (61,23), (84,23), (80,9)]
+#target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57),(23,24),(24,30),(23,30)]
+#target_tuples = [(9, 1), (77,43), (58,57), (24,1), (22,1)]
+#target_tuples = [(58, 30), (58,45), (64,30), (58,24), (64,45)]
+#target_tuples = [(64,57,(58,57),(64,58))]
+#target_tuples = [(58,24), (58, 30), (64,30), (64,24), (58,48)]
+#target_tuples = [(9,1), (57, 9), (61,23), (84,23), (80,9)]
 
-target_tuples.reverse()
+#target_tuples.reverse()
 #target_tuples = target_tuples[:3]
 #target_tuples = [(9,1)]
 #target_tuples = [(24,30),(23,30),(23,24)]
+
+
+#genotype_noninclusive
+target_tuples = [(9, 1), (24, 1), (58, 57), (64, 57), (22, 1)]
+target_tuples = [(24, 1)]
+#genotype_noninclusive_volweighted_fa
+#target_tuples = [(9, 1), (57, 9), (61, 23), (84, 23), (80, 9)]
+
+#sex_noninclusive
+#target_tuples = [(64, 57), (58, 57), (9, 1), (64, 58), (80,58)]
+#sex_noninclusive_volweighted_fa
+#target_tuples = [(58, 24), (58, 30), (64, 30), (64, 24), (58,48)]
 
 
 labeltype = 'lrordered'
@@ -167,7 +180,7 @@ group_clusters = {}
 groups_subjects = {}
 
 if project == 'AD_Decode':
-    groups_subjects['APOE3'] = ['S02402','S02720','S02812','S02373','S02231','S02410','S01912','S02451','S02485','S02473','S02506','S02524','S02535','S02686','S02695','S02753','S02765','S02804','S02817','S02842','S02871','S02926','S02938','S02939','S02967','S02320','S02110','S02289','S03017','S03010','S02987','S02227','S03033','S03034','S03069','S03308','S03321','S03350','S02266',]
+    groups_subjects['APOE3'] = ['S02402','S02720','S02812','S02373','S02231','S02410','S01912','S02451','S02485','S02473','S02506','S02524','S02535','S02686','S02695','S02753','S02765','S02804','S02817','S02842','S02871','S02926','S02938','S02939','S02967','S02320','S02110','S02289','S03017','S03010','S02987','S02227','S03033','S03034','S03069','S03308','S03321','S03350','S02266']
     groups_subjects['APOE4']= ['S02363','S02386','S02421','S02424','S02446','S02491','S02654','S02666','S02690','S02715','S02737','S02771','S02781','S02802','S02813','S02840','S02224','S02877','S02898','S02954','S02361','S02390','S02670','S03045','S03048','S03225','S03265','S03293','S03343','S03378','S03391']
     groups_subjects['APOEtestrun'] = ['S02386','S02363']
 
@@ -175,9 +188,12 @@ if project == 'AD_Decode':
     groups_subjects['Female'] = ['S02363', 'S02373', 'S02386', 'S02390', 'S02410', 'S02421', 'S02424', 'S02446', 'S02451', 'S02506', 'S02524', 'S02686', 'S02695', 'S02715', 'S02720', 'S02737', 'S02765', 'S02771', 'S02781', 'S02802', 'S02804', 'S02812', 'S02817', 'S02840', 'S02877', 'S02898', 'S02926', 'S02967', 'S03033', 'S03034', 'S03045', 'S02361', 'S03308', 'S03321', 'S03343', 'S03378']
 
     #groups to go through
-    groups = ['APOE4','APOE3']
-    groups = ['Male','Female']
-    groups =['Male']
+    groups_all = ['APOE4','APOE3']
+    groups= ['APOE3']
+
+    #groups = ['APOE3']
+    #groups = ['Male','Female']
+    #groups =['Female']
     #groups = ['APOEtestrun']
 
 removed_list = ['S02654','S02523']
@@ -187,7 +203,15 @@ for group in groups:
         if remove in groups_subjects[group]:
             groups_subjects[group].remove(remove)
 
-group_toview = groups[0]
+if constrain_groups:
+    group_sizes = []
+    for group in groups_all:
+        #group_sizes[group] = np.size(groups_subjects[group])
+        group_sizes.append(np.size(groups_subjects[group]))
+    group_min = np.min(group_sizes)
+    for group in groups_all:
+        groups_subjects[group] = groups_subjects[group][:group_min]
+    print(group_sizes)
 
 if project == 'APOE':
     raise Exception('not implemented')
@@ -239,7 +263,7 @@ for target_tuple in target_tuples:
         for ref in references:
             grouping_files[ref,'lines']=(os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_lines.py'))
             #grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
-            _, exists = check_files(grouping_files)
+            list_files, exists = check_files(grouping_files)
         if not os.path.exists(centroid_file_path) or not np.all(exists) or (not os.path.exists(streamline_file_path) and write_streamlines) or (not os.path.exists(stats_path) and write_stats) or overwrite:
             subjects = groups_subjects[group]
             subj = 1
@@ -410,7 +434,7 @@ for target_tuple in target_tuples:
 
 
         else:
-            print(f'Centroid file was found at {centroid_file_path}')
+            print(f'Centroid file was found at {centroid_file_path}, reference files for {references}')
             with open(centroid_file_path, 'rb') as f:
                 group_clusters[group] = pickle.load(f)
             for ref in references:
