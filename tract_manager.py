@@ -416,46 +416,6 @@ def makedir(dir):
     else:
         os.mkdir(dir)
 
-
-def connectivity_matrix_func(pruned_streamlines_SL, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = np.eye(4), inclusive= False, verbose=False):
-
-    n = function_processes
-    size_SL = np.size(pruned_streamlines_SL)
-    listcut = []
-    listcut.append(0)
-    for i in np.arange(n - 1):
-        listcut.append(np.int(((i + 1) * size_SL) / n))
-        if verbose:
-            print(size_SL, i + 1, n)
-    listcut.append(size_SL)
-    if verbose:
-        print(listcut)
-    pruned_cut = []
-    for i in np.arange(n):
-        pruned_cut.append(pruned_streamlines_SL[listcut[i]:listcut[i+1]])
-    pool = Pool()
-    if verbose:
-        print("The streamline is split into "+str(function_processes)+" of size "+str(np.int(size_SL / n)))
-
-    return_mapping = True
-    connectomic_results = pool.starmap_async(connectivity_matrix, [(Streamlines(pruned_streamlines_SL[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
-                                                                          inclusive, symmetric, return_mapping,
-                                                                          mapping_as_streamlines) for i in np.arange(n)]).get()
-    M = np.zeros(np.shape(connectomic_results[0][0]))
-    grouping = {}
-    i=0
-    for connectome_results in connectomic_results:
-        M += connectome_results[0]
-        for key, val in connectome_results[1].items():
-            if key in grouping:
-                grouping[key].extend([j+listcut[i] for j in val])
-            else:
-                grouping[key] = val
-        i = i + 1
-
-    return M, grouping
-
-
 def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype = "T1",
                               inclusive = False, function_processes = 1, overwrite = False, picklesave = True, labeltype='orig',
                               symmetric = True, reference_weighting_type = None, volume_weighting=False, verbose = None):
@@ -544,7 +504,7 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
     else:
         raise TypeError("Cannot recognize label type (this error raise is a THEORETICALLY a temp patch")
 
-    pickle.dump(index_to_struct, open(picklepath_index, "wb"))
+    #pickle.dump(index_to_struct, open(picklepath_index, "wb"))
 
     if (trkfilepath is not None and trkpruneexists is False and prunesave):
 
@@ -639,16 +599,11 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         if verbose:
             print("The streamline is split into "+str(function_processes)+" of size "+str(np.int(size_SL / n)))
 
-        #connectomic_results = pool.starmap_async(connectivity_matrix_test, [(Streamlines(pruned_streamlines_SL[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
-        #                                                                      inclusive, symmetric, return_mapping,
-        #                                                                      mapping_as_streamlines) for i in np.arange(n)]).get()
-        #print('I GUESS THIS WASNT IT THEN DANG IT')
         print(f'This run has inclusive: {inclusive} and symmetric: {symmetric}')
         connectomic_results = pool.starmap_async(connectivity_matrix_custom, [(Streamlines(pruned_streamlines_SL[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
                                                                               inclusive, symmetric, return_mapping,
                                                                               mapping_as_streamlines,reference_weight,volume_weighting) for i in np.arange(n)]).get()
 
-        #matrix, matrix_vol, matrix_refweighted, matrix_vol_refweighted, grouping = np.zeros(np.shape(connectomic_results[0][0]))
         matrix =  np.zeros(np.shape(connectomic_results[0][0]))
         matrix_vol = np.zeros(np.shape(connectomic_results[0][0]))
         matrix_refweighted = np.zeros(np.shape(connectomic_results[0][0]))
@@ -670,15 +625,10 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
                 else:
                     grouping[key] = val
             i = i + 1
-
-
     else:
         matrix, matrix_vol, matrix_refweighted, matrix_vol_refweighted, grouping = connectivity_matrix_custom(pruned_streamlines_SL, affine_streams, labelmask, inclusive=inclusive, symmetric=symmetric,
                                             return_mapping=True,
                                             mapping_as_streamlines=False, reference_weighting = reference_weight, volume_weighting=volume_weighting)
-        #matrix, matrix_vol, matrix_refweighted, matrix_vol_refweighted, grouping = connectivity_matrix(pruned_streamlines_SL, affine_streams, labelmask, inclusive=True, symmetric=symmetric,
-        #                                    return_mapping=True,
-        #                                    mapping_as_streamlines=False)
 
         n = 1
 
@@ -711,11 +661,11 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
     matrix = np.delete(matrix, 0, 0)
     matrix = np.delete(matrix, 0, 1)
     matrix_vol = np.delete(matrix_vol, 0, 0)
-    matrix_vol = np.delete(matrix_vol, 0, 0)
+    matrix_vol = np.delete(matrix_vol, 0, 1)
     matrix_refweighted = np.delete(matrix_refweighted, 0, 0)
-    matrix_refweighted = np.delete(matrix_refweighted, 0, 0)
+    matrix_refweighted = np.delete(matrix_refweighted, 0, 1)
     matrix_vol_refweighted = np.delete(matrix_vol_refweighted, 0, 0)
-    matrix_vol_refweighted = np.delete(matrix_vol_refweighted, 0, 0)
+    matrix_vol_refweighted = np.delete(matrix_vol_refweighted, 0, 1)
     matrix_sl = np.delete(matrix_sl, 0, 0)
     matrix_sl = np.delete(matrix_sl, 0, 1)
 
@@ -729,11 +679,11 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
 
     connectomes_to_excel(matrix, index_to_struct, connectome_xlsxpath)
     if volume_weighting:
-        connectomes_to_excel(matrix, index_to_struct, connectome_xlsxpath_vol, verbose=verbose)
+        connectomes_to_excel(matrix_vol, index_to_struct, connectome_xlsxpath_vol, verbose=verbose)
     if reference_weighting_type is not None:
-        connectomes_to_excel(matrix, index_to_struct, connectome_xlsxpath_ref, verbose=verbose)
+        connectomes_to_excel(matrix_refweighted, index_to_struct, connectome_xlsxpath_ref, verbose=verbose)
     if volume_weighting and reference_weighting_type is not None:
-        connectomes_to_excel(matrix, index_to_struct, connectome_xlsxpath_volref, verbose=verbose)
+        connectomes_to_excel(matrix_vol_refweighted, index_to_struct, connectome_xlsxpath_volref, verbose=verbose)
 
     grouping_to_excel(matrix_sl, index_to_struct, grouping_xlsxpath, verbose = verbose)
     if verbose:

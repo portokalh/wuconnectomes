@@ -119,15 +119,29 @@ def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_l
     coreg_labels = os.path.join(dirty_dir,f"{subject}_{orientation_out}_labels.nii.gz")
     coreg_reorient_labels = os.path.join(dirty_dir,f"{subject}_{SAMBA_orientation_in}_labels.nii.gz")
 
-    # final_ref="/mnt/munin6/Badea/Lab/mouse/co_reg_LPCA_${subject:1:5}_m00-results/Reg_LPCA_${subject:1:5}_nii4D.nii.gz";
+    # final_ref=f"/mnt/munin6/Badea/Lab/mouse/co_reg_LPCA_${subject:1:5}_m00-results/Reg_LPCA_${subject:1:5}_nii4D.nii.gz";
 
-    final_ref = os.path.join(prep_folder, f"{subject}_subjspace_coreg.nii.gz")
-    if os.path.exists(final_ref):
-        if Path(final_ref).is_symlink():
-            final_ref=str(Path(final_ref).resolve())
-    else:
-        print
-        warnings.warn(f"Could not find final registered subject file for subject {subject}")
+    subjspace_coreg = os.path.join(prep_folder, f"{subject}_subjspace_coreg.nii.gz")
+    final_refs = [subjspace_coreg]
+    abb20s = glob.glob(f'/Volumes/dusom_civm-atlas/20.abb.15/research/diffusion{subject}*/*.nii')
+    if np.size(abb20s)>0:
+        final_refs.append(abb20s[0])
+    abb19s = glob.glob(f'/Volumes/dusom_civm-atlas/19.abb.14/research/diffusion{subject}*/*.nii')
+    if np.size(abb19s)>0:
+        final_refs.append(abb19s[0])
+    abb18s = glob.glob(f'/Volumes/dusom_civm-atlas/18.abb.11/research/diffusion{subject}*/*.nii')
+    if np.size(abb18s) > 0:
+        final_refs.append(abb18s[0])
+    final_ref = None
+    for pos_final_ref in final_refs:
+        if isinstance(pos_final_ref, str) and os.path.exists(pos_final_ref):
+            if Path(pos_final_ref).is_symlink():
+                final_ref=str(Path(pos_final_ref).resolve())
+            else:
+                final_ref = pos_final_ref
+    if final_ref is None:
+        txt = f"Could not find final registered subject file for subject {subject}"
+        warnings.warn(txt)
         return
 
 
@@ -194,7 +208,7 @@ def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_l
     if not skip_making_data_package_for_tractography:
 
         print('if you see this, make the bval fixes')
-        if not os.path.exists9(symbolic_ref):
+        if not os.path.exists(symbolic_ref):
             cmd=f"ln - s {final_ref} {symbolic_ref}"
 
         bvals = os.path.join(mainpath, f"diffusion_prep_{subject}", f"{subject}_bvals.txt")

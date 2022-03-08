@@ -1,7 +1,68 @@
 import numpy as np
 from numpy import ravel_multi_index
-from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
+#from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
 from collections import defaultdict, OrderedDict
+from dipy.tracking.streamline import Streamlines
+import warnings
+
+def _mapping_to_voxel(affine):
+    """Inverts affine and returns a mapping so voxel coordinates. This
+    function is an implementation detail and only meant to be used with
+    ``_to_voxel_coordinates``.
+
+    Parameters
+    ----------
+    affine : array_like (4, 4)
+        The mapping from voxel indices, [i, j, k], to real world coordinates.
+        The inverse of this mapping is used unless `affine` is None.
+
+    Returns
+    --------
+    lin_T : array (3, 3)
+        Transpose of the linear part of the mapping to voxel space, (ie
+        ``inv(affine)[:3, :3].T``)
+    offset : array or scalar
+        Offset part of the mapping (ie, ``inv(affine)[:3, 3]``) + ``.5``. The
+        half voxel shift is so that truncating the result of this mapping
+        will give the correct integer voxel coordinate.
+
+    Raises
+    ------
+    ValueError
+        If both affine and voxel_size are None.
+
+    """
+    if affine is None:
+        raise ValueError("no affine specified")
+
+    affine = np.array(affine, dtype=float)
+    inv_affine = np.linalg.inv(affine)
+    lin_T = inv_affine[:3, :3].T.copy()
+    offset = inv_affine[:3, 3] + .5
+
+    return lin_T, offset
+
+
+def _to_voxel_coordinates(streamline, lin_T, offset):
+    """Applies a mapping from streamline coordinates to voxel_coordinates,
+    raises an error for negative voxel values."""
+    inds = np.dot(streamline, lin_T)
+    inds += offset
+    if inds.min().round(decimals=6) < 0:
+        raise IndexError('streamline has points that map to negative voxel'
+                         ' indices')
+    return inds.astype(int)
+
+
+def _to_voxel_coordinates_warning(streamline, lin_T, offset):
+    """Applies a mapping from streamline coordinates to voxel_coordinates,
+    raises an error for negative voxel values."""
+    inds = np.dot(streamline, lin_T)
+    inds += offset
+    if inds.min().round(decimals=6) < 0:
+        warnings.warn('streamline has points that map to negative voxel'
+                         ' indices')
+    return inds.astype(int)
 
 
 def convert_label_3dto4d(label_volume):
@@ -74,7 +135,57 @@ def ndbincount(x, weights=None, shape=None):
     return out
 
 
+def connectivity_matrix_func(pruned_streamlines_SL, affine_streams, labelmask, inclusive=False, symmetric = True,return_mapping = False,mapping_as_streamlines = False, reference_weighting = None, volume_weighting = False, function_processes = 1, verbose=False):
 
+    n = function_processes
+    size_SL = np.size(pruned_streamlines_SL)
+    listcut = []
+    listcut.append(0)
+    for i in np.arange(n - 1):
+        listcut.append(np.int(((i + 1) * size_SL) / n))
+        if verbose:
+            print(size_SL, i + 1, n)
+    listcut.append(size_SL)
+    if verbose:
+        print(listcut)
+    pruned_cut = []
+    for i in np.arange(n):
+        pruned_cut.append(pruned_streamlines_SL[listcut[i]:listcut[i+1]])
+    pool = Pool()
+    if verbose:
+        print("The streamline is split into "+str(function_processes)+" of size "+str(np.int(size_SL / n)))
+
+    return_mapping = True
+    connectomic_results = pool.starmap_async(connectivity_matrix_custom, [(Streamlines(pruned_streamlines_SL[listcut[i]:listcut[i+1]]), affine_streams, labelmask,
+                                                                          inclusive, symmetric, return_mapping,
+                                                                          mapping_as_streamlines,reference_weighting, volume_weighting) for i in np.arange(n)]).get()
+
+    M = np.zeros(np.shape(connectomic_results[0][0]))
+    grouping = {}
+    i=0
+    for connectome_results in connectomic_results:
+        M += connectome_results[0]
+        for key, val in connectome_results[1].items():
+            if key in grouping:
+                grouping[key].extend([j+listcut[i] for j in val])
+            else:
+                grouping[key] = val
+        i = i + 1
+
+    return M, grouping
+
+def retweak_points(points, shape):
+    pointsT = points.T
+    for axis in [0,1,2]:
+        if np.min(pointsT[axis])<0:
+            print(f'There are {np.sum(pointsT[axis]<0)} points that are negative in axis {axis}')
+            pointsT[axis][pointsT[axis]<0] = 0
+        if np.max(pointsT[axis]>=shape[axis]):
+            print(f'There are {np.sum(pointsT[axis]>=shape[axis])} points that are above maximum in axis {axis}')
+            pointsT[axis][pointsT[axis]>=shape[axis]] = shape[axis] - 1
+    pointsnew = pointsT.T
+
+    return pointsnew
 
 def connectivity_matrix_custom(streamlines, affine, label_volume,
                         inclusive=False, symmetric=True, return_mapping=False,
@@ -105,11 +216,12 @@ def connectivity_matrix_custom(streamlines, affine, label_volume,
         for sl, _ in enumerate(streamlines):
             # Convert streamline to voxel coordinates
 
-            if sl>5:
-                break
+            entire = _to_voxel_coordinates_warning(streamlines[sl], lin_T, offset)
+            entire = retweak_points(entire, np.shape(label_volume))
 
-            entire = _to_voxel_coordinates(streamlines[sl], lin_T, offset)
             i, j, k = entire.T
+
+            ## streamlinep3794 endpoints for 02363 is [[ 99.23122215  97.81464577  44.45293291] [167.02122498  74.64361191  46.30043031]]
 
             if reference_weighting is not None:
                 ref_values = reference_weighting[i, j, k]
@@ -166,7 +278,7 @@ def connectivity_matrix_custom(streamlines, affine, label_volume,
         if return_mapping:
             mapping = defaultdict(list)
             for i, (a, b, c, d) in enumerate(edges.T):
-                mapping[int(a), int(b)].append(c)
+                mapping[int(a), int(b)].append(int(c))
             # Replace each list of indices with the streamlines they index
             if mapping_as_streamlines:
                 for key in mapping:
@@ -177,16 +289,19 @@ def connectivity_matrix_custom(streamlines, affine, label_volume,
         return matrix, matrix_vol, matrix_refweighted, matrix_vol_refweighted
     else:
         # take the first and last point of each streamline
-        endpoints = [sl[0::len(sl)-1] for sl in streamlines]
+        endpoints = np.array([sl[0::len(sl)-1] for sl in streamlines])
 
         # Map the streamlines coordinates to voxel coordinates
         lin_T, offset = _mapping_to_voxel(affine)
-        endpoints = _to_voxel_coordinates(endpoints, lin_T, offset)
+
+        endpoints = _to_voxel_coordinates_warning(endpoints, lin_T, offset)
+        #endpoints = endpoints[7559:7595]
+        endpoints = retweak_points(endpoints, np.shape(label_volume))
 
         # get labels for label_volume
 
         i, j, k = endpoints.T
-        endlabels = label_volume[i, j, k]
+        endlabels = label_volume[i, j, k]  ## CREATE CONSTRAIN FUNCTION SO WE STOP HAVING THE out of bounds error!!!!
         if symmetric:
             endlabels.sort(0)
         mx = label_volume.max() + 1

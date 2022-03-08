@@ -17,6 +17,9 @@ new_trk_folder = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_100'
 trk_folder = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_MDT_fixed'
 new_trk_folder = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_MDT_fixed_100'
 
+trk_folder = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_fixed'
+new_trk_folder = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_fixed_100'
+
 mkcdir(new_trk_folder)
 ratio = 100
 filelist = os.listdir(trk_folder)

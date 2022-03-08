@@ -20,7 +20,19 @@ record = ''
 computer_name = socket.gethostname()
 
 inclusive = False
-write_txt = False
+symmetric = True
+write_txt = True
+ratio = 1
+top_percentile = 2
+groups = ['APOE4', 'APOE3']
+#groups = ['Male','Female']
+#,(23,30)
+target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
+target_tuples = [(9, 1), (24,1), (22, 1), (58, 57),  (23,24), (64, 57)]
+target_tuples = [(58, 57), (9, 1), (24,1), (22, 1), (64, 57),(23,24),(24,30),(23,30)]
+target_tuples = [(24,30),(23,24),(24,30)]
+target_tuples = [(24,30)]
+
 
 changewindow_eachtarget = False
 
@@ -29,10 +41,15 @@ if inclusive:
 else:
     inclusive_str = '_non_inclusive'
 
-if fixed:
-    fixed_str = '_fixed'
+if symmetric:
+    symmetric_str = '_symmetric'
 else:
-    fixed_str = ''
+    symmetric_str = '_non_symmetric'
+
+#if fixed:
+#    fixed_str = '_fixed'
+#else:
+#    fixed_str = ''
 
 samos = False
 if 'samos' in computer_name:
@@ -49,11 +66,10 @@ else:
     raise Exception('No other computer name yet')
 
 #target_tuple = (24,1)
-target_tuples = [(9, 1), (24,1), (22, 1), (58, 57), (64, 57)]
-target_tuples = [(9, 1), (24,1), (22, 1), (64, 57)]
 #target_tuple = [(58, 57)]
 #target_tuples = [(64, 57)]
-ratio = 100
+
+
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
 if ratio_str == '_all':
@@ -72,15 +88,14 @@ if project == 'AMD':
 
 if project == 'AD_Decode':
     mainpath = os.path.join(mainpath, project, 'Analysis')
-    groups = ['APOE4','APOE3']
-    anat_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_dwi.nii.gz'
+    anat_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_b0.nii.gz'
 
 
 #figures_path = '/Volumes/Data/Badea/Lab/human/AMD/Figures_MDT_non_inclusive/'
 #centroid_folder = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive/'
-figures_path = os.path.join(mainpath, f'Figures_MDT{inclusive_str}{folder_ratio_str}')
-centroid_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{folder_ratio_str}')
-trk_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{folder_ratio_str}{fixed_str}')
+figures_path = os.path.join(mainpath, f'Figures_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+centroid_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+trk_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 mkcdir([figures_path, centroid_folder])
 
 #groups = ['Initial AMD', 'Paired 2-YR AMD', 'Initial Control', 'Paired 2-YR Control', 'Paired Initial Control',
@@ -89,16 +104,15 @@ mkcdir([figures_path, centroid_folder])
 #anat_path = '/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/median_images/MDT_dwi.nii.gz'
 
 
-top_percentile = 20
 
 #superior frontal right to cerebellum right
 
 scene = None
 
-
-firstrun = True
+interactive = True
 
 for target_tuple in target_tuples:
+
 
     print(target_tuple[0], target_tuple[1])
     print(index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]])
@@ -137,7 +151,6 @@ for target_tuple in target_tuples:
         if os.path.exists(md_path):
             with open(md_path, 'rb') as f:
                 md_lines = pickle.load(f)
-
         if os.path.exists(trk_path):
             try:
                 streamlines_data = load_trk(trk_path,'same')
@@ -157,9 +170,11 @@ for target_tuple in target_tuples:
         if 'fa_lines' in locals():
             cutoff = np.percentile(fa_lines,100 - top_percentile)
             select_streams = fa_lines>cutoff
-            fa_lines = list(compress(fa_lines, select_streams))
-            streamlines = list(compress(streamlines, select_streams))
-            streamlines = nib.streamlines.ArraySequence(streamlines)
+            fa_lines_new = list(compress(fa_lines, select_streams))
+            streamlines_new = list(compress(streamlines, select_streams))
+            streamlines_new = nib.streamlines.ArraySequence(streamlines_new)
+            if np.shape(streamlines)[0] != np.shape(fa_lines)[0]:
+                raise Exception('Inconsistency between streamlines and fa lines')
         else:
             txt = f'Cannot find {fa_path}, could not select streamlines based on fa'
             warnings.warn(txt)
@@ -180,34 +195,17 @@ for target_tuple in target_tuples:
             hue_range=hue,
             saturation_range=saturation)
 
+        #lut_cmap = actor.colormap_lookup_table(
+         #   scale_range=(0.01, 0.55))
         lut_cmap = actor.colormap_lookup_table(
-            scale_range=(0.01, 0.55))
+            scale_range=(0.1, 0.25))
 
         record_path = os.path.join(figures_path, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' +
                                           index_to_struct[target_tuple[1]] + '_figure.png')
 
-        if firstrun:
-            interactive = True
-        else:
-            interactive = False
         #scene = None
-        scene = setup_view(streamlines[:], colors = lut_cmap,ref = anat_path, world_coords = True, objectvals = fa_lines[:], colorbar=True, record = record_path, scene = scene, interactive = interactive)
-        #add something to help make the camera static over multiple iterations? Would be VERY nice.
-        del(fa_lines)
-        firstrun = False
-
-        ##write text file here that summarizes fa, md for each group, would be very helpful
-
-
-"""
-centroids_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive_100/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_centroid.py'
-fa_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive_100/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_fa_lines.py'
-md_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive_100/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_fa_lines.py'
-trk_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive_100/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_streamlines.trk'
-
-
-centroids_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_centroid.py'
-fa_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_fa_lines.py'
-md_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_fa_lines.py'
-trk_path = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive/Initial_AMD_MDT_ratio_100_right-cerebellum-cortex_right_to_left-cerebellum-cortex_left_streamlines.trk'
-"""
+        #interactive = True
+        #record_path = None
+        scene = setup_view(streamlines_new[:], colors = lut_cmap,ref = anat_path, world_coords = True, objectvals = fa_lines_new[:], colorbar=True, record = record_path, scene = scene, interactive = interactive)
+        del(fa_lines,fa_lines_new,streamlines,streamlines_new)
+        interactive = False

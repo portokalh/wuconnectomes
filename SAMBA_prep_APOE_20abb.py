@@ -62,7 +62,7 @@ transpose=None
 overwrite=False
 ref="coreg"
 #btables=["extract","copy","None"]
-btables="copy"
+btables=""
 
 
 #Neither copy nor extract are fully functioning right now, for now the bvec extractor from extractdiffdirs works

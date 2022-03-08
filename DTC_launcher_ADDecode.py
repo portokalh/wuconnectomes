@@ -1,5 +1,7 @@
 
 import numpy as np
+import glob
+from bvec_handler import orient_to_str
 from tract_manager import create_tracts, diff_preprocessing, tract_connectome_analysis, get_diffusionattributes
 from Daemonprocess import MyPool
 import multiprocessing as mp
@@ -8,8 +10,6 @@ from file_tools import mkcdir
 from time import time
 from argument_tools import parse_arguments
 import sys
-import glob
-from bvec_handler import orient_to_str
 import socket
 import random
 
@@ -36,22 +36,6 @@ diff_preprocessed = os.path.join(mainpath, "DWI")
 
 mkcdir([mainpath, diff_preprocessed])
 
-"""
-subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]
-subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
-for bxhfile in subjbxh:
-    bxhtype = checkbxh(bxhfile, False)
-    if bxhtype == "dwi":
-        dwipath = bxhfile.replace(".bxh", ".nii.gz")
-        break
-"""
-"""
-subjects_all = glob.glob(os.path.join(diff_preprocessed,'*subjspace_dwi*.nii.gz'))
-subjects = []
-for subject in subjects_all:
-    subject_name = os.path.basename(subject)
-    subjects.append(subject_name[:6])
-"""
 subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266', 'S02289', 'S02320', 'S02361', 'S02363',
         'S02373', 'S02386', 'S02390', 'S02402', 'S02410', 'S02421', 'S02424', 'S02446', 'S02451', 'S02469', 'S02473',
         'S02485', 'S02491', 'S02490', 'S02506', 'S02523', 'S02524', 'S02535', 'S02654', 'S02666', 'S02670', 'S02686',
@@ -59,7 +43,6 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
         'S02804', 'S02813', 'S02812', 'S02817', 'S02840', 'S02842', 'S02871', 'S02877', 'S02898', 'S02926', 'S02938',
         'S02939', 'S02954', 'S02967', 'S02987', 'S03010', 'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048',
         'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321', 'S03343', 'S03350', 'S03378', 'S03391', 'S03394']
-
 removed_list = ["S02745","S02230","S02490","S02523"]
 
 for remove in removed_list:
@@ -86,22 +69,20 @@ doprune = True
 bvec_orient = [1,2,3]
 vol_b0 = [0,1,2]
 classifier = "binary"
-symmetric = False
+symmetric = True
 inclusive = False
 denoise = "coreg"
 savefa = True
 
 reference_weighting = 'fa'
-volume_weighting = False
+volume_weighting = True
 make_tracts = False
 make_connectomes = True
 
-#classifier types => ["FA", "binary"]
 classifiertype = "binary"
 brainmask = "subjspace"
 labeltype='lrordered'
 ratio = 1
-
 
 if ratio == 1:
     saved_streamlines = "_all"
@@ -112,10 +93,8 @@ else:
 
 trkpath = os.path.join(mainpath, "TRK_MPCA_fixed")
 trkpath = os.path.join(mainpath, "TRK_MPCA_100")
-trkpath = os.path.join(mainpath, "TRK_MPCA"+trk_folder_name)
-#trkpath = os.path.join(mainpath, "TRK_MPCA_neworient"+trk_folder_name)
+trkpath = os.path.join(mainpath, "TRK_MPCA_fixed"+trk_folder_name)
 mkcdir(trkpath)
-
 
 trkroi = ["wholebrain"]
 if len(trkroi)==1:
@@ -132,8 +111,6 @@ duration1=time()
 if forcestart:
     print("WARNING: FORCESTART EMPLOYED. THIS WILL COPY OVER PREVIOUS DATA")
 
-
-
 labelslist = []
 dwi_results = []
 donelist = []
@@ -143,10 +120,6 @@ if classifiertype == "FA":
     classifiertype = "_fa"
 else:
     classifiertype = "_binary"
-
-
-#atlas_legends = None
-
 
 if inclusive:
     inclusive_str = '_inclusive'
@@ -159,6 +132,7 @@ else:
     symmetric_str = '_non_symmetric'
 
 figspath = os.path.join(mainpath,"Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
+
 mkcdir(figspath)
 
 if make_connectomes:
@@ -207,7 +181,21 @@ else:
                                                            function_processes, overwrite, picklesave, labeltype, symmetric, reference_weighting, volume_weighting, verbose))
     print(tract_results)
 
-# dwi_results.append(diff_preprocessing(datapath, diff_preprocessed, subject, bvec_orient, denoise, savefa,
-#                                     function_processes, masktype, vol_b0, verbose)) ##Unnecessary, replaced by SAMBA_prep
-#dwi_results = pool.starmap_async(diff_preprocessing, [(datapath, diff_preprocessed, subject, bvec_orient, denoise, savefa, function_processes,
-#                                 masktype, vol_b0, verbose) for subject in subjects]).get()
+
+
+"""
+subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]
+subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
+for bxhfile in subjbxh:
+    bxhtype = checkbxh(bxhfile, False)
+    if bxhtype == "dwi":
+        dwipath = bxhfile.replace(".bxh", ".nii.gz")
+        break
+"""
+"""
+subjects_all = glob.glob(os.path.join(diff_preprocessed,'*subjspace_dwi*.nii.gz'))
+subjects = []
+for subject in subjects_all:
+    subject_name = os.path.basename(subject)
+    subjects.append(subject_name[:6])
+"""

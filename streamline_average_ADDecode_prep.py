@@ -13,7 +13,7 @@ from tract_save import unload_trk
 import pickle
 from dipy.tracking.utils import connectivity_matrix
 from nifti_handler import getlabeltypemask
-from file_tools import mkcdir, check_files
+from file_tools import mkcdir
 from tract_handler import ratio_to_str, gettrkpath
 from convert_atlas_mask import convert_labelmask, atlas_converter
 import errno
@@ -25,9 +25,9 @@ from tract_save import save_trk_header
 from excel_management import M_grouping_excel_save, extract_grouping
 import sys
 from argument_tools import parse_arguments_function
-from tract_manager import connectivity_matrix_func
+from connectome_handler import connectivity_matrix_custom, connectivity_matrix_func
 import random
-
+from nibabel.streamlines.array_sequence import ArraySequence
 from time import time
 
 def get_grouping(grouping_xlsx):
@@ -48,7 +48,7 @@ samos = False
 if 'samos' in computer_name:
     mainpath = '/mnt/paros_MRI/jacques/'
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'santorini' in computer_name:
+elif 'santorini' in computer_name or 'hydra' in computer_name:
     #mainpath = '/Users/alex/jacques/'
     mainpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
@@ -59,7 +59,7 @@ else:
     raise Exception('No other computer name yet')
 
 #Setting identification parameters for ratio, labeling type, etc
-ratio = 100
+ratio = 1
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
 if ratio_str == '_all':
@@ -67,11 +67,25 @@ if ratio_str == '_all':
 else:
     folder_ratio_str = ratio_str.replace('_ratio','')
 
-inclusive = False
+inclusive = True
+symmetric = True
+fixed = True
+overwrite = False
+
 if inclusive:
     inclusive_str = '_inclusive'
 else:
     inclusive_str = '_non_inclusive'
+
+if symmetric:
+    symmetric_str = '_symmetric'
+else:
+    symmetric_str = '_non_symmetric'
+
+if fixed:
+    fixed_str = '_fixed'
+else:
+    fixed_str = ''
 
 str_identifier = f'_stepsize_2{ratio_str}_wholebrain_pruned'
 labeltype = 'lrordered'
@@ -80,18 +94,15 @@ picklesave=True
 
 function_processes = parse_arguments_function(sys.argv)
 print(f'there are {function_processes} function processes')
-overwrite=False
 
 if project=='AD_Decode':
     mainpath=os.path.join(mainpath,project,'Analysis')
 else:
     mainpath = os.path.join(mainpath, project)
-TRK_folder = os.path.join(mainpath, 'TRK_MPCA_MDT_fixed'+folder_ratio_str)
+TRK_folder = os.path.join(mainpath, f'TRK_MPCA_MDT{fixed_str}{folder_ratio_str}')
 label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
-#pickle_folder = os.path.join(mainpath, 'Pickle_MDT'+folder_ratio_str)
-#centroid_folder = os.path.join(mainpath, 'Centroids_MDT'+folder_ratio_str)
-excel_folder = os.path.join(mainpath, f'Excels_MDT{inclusive_str}{folder_ratio_str}')
+excel_folder = os.path.join(mainpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 
 print(excel_folder)
 mkcdir(excel_folder)
@@ -120,7 +131,7 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
         'S02804', 'S02813', 'S02812', 'S02817', 'S02840', 'S02842', 'S02871', 'S02877', 'S02898', 'S02926', 'S02938',
         'S02939', 'S02954', 'S02967', 'S02987', 'S03010', 'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048',
         'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321', 'S03343', 'S03350', 'S03378', 'S03391', 'S03394']
-subjects = ['S02363']
+
 random.shuffle(subjects)
 #removed_list = ['S02266']
 removed_list = ['S02523']
@@ -132,8 +143,6 @@ for remove in removed_list:
 _, _, index_to_struct, _ = atlas_converter(ROI_legends)
 labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
                                                                              labeltype=labeltype, verbose=verbose)
-
-overwrite = True
 for subject in subjects:
     trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
     if not exists:
@@ -141,9 +150,7 @@ for subject in subjects:
         warnings.warn(txt)
         continue
 
-    #picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectome.p')
-    #picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
-    M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectome.xlsx")
+    M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectomes.xlsx")
     grouping_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_grouping.xlsx")
 
     if (os.path.exists(M_xlsxpath) or os.path.exists(grouping_xlsxpath)) and not overwrite:
@@ -158,44 +165,19 @@ for subject in subjects:
         header = trkdata.space_attributes
 
 
+        streamlines_world = transform_streamlines(trkdata.streamlines, np.linalg.inv(labelaffine))
 
         if function_processes == 1:
-            M, grouping = connectivity_matrix(trkdata.streamlines, trkdata.space_attributes[0], labelmask, inclusive=inclusive, symmetric=True, return_mapping=True, mapping_as_streamlines=False)
+
+            M, _, _, _, grouping = connectivity_matrix_custom(streamlines_world, np.eye(4), labelmask,
+                                              inclusive=inclusive, symmetric=symmetric, return_mapping=True,
+                                              mapping_as_streamlines=False, reference_weighting = None, volume_weighting=False)
         else:
-            M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask, symmetric = True, mapping_as_streamlines = False, affine_streams = trkdata.space_attributes[0], inclusive= inclusive, verbose=False)
-
-        lut_cmap = actor.colormap_lookup_table(
-            scale_range=(0.01, 0.55))
-
-        ref_MDT_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_dwi.nii.gz'
-
-        from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
-        scene = None
-
-        streamlines = trkdata.streamlines
-        lin_T, offset = _mapping_to_voxel(header[0])
-        streamlines_world = _to_voxel_coordinates(streamlines, lin_T, offset)
-
-        for i in np.arange(2,85):
-            for j in np.arange(1,85):
-                print(i, j)
-                target_streamlines_list = grouping[i, j]
-                #print(index_to_struct[i] + '_to_' + index_to_struct[j])
-                if len(target_streamlines_list) > 0:
-                    target_streamlines = trkdata.streamlines[np.array(target_streamlines_list)]
-                    print(f'viewing {index_to_struct[i]} to {index_to_struct[j]}')
-                    scene = setup_view(target_streamlines, colors=lut_cmap, ref=ref_MDT_path, world_coords=True, objectvals=[None],
-                              colorbar=False, record=None, scene=scene, interactive=True)
-                else:
-                    print(f'skipping {index_to_struct[i]} to {index_to_struct[j]}')
-
-                #setup_view(target_streamlines, colors=lut_cmap, ref=ref_MDT_path, world_coords=True, objectvals=[None],
-                 #          colorbar=False, record=None, scene=None, interactive=True)
-        #setup_view(target_streamlines, colors=lut_cmap, ref=labeloutpath, world_coords=True, objectvals=[None],
-        #           colorbar=False, record=None, scene=None, interactive=True)
+            M, _, _, _, grouping = connectivity_matrix_func(streamlines_world, np.eye(4), labelmask, inclusive = inclusive,
+                                                   symmetric=symmetric, return_mapping=True, mapping_as_streamlines=False, reference_weighting = None,
+                                                   volume_weighting=False, verbose = False)
 
         M_grouping_excel_save(M,grouping,M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
-
 
         del(trkdata)
         if verbose:
@@ -205,4 +187,3 @@ for subject in subjects:
         #grouping = extract_grouping(grouping_xlsxpath, index_to_struct, np.shape(M), verbose=verbose)
         else:
             raise Exception(f'saving of the excel at {grouping_xlsxpath} did not work')
-
