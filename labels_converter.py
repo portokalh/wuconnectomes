@@ -1,0 +1,34 @@
+from nifti_handler import getfa, getdiffdata_all, getdiffdata, getdiffpath, getgtab, getlabelmask, move_bvals, getmask, getb0s
+import numpy as np
+from convert_atlas_mask import convert_labelmask, atlas_converter
+import os
+
+subjects = ["N58214", "N58215", "N58216", "N58217", "N58218", "N58219", "N58221", "N58222", "N58223", "N58224",
+        "N58225", "N58226", "N58228",
+        "N58229", "N58230", "N58231", "N58232", "N58633", "N58634", "N58635", "N58636", "N58649", "N58650",
+        "N58651", "N58653", "N58654",
+        'N58408', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309', 'N58792', 'N58302',
+        'N58784', 'N58706', 'N58361', 'N58355', 'N58712', 'N58790', 'N58606', 'N58350', 'N58608',
+        'N58779', 'N58500', 'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788', 'N58305',
+        'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
+        'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
+        'N58613', 'N58732', 'N58516', 'N58402']
+
+diffpath = '/mnt/paros_MRI/jacques/APOE/DWI_allsubj'
+verbose = True
+ROI_excel = "/mnt/paros_MRI/jacques/atlases/CHASSSYMM3AtlasLegends.xlsx"
+
+for subject in subjects:
+	labelmask, labelaffine, labelpath = getlabelmask(diffpath, subject, verbose)
+	if np.size(np.shape(labelmask)) == 1:
+	    labelmask = labelmask[0]
+	if np.size(np.shape(labelmask)) == 4:
+	    labelmask = labelmask[:, :, :, 0]
+	print("Mask shape is " + str(np.shape(labelmask)))
+
+	converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = atlas_converter(ROI_excel)
+
+	labeloutpath = labelpath.replace('.nii.gz','_lr_ordered.nii.gz')
+	if not os.path.isfile(labeloutpath):
+	    labelmask = convert_labelmask(labelmask, converter_comb, atlas_outpath=labeloutpath,
+		                  affine_labels=labelaffine)
