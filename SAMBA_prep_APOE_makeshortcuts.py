@@ -11,37 +11,23 @@ from diffusion_preprocessing import launch_preprocessing
 from file_tools import mkcdir, largerfile
 from transform_handler import get_transpose
 import shutil
-
-def orient_to_str(bvec_orient):
-    mystr="_"
-    for i in np.arange(3):
-        if np.abs(bvec_orient[i]) == 1:
-            if bvec_orient[i]<0:
-                mystr = mystr+"mx"
-            else:
-                mystr = mystr+"px"
-        if np.abs(bvec_orient[i]) == 2:
-            if bvec_orient[i] < 0:
-                mystr = mystr + "my"
-            else:
-                mystr = mystr + "py"
-        if np.abs(bvec_orient[i])==3:
-            if bvec_orient[i]<0:
-                mystr = mystr+"mz"
-            else:
-                mystr = mystr+"pz"
-    return mystr
-
+from bvec_handler import orient_to_str
 
 #gunniespath = "/mnt/clustertmp/common/rja20_dev/gunnies/"
-gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
-diffpath = "/Volumes/dusom_civm-atlas/20.abb.15/research/"
-outpath = "/Volumes/Data/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
+#gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
+#diffpath = "/Volumes/dusom_civm-atlas/20.abb.15/research/"
+#outpath = "/Volumes/Data/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
+
+gunniespath = ""
 outpath = "/mnt/munin6/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
-bonusshortcutfolder = "/Volumes/Data/Badea/Lab/jacques/APOE_series/19abb14/"
+#bonusshortcutfolder = "/Volumes/Data/Badea/Lab/jacques/APOE_series/19abb14/"
 #bonusshortcutfolder = "/mnt/munin6/Badea/Lab/APOE_symlink_pool/"
-bonusshortcutfolder = "/mnt/munin6/Badea/Lab/19abb14/"
 #bonusshortcutfolder = None
+SAMBA_inputs_folder = "/mnt/munin6/Badea/Lab/19abb14/"
+shortcuts_all_folder = "/mnt/munin6/Badea/Lab/mouse/APOE_symlink_pool_allfiles/"
+
+mkcdir([SAMBA_inputs_folder, shortcuts_all_folder])
+
 
 subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N58222","N58223","N58224","N58225","N58226","N58228",
             "N58229","N58230","N58231","N58232","N58633","N58634","N58635","N58636","N58649","N58650","N58651","N58653","N58654",
@@ -71,18 +57,6 @@ transpose=None
 overwrite=False
 ref="coreg"
 #btables=["extract","copy","None"]
-btables="none"
-
-if btables == "extract":
-    for subject in subjects:
-        outpathsubj = outpath + "_" + subject
-        writeformat="tab"
-        writeformat="dsi"
-        overwrite_b=False
-        proc_name = "diffusion_prep_"  # Not gonna call it diffusion_calc so we don't assume it does the same thing as the civm pipeline
-        outpath_subj = os.path.join(outpath,proc_name+subject)
-        mkcdir(outpath_subj)
-        fbvals, fbvecs = extractbvals_research(dwipath, subject, outpath=outpath_subj, fix=False, writeformat=writeformat, overwrite=overwrite_b)
 
 max_processors = 1
 if mp.cpu_count() < max_processors:
@@ -102,12 +76,9 @@ if subject_processes>1:
     else:
         pool = mp.Pool(subject_processes)
 
-    results = pool.starmap_async(launch_preprocessing, [(proc_subjn+subject,
-                                                         largerfile(glob.glob(os.path.join(os.path.join(diffpath, "diffusion*" + subject + "*")))[0]),
-                                                         outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                                                         gunniespath, function_processes, masking, ref, transpose,
-                                                         overwrite, denoise, recenter, verbose)
-                                                        for subject in subjects]).get()
+    results = pool.starmap_async(launch_preprocessing, [launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, SAMBA_inputs_folder,
+                                 shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter,
+                             recenter, verbose) for subject in subjects]).get()
 else:
     for subject in subjects:
         max_size=0
@@ -117,11 +88,10 @@ else:
         max_file= os.path.join(subjectpath, "nii4D_"+subject+".nii.gz")
         print(max_file)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        if os.path.exists(os.path.join(bonusshortcutfolder,f'{proc_subjn + subject}_fa.nii.gz')):
+        if os.path.exists(os.path.join(shortcuts_all_folder,f'{proc_subjn + subject}_fa.nii.gz')):
             print(f'already did subject {proc_subjn + subject}')
         else:
             #print('notyet')
-            launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                             gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter,
-                             verbose)
-
+            launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, SAMBA_inputs_folder,
+                                 shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter,
+                             recenter, verbose)

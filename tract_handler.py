@@ -29,9 +29,11 @@ from dipy.io.streamline import load_trk
 from dipy.tracking.utils import length
 from dipy.viz import window, actor
 import glob
+import argparse
 import os, shutil
 from tract_save import save_trk_header
 from streamline_nocheck import load_trk as load_trk_spe
+import nibabel as nib
 
 def longstring(string,margin=0):
 
@@ -574,6 +576,7 @@ def save_roisubset(streamlines, roislist, roisexcel, labelmask, stringstep, rati
                         header = trkdata.space_attributes
                     trkstreamlines = trkdata.streamlines
 
+
 def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=False, ratio=10, return_affine= False, verbose=False):
 
     if verbose:
@@ -611,6 +614,36 @@ def reducetractnumber(oldtrkfile, newtrkfilepath, getdata=False, ratio=10, retur
             return(affine)
         else:
             return
+
+
+"""
+###TRK to TCK converter, courtesy of Marc Cote, https://gist.github.com/MarcCote/ea6842cc4c3950f7596fc3c8a0be0154
+def build_argparser():
+    DESCRIPTION = "Convert tractograms (TRK -> TCK)."
+    p = argparse.ArgumentParser(description=DESCRIPTION)
+    p.add_argument('tractograms', metavar='bundle', nargs="+", help='list of tractograms.')
+    p.add_argument('-f', '--force', action="store_true", help='overwrite existing output files.')
+    return p
+"""
+
+def trktotck(trk_path, overwrite=False):
+
+    import warnings
+    try:
+        tractogram = load_trk(trk_path, 'same')
+    except:
+        tractogram = load_trk_spe(trk_path, 'same')
+
+    if nib.streamlines.detect_format(tractogram) is not nib.streamlines.TrkFile:
+        warnings.warn("Skipping non TRK file: '{}'".format(tractogram))
+
+    output_filename = tractogram[:-4] + '.tck'
+    if os.path.isfile(output_filename) and not overwrite:
+        warnings.warn("Skipping existing file: '{}'. Set overwrite to true".format(output_filename))
+
+    trk = nib.streamlines.load(tractogram)
+    nib.streamlines.save(trk.tractogram, output_filename)
+
 
 def reducetractnumber_all(trkpath, str_identifier1, str_identifier2,  subject, ratio, verbose):
 

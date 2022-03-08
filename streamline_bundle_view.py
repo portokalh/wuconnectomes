@@ -38,6 +38,7 @@ target_tuples = [(58, 57)]
 target_tuples = [(64,57)]
 #genotype_noninclusive
 target_tuples = [(9, 1), (24, 1), (58, 57), (64, 57), (22, 1)]
+target_tuples = [(58,57)]
 #genotype_noninclusive_volweighted_fa
 #target_tuples = [(9, 1), (57, 9), (61, 23), (84, 23), (80, 9)]
 
@@ -212,19 +213,18 @@ for target_tuple in target_tuples:
                 streamlines_data = load_trk_spe(trk_path, 'same')
         streamlines = streamlines_data.streamlines
 
-        if top_percentile<100:
-            if 'fa_lines' in locals():
-                cutoff = np.percentile(fa_lines, 100 - top_percentile)
-                select_streams = fa_lines > cutoff
-                fa_lines = list(compress(fa_lines, select_streams))
-                streamlines = list(compress(streamlines, select_streams))
-                streamlines = nib.streamlines.ArraySequence(streamlines)
-                if np.shape(streamlines)[0] != np.shape(fa_lines)[0]:
-                    raise Exception('Inconsistency between streamlines and fa lines')
-            else:
-                txt = f'Cannot find {fa_path}, could not select streamlines based on fa'
-                warnings.warn(txt)
-                fa_lines = [None]
+        if 'fa_lines' in locals():
+            cutoff = np.percentile(fa_lines, 100 - top_percentile)
+            select_streams = fa_lines > cutoff
+            fa_lines = list(compress(fa_lines, select_streams))
+            streamlines = list(compress(streamlines, select_streams))
+            streamlines = nib.streamlines.ArraySequence(streamlines)
+            if np.shape(streamlines)[0] != np.shape(fa_lines)[0]:
+                raise Exception('Inconsistency between streamlines and fa lines')
+        else:
+            txt = f'Cannot find {fa_path}, could not select streamlines based on fa'
+            warnings.warn(txt)
+            fa_lines = [None]
 
         group_qb = QuickBundles(threshold=distance2, metric=metric2)
         group_clusters = group_qb.cluster(streamlines)
@@ -237,7 +237,6 @@ for target_tuple in target_tuples:
             top_bundles = sorted(range(len(num_streamlines)), key=lambda i: num_streamlines[i], reverse=True)[:num_bundles]
         for bundle in top_bundles:
             selected_bundles.append(group_clusters.clusters[bundle])
-        selected_bundles = [group_clusters.clusters[194]]
         bun_num = 0
         if coloring == 'bundles_coloring':
             bundles_fa = []
@@ -274,10 +273,10 @@ for target_tuple in target_tuples:
         record_path = os.path.join(figures_path, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' +
                                           index_to_struct[target_tuple[1]] + '_bundles_figure.png')
         #scene = None
-        #interactive = True
+        #interactive = False
         #record_path = None
         scene = setup_view(selected_bundles, colors = lut_cmap,ref = anat_path, world_coords = True, objectvals = bundles_fa, colorbar=True, record = record_path, scene = scene, interactive = interactive)
-        del(fa_lines,fa_lines,streamlines,streamlines)
+        del(fa_lines,streamlines)
         interactive = False
 
         """

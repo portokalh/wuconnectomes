@@ -90,8 +90,10 @@ elif project == "APOE":
     gunniespath = "~/gunnies/"
     recenter = 0
     # SAMBA_prep_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-inputs")
-    SAMBA_prep_folder = os.path.join(mainpath, "APOE_symlink_pool")
-    SAMBA_prep_folder = os.path.join(mainpath, '19abb14')
+    #SAMBA_prep_folder = os.path.join(mainpath, "APOE_symlink_pool")
+    #SAMBA_prep_folder = os.path.join(mainpath, '19abb14')
+    SAMBA_prep_folder = os.path.join(mainpath, "mouse","APOE_symlink_pool_allfiles")
+
     atlas_labels = os.path.join(mainpath,"atlases","chass_symmetric3","chass_symmetric3_labels.nii.gz")
 
     DTC_DWI_folder = os.path.join(mainpath,"mouse","APOE_series","DWI")

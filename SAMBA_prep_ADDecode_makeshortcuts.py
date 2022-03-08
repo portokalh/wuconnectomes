@@ -124,7 +124,7 @@ else:
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
         subject_f = proc_subjn + subject
 
-        if os.path.exists(os.path.join('/mnt/munin6/Badea/Lab/mouse/ADDeccode_symlink_pool/', f'{subject_f}_subjspace_coreg.nii.gz')):
+        if os.path.exists(os.path.join(shortcuts_all_folder, f'{subject_f}_subjspace_coreg.nii.gz')):
             print(f'Could not find subject {subject_f} in main diffusion folder but result was found in SAMBA prep folder')
         #elif os.path.exists(os.path.join('/mnt/munin6/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_images/',f'{subject_f}_rd_to_MDT.nii.gz')):
         #    print(f'Could not find subject {subject_f} in main diff folder OR samba init but was in results of SAMBA')
