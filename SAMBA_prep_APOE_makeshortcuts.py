@@ -39,7 +39,18 @@ subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N582
             'N58613', 'N58732', 'N58516', 'N58813', 'N58402']
 #58610, N58612 removed
 subjects = ['N58408', 'N58398', 'N58935', 'N58714', 'N58740', 'N58477', 'N59003', 'N58734', 'N58309', 'N58792', 'N58819', 'N58302', 'N58909', 'N58784', 'N58919', 'N58706', 'N58889', 'N58361', 'N58355', 'N58712', 'N58790', 'N59010', 'N58859', 'N58917', 'N58606', 'N58815', 'N58997', 'N58350', 'N58999', 'N58881', 'N58608', 'N58853', 'N58779', 'N58995', 'N58500', 'N58604', 'N58749', 'N58877', 'N58883', 'N58510', 'N58885', 'N58906', 'N58394', 'N58821', 'N58855', 'N58346', 'N58861', 'N58344', 'N58857', 'N58788', 'N58305', 'N58514', 'N58851', 'N58794', 'N58733', 'N58655', 'N58887', 'N58735', 'N58310', 'N58879', 'N58400', 'N58708', 'N58780', 'N58512', 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58829', 'N58913', 'N58745', 'N58831', 'N58406', 'N58359', 'N58742', 'N58396', 'N58941', 'N58516', 'N58813', 'N58402']
+removed_list = []
 
+subjects_fpath = glob.glob("/mnt/munin6/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/diffusion_prep*")
+subjects = []
+for subject in subjects_fpath:
+    subject_fname = os.path.basename(subject)
+    subjects.append(subject_fname.split('diffusion_prep_')[1])
+
+removed_list = []
+for remove in removed_list:
+    if remove in subjects:
+        subjects.remove(remove)
 
 atlas = "/mnt/munin6/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
 
