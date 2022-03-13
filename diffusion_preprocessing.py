@@ -190,7 +190,7 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             oldfiles = glob.glob(os.path.join(work_dir, f'*.fib.gz*'))
             for oldfile in oldfiles:
                 os.remove(oldfile)
-        cmd = os.path.join(gunniespath,'dti_qa_with_dsi_studio.bash')+f' {coreg_nii} {bvecs} {tmp_mask} {work_dir} {c_string}';
+        cmd = 'bash ' + os.path.join(gunniespath,'dti_qa_with_dsi_studio_weirdcall.bash')+f' {coreg_nii} {bvecs} {tmp_mask} {work_dir} {c_string}';
         os.system(cmd)
 
     #Save the subject space dti results

@@ -11,6 +11,13 @@ import vtk
 import nibabel as nib
 
 
+def close_window(iren):
+    render_window = iren.GetRenderWindow()
+    render_window.Finalize()
+    iren.TerminateApp()
+    del render_window, iren
+
+
 def win_callback(obj, event):
     global size
     if size != obj.GetSize():
@@ -547,6 +554,7 @@ def setup_view(trk_object, colors=None, world_coords=False, show=True, fname=Non
         show_m.render()
         show_m.start()
         del show_m
+
     if record is not None:
         if os.path.exists(record):
             record_name = os.path.basename(record)

@@ -11,40 +11,34 @@ from diffusion_preprocessing import launch_preprocessing
 from file_tools import mkcdir, largerfile
 import shutil
 from argument_tools import parse_arguments
+from bvec_handler import orient_to_str
 
-def orient_to_str(bvec_orient):
-    mystr="_"
-    for i in np.arange(3):
-        if np.abs(bvec_orient[i]) == 1:
-            if bvec_orient[i]<0:
-                mystr = mystr+"mx"
-            else:
-                mystr = mystr+"px"
-        if np.abs(bvec_orient[i]) == 2:
-            if bvec_orient[i] < 0:
-                mystr = mystr + "my"
-            else:
-                mystr = mystr + "py"
-        if np.abs(bvec_orient[i])==3:
-            if bvec_orient[i]<0:
-                mystr = mystr+"mz"
-            else:
-                mystr = mystr+"pz"
-    return mystr
 
-bonusshortcutfolder = "/Volumes/Data/Badea/Lab/19abb14/"
-bonusshortcutfolder = None
-
-gunniespath = "/Users/alex/bass/gitfolder/gunnies/"
+gunniespath = "/Users/jas/bass/gitfolder/gunnies/"
 diffpath = "/Volumes/dusom_civm-atlas/20.abb.15/research/"
-outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/"
+#diffpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/research/"
+#outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/"
 outpath = "/Volumes/Data/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
 
-#bonusshortcutfolder = "/Volumes/Data/Badea/Lab/jacques/APOE_series/19abb14/"
+#bonusshortcutfolder = "/Volumes/Data/Badea/Lab/19abb14/"
+
+SAMBA_inputs_folder = "/Volumes/Data/Badea/Lab/19abb14/"
+shortcuts_all_folder = "/Volumes/Data/Badea/Lab/mouse/APOE_symlink_pool_allfiles/"
+shortcuts_all_folder = None
 
 subjects = ["N58214","N58215","N58216","N58217","N58218","N58219","N58221","N58222","N58223","N58224","N58225","N58226","N58228",
             "N58229","N58230","N58231","N58232","N58633","N58634","N58635","N58636","N58649","N58650","N58651","N58653","N58654"]
+
+subjects = ['N57462']
+
 #atlas = "/Volumes/Data/Badea/Lab/atlases/chass_symmetric3/chass_symmetric3_DWI.nii.gz"
+
+removed_list = ['N58610', 'N58612', 'N58613','N58732']
+for remove in removed_list:
+    if remove in subjects:
+        subjects.remove(remove)
+
+print(subjects)
 
 subject_processes, function_processes = parse_arguments(sys.argv, subjects)
 
@@ -108,18 +102,22 @@ if subject_processes>1:
         pool = MyPool(subject_processes)
     else:
         pool = mp.Pool(subject_processes)
-    results = pool.starmap_async(launch_preprocessing, [(proc_subjn+subject,
-                                                         largerfile(glob.glob(os.path.join(os.path.join(diffpath, "diffusion*" + subject + "*")))[0]),
-                                                         outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                                                         gunniespath, function_processes, masking, ref, transpose,
-                                                         overwrite, denoise, recenter, verbose)
-                                                        for subject in subjects]).get()
+    results = pool.starmap_async(launch_preprocessing, [launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, SAMBA_inputs_folder,
+                                 shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter,
+                             recenter, verbose) for subject in subjects]).get()
 else:
     for subject in subjects:
         max_size=0
         subjectpath = glob.glob(os.path.join(os.path.join(diffpath, "diffusion*"+subject+"*")))[0]
+        subject_outpath = os.path.join(outpath, 'diffusion_prep_' + proc_subjn + subject)
         max_file=largerfile(subjectpath)
-        #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        launch_preprocessing(proc_subjn+subject, max_file, outpath, cleanup, nominal_bval, bonusshortcutfolder,
-         gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter, verbose)
-        #results.append(launch_preprocessing(subject, max_file, outpath))
+        if os.path.exists(os.path.join(subject_outpath, f'{subject}_subjspace_fa.nii.gz')) and not overwrite:
+            print(f'already did subject {subject}')
+        elif os.path.exists(os.path.join('/Volumes/Badea/Lab/APOE_symlink_pool/', f'{subject}_subjspace_coreg.nii.gz')) and not overwrite:
+            print(f'Could not find subject {subject} in main diffusion folder but result was found in SAMBA prep folder')
+        elif os.path.exists(os.path.join('/Volumes/Data/Badea/Lab/mouse/VBM_20APOE01_chass_symmetric3_allAPOE-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_NoNameYet_n32_i5/reg_images/',f'{subject}_rd_to_MDT.nii.gz')) and not overwrite:
+            print(f'Could not find subject {subject} in main diff folder OR samba init but was in results of SAMBA')
+        else:
+            launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, SAMBA_inputs_folder,
+                                 shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose,
+                                 overwrite, denoise, recenter, verbose)

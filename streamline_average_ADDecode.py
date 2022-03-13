@@ -93,7 +93,7 @@ constrain_groups = True
 
 #genotype_noninclusive
 target_tuples = [(9, 1), (24, 1), (58, 57), (64, 57), (22, 1)]
-target_tuples = [(24, 1)]
+#target_tuples = [(24, 1)]
 #genotype_noninclusive_volweighted_fa
 #target_tuples = [(9, 1), (57, 9), (61, 23), (84, 23), (80, 9)]
 
@@ -189,7 +189,7 @@ if project == 'AD_Decode':
 
     #groups to go through
     groups_all = ['APOE4','APOE3']
-    groups= ['APOE3']
+    groups= ['APOE3', 'APOE4']
 
     #groups = ['APOE3']
     #groups = ['Male','Female']
@@ -262,7 +262,7 @@ for target_tuple in target_tuples:
 
         for ref in references:
             grouping_files[ref,'lines']=(os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_lines.py'))
-            #grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
+            grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
             list_files, exists = check_files(grouping_files)
         if not os.path.exists(centroid_file_path) or not np.all(exists) or (not os.path.exists(streamline_file_path) and write_streamlines) or (not os.path.exists(stats_path) and write_stats) or overwrite:
             subjects = groups_subjects[group]
@@ -371,7 +371,7 @@ for target_tuple in target_tuples:
                         groupLines[group, ref]=(stream_ref)
                     else:
                         groupLines[group, ref].extend(stream_ref)
-                        # groupPoints[group, ref].extend(stream_point_ref)
+                        groupPoints[group, ref].extend(stream_point_ref)
                 subj += 1
                 groupstreamlines[group].extend(target_streamlines_set)
 
@@ -423,15 +423,17 @@ for target_tuple in target_tuples:
                 if overwrite:
                     if os.path.exists(grouping_files[ref,'lines']):
                         os.remove(grouping_files[ref,'lines'])
-                    #if os.path.exists(grouping_files[ref,'points']):
-                    #    os.remove(grouping_files[ref,'points'])
+                    if os.path.exists(grouping_files[ref,'points']):
+                        os.remove(grouping_files[ref,'points'])
                 if not os.path.exists(grouping_files[ref,'lines']):
                     if verbose:
                         print(f"Summarized the clusters for group {group} and statistics {ref} at {grouping_files[ref,'lines']}")
                     pickle.dump(groupLines[group, ref], open(grouping_files[ref,'lines'], "wb"))
+                if not os.path.exists(grouping_files[ref, 'points']):
+                    if verbose:
+                        print(f"Summarized the clusters for group {group} and statistics {ref} at {grouping_files[ref,'lines']}")
+                    pickle.dump(groupPoints[group, ref], open(grouping_files[ref,'points'], "wb"))
             pickle.dump(groupLines[group, 'ln'], open(grouping_files['ln', 'lines'], "wb"))
-                    #pickle.dump(groupPoints[group, ref], grouping_files[ref,'points'])
-
 
         else:
             print(f'Centroid file was found at {centroid_file_path}, reference files for {references}')

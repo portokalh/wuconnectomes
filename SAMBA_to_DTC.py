@@ -12,7 +12,7 @@ import getpass
 #project = ["AD_Decode", "APOE"]
 #project = "APOE"
 #project = "AMD"
-project = 'AD_Decode'
+project = 'APOE'
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"

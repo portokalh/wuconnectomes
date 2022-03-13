@@ -38,7 +38,7 @@ target_tuples = [(58, 57)]
 target_tuples = [(64,57)]
 #genotype_noninclusive
 target_tuples = [(9, 1), (24, 1), (58, 57), (64, 57), (22, 1)]
-target_tuples = [(58,57)]
+target_tuples = [(24, 1)]
 #genotype_noninclusive_volweighted_fa
 #target_tuples = [(9, 1), (57, 9), (61, 23), (84, 23), (80, 9)]
 

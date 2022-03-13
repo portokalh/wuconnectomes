@@ -62,5 +62,3 @@ for subject in subjects_list:
         print(f'transferred subject {subject}')
     else:
         print(f'already transferred subject {subject}')
-    if subject == 'N58813':
-        print('HIIIIII')

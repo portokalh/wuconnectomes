@@ -14,7 +14,7 @@ from argument_tools import parse_arguments
 from bvec_handler import orient_to_str
 
 
-gunniespath = "/Users/alex/bass/gitfolder/gunnies/"
+gunniespath = "/Users/jas/bass/gitfolder/gunnies/"
 diffpath = "/Volumes/dusom_civm-atlas/18.abb.11/research/"
 #diffpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/research/"
 #outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/"
@@ -22,8 +22,8 @@ outpath = "/Volumes/Data/Badea/Lab/mouse/APOE_series/diffusion_prep_locale/"
 
 #bonusshortcutfolder = "/Volumes/Data/Badea/Lab/19abb14/"
 
-SAMBA_inputs_folder = "/mnt/munin6/Badea/Lab/19abb14/"
-shortcuts_all_folder = "/mnt/munin6/Badea/Lab/mouse/APOE_symlink_pool_allfiles/"
+SAMBA_inputs_folder = "/Volumes/Data/Badea/Lab/19abb14/"
+shortcuts_all_folder = "/Volumes/Data/Badea/Lab/mouse/APOE_symlink_pool_allfiles/"
 shortcuts_all_folder = None
 
 """
@@ -32,6 +32,17 @@ subjects = ['N58408', 'N58398', 'N58714', 'N58740', 'N58477', 'N58734', 'N58309'
             'N58604', 'N58749', 'N58510', 'N58394', 'N58346', 'N58344', 'N58788', 'N58305', 'N58514', 'N58794',
             'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512', 'N58747', 'N58303',
             'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396', 'N58613', 'N58732', 'N58516', 'N58813', 'N58402']
+            
+subjects = ['N58408', 'N59072', 'N58398', 'N58935', 'N58714', 'N58740', 'N58477', 'N59003', 'N58734', 'N58309', 'N58792'
+, 'N58819', 'N58302', 'N59078', 'N59116', 'N58909', 'N58784', 'N58919', 'N58706', 'N58889', 'N58361', 'N58355', 'N59066'
+, 'N58712', 'N58790', 'N59010', 'N58859', 'N58917', 'N58606', 'N58815', 'N59118', 'N58997', 'N58350', 'N59022', 'N58999'
+, 'N58881', 'N59026', 'N58608', 'N58853', 'N58779', 'N58995', 'N58500', 'N58604', 'N58749', 'N58877', 'N58883', 'N59109'
+, 'N59120', 'N58510', 'N58885', 'N58906', 'N59065', 'N58394', 'N58821', 'N58855', 'N58346', 'N58861', 'N58344', 'N59099'
+, 'N58857', 'N58788', 'N58305', 'N58514', 'N58851', 'N59076', 'N59097', 'N58794', 'N58733', 'N58655', 'N58887', 'N58735'
+, 'N58310', 'N59035', 'N58879', 'N58400', 'N59041', 'N58952', 'N58708', 'N58780', 'N58512', 'N58747', 'N58303', 'N58404'
+, 'N58751', 'N58611', 'N58829', 'N58913', 'N58745', 'N58831', 'N58406', 'N58359', 'N58742', 'N58396', 'N58941', 'N59033'
+, 'N58516', 'N59080', 'N58813', 'N59039', 'N58402']
+
 
 subjects = ['N58305', 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512', 'N58747', 'N58303',
             'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396', 'N58613', 'N58732', 'N58516', 'N58813', 'N58402']
@@ -43,12 +54,19 @@ subjects = ['N58712', 'N58790', 'N58606', 'N58350', 'N58608', 'N58779', 'N58500'
 
 subjects = ['N58302', 'N58612'
     , 'N58784', 'N58706', 'N58361', 'N58355']
-
+subjects = ['N57452','N57456','N57458','N57462']
 """
 subjects_folders = glob.glob(os.path.join(diffpath,'diffusion*/'))
 subjects = []
 for subject_folder in subjects_folders:
     subjects.append(subject_folder.split('diffusion')[1][:6])
+
+
+
+subjects = sorted(subjects)
+subjects = subjects[76:]
+#subjects.reverse()
+#subjects = subjects[:8]
 """
 removed_list = ['N58610', 'N58612', 'N58613','N58732']
 for remove in removed_list:
@@ -56,7 +74,7 @@ for remove in removed_list:
         subjects.remove(remove)
 
 print(subjects)
-subjects = sorted(subjects)
+
 #subjects = ['N58610', 'N58612', 'N58613']
 
 subject_processes, function_processes = parse_arguments(sys.argv, subjects)
@@ -164,11 +182,15 @@ else:
         else:
             launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, SAMBA_inputs_folder,
                                  shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose,
-                                 overwrite, denoise, recenter,
-                                 recenter, verbose)
+                                 overwrite, denoise, recenter, verbose)
         #results.append(launch_preprocessing(subject, max_file, outpath))
 
 """
+
+(subj, raw_nii, outpath, cleanup=False, nominal_bval=4000, SAMBA_inputs_folder=None,
+                         shortcuts_all_folder = None, gunniespath="~/gunnies/", processes=1, masking="bet", ref=None,
+                         transpose=None, overwrite=False, denoise='None', recenter=0, verbose=False)
+
 subjectlist = ["58215","58216","58217","58218","58219","58221","58222","58223","58224","58225","58226","58228","58229","58230","58231","58232","58633","58634","58635","58636","58649","58650","58651","58653","58654"]
 for subj in subjectlist:
     fbvals_new = fbvals.replace("58214", subj)
