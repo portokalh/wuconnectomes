@@ -47,6 +47,8 @@ for subject in subjects_fpath:
     subject_fname = os.path.basename(subject)
     subjects.append(subject_fname.split('diffusion_prep_')[1])
 
+subjects = ['N58952', 'N58995', 'N58997', 'N58999', 'N59003', 'N59010', 'N59022', 'N59026',                                         'N59033', 'N59035', 'N59039', 'N59041', 'N59065', 'N59066', 'N59072', 'N59076',                                         'N59078', 'N59080', 'N59097', 'N59099', 'N59109', 'N59116', 'N59118', 'N59120']
+
 removed_list = []
 for remove in removed_list:
     if remove in subjects:
@@ -89,7 +91,7 @@ if subject_processes>1:
 
     results = pool.starmap_async(launch_preprocessing, [launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, SAMBA_inputs_folder,
                                  shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter,
-                             recenter, verbose) for subject in subjects]).get()
+                              verbose) for subject in subjects]).get()
 else:
     for subject in subjects:
         max_size=0
@@ -104,5 +106,5 @@ else:
         else:
             #print('notyet')
             launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, SAMBA_inputs_folder,
-                                 shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose, overwrite, denoise, recenter,
+                                 shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose, overwrite, denoise,
                              recenter, verbose)
