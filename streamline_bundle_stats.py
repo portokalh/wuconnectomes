@@ -35,19 +35,21 @@ record = ''
 inclusive = False
 symmetric = True
 write_txt = True
-ratio = 100
+ratio = 1
 top_percentile = 100
 num_bundles = 20
 
 selection = 'num_streams'
 coloring = 'bundles_coloring'
 references = ['fa','md']
+references = ['fa']
 cutoffref = 0
 groups = ['Male','Female']
 groups = ['APOE4', 'APOE3']
 non_control = groups[0]
 control = groups[1]
 write_stats = False
+registration = False
 overwrite = True
 
 #genotype_noninclusive
@@ -66,8 +68,8 @@ target_tuples = [(9, 1), (24, 1), (58, 57), (64, 57), (22, 1)]
 
 #groups = ['APOE4', 'APOE3']
 
-target_tuples = [(64, 57)]
-target_tuples = [(9,1)]
+#target_tuples = [(64, 57)]
+#target_tuples = [(9,1)]
 
 changewindow_eachtarget = False
 
@@ -179,6 +181,10 @@ for target_tuple in target_tuples:
     selected_centroids = {}
     selected_sizes = {}
     streamlines = {}
+    num_bundles_group = {}
+
+    ref_lines = {}
+    ref_points = {}
 
     for group in groups:
 
@@ -191,8 +197,6 @@ for target_tuple in target_tuples:
 
         stats_path = os.path.join(stats_folder,
                                   group_str + '_MDT' + ratio_str + '_' + region_connection + '_bundle_stats.xlsx')
-
-        csv_summary = os.path.join(stats_folder, group + region_connection + '_FA.csv')
 
         if not os.path.exists(stats_path) or overwrite:
             if os.path.exists(stats_path):
@@ -220,6 +224,27 @@ for target_tuple in target_tuples:
                                 group_str + '_MDT' + ratio_str + '_' + region_connection + '_streamlines.trk')
 
         # '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/Centroids_MDT_non_inclusive_symmetric_100/APOE4_MDT_ratio_100_ctx-lh-inferiorparietal_left_to_ctx-lh-inferiortemporal_left_streamlines.trk'
+
+        for ref in references:
+            ref_path_lines = os.path.join(centroid_folder,
+                                   group_str + '_MDT' + ratio_str + '_' + region_connection + f'_{ref}_lines.py')
+            ref_path_points = os.path.join(centroid_folder,
+                                   group_str + '_MDT' + ratio_str + '_' + region_connection + f'_{ref}_points.py')
+
+            if os.path.exists(ref_path_points):
+                with open(ref_path_points, 'rb') as f:
+                    ref_points[group,ref] = pickle.load(f)
+            else:
+                txt = f'Could not find file {ref_path_points} for group {group} reference {ref}'
+                raise Exception(txt)
+
+            if os.path.exists(ref_path_lines):
+                with open(ref_path_lines, 'rb') as f:
+                    ref_lines[group,ref] = pickle.load(f)
+            else:
+                txt = f'Could not find file {ref_path_lines} for group {group} reference {ref}'
+                raise Exception(txt)
+
         if os.path.exists(trk_path):
             try:
                 streamlines_data = load_trk(trk_path, 'same')
@@ -227,35 +252,23 @@ for target_tuple in target_tuples:
                 streamlines_data = load_trk_spe(trk_path, 'same')
         streamlines[group] = streamlines_data.streamlines
 
-        ref_lines = {}
-        for ref in references:
-            ref_path = os.path.join(centroid_folder,
-                                   group_str + '_MDT' + ratio_str + '_' + region_connection + f'_{ref}_lines.py')
-            if os.path.exists(ref_path):
-                with open(ref_path, 'rb') as f:
-                    ref_lines[ref] = pickle.load(f)
-            else:
-                txt = f'Could not find file {ref_path} for group {group} reference {ref}'
-                raise Exception(txt)
-
-
         if top_percentile<100:
-            cutoff = np.percentile(ref_lines['fa'], 100 - top_percentile)
-            select_streams = ref_lines[references[cutoffref]] > cutoff
+            cutoff = np.percentile(ref_lines[group,references[cutoffref]], 100 - top_percentile)
+            select_streams = ref_lines[group,references[cutoffref]] > cutoff
             streamlines[group] = list(compress(streamlines[group], select_streams))
             streamlines[group] = nib.streamlines.ArraySequence(streamlines[group])
 
             for ref in references:
-                if np.shape(streamlines[group])[0] != np.shape(ref_lines[ref])[0]:
+                if np.shape(streamlines[group])[0] != np.shape(ref_lines[group][ref])[0]:
                     raise Exception('Inconsistency between streamlines and fa lines')
-                ref_lines[ref] = list(compress(ref_lines[ref], select_streams))
+                ref_lines[group,ref] = list(compress(ref_lines[group,ref], select_streams))
 
         group_qb = QuickBundles(threshold=distance2, metric=metric2)
         group_clusters = group_qb.cluster(streamlines[group])
         #group2_qb = QuickBundles(threshold=distance2, metric=metric2)
         #group2_clusters = group2_qb.cluster(groupstreamlines2)
 
-
+        num_bundles_group[group]=0
         if selection =='num_streams':
             num_streamlines = [np.shape(cluster)[0] for cluster in group_clusters.clusters]
             num_streamlines = group_clusters.clusters_sizes()
@@ -264,7 +277,7 @@ for target_tuple in target_tuples:
             selected_bundles[group].append(group_clusters.clusters[bundle])
             selected_centroids[group].append(group_clusters.centroids[bundle])
             selected_sizes[group].append(group_clusters.clusters_sizes()[bundle])
-
+            num_bundles_group[group]+=1
         bun_num = 0
 
         bundles_ref = {}
@@ -277,7 +290,7 @@ for target_tuple in target_tuples:
             for ref in references:
                 bundle_ref = []
                 for idx in bundle.indices:
-                    bundle_ref.append(ref_lines[ref][idx])
+                    bundle_ref.append(ref_lines[group,ref][idx])
                 bundles_ref[ref].append(bundle_ref)
                 bundles_ref_mean[ref].append(np.mean(bundle_ref))
 
@@ -308,10 +321,11 @@ for target_tuple in target_tuples:
                 print(f'Found {empty_bundles} empty bundles out of {np.size(top_bundles)} for {ref} in group {group} for {region_connection}')
 
 
-    srr = StreamlineLinearRegistration()
-    srm = srr.optimize(static=selected_centroids[control], moving=selected_centroids[non_control])
-    streamlines[control] = srm.transform(streamlines[non_control])
-
+    if registration:
+        srr = StreamlineLinearRegistration()
+        for streamline,i in enumerate(selected_centroids[non_control]):
+            srm = srr.optimize(static=selected_centroids[control], moving=streamline)
+            streamlines[control][i] = srm.transform(streamline)
 
     from dipy.segment.metric import ResampleFeature, AveragePointwiseEuclideanMetric, mdf
 
@@ -319,25 +333,27 @@ for target_tuple in target_tuples:
     #dist_all = np.zeros((np.size(selected_bundles[control]), np.size(selected_bundles[non_control])))
     dist_all = np.zeros((num_bundles, num_bundles))
 
+
+    """
     top_idx_group_control = sorted(range(len(selected_sizes[control])),
                             key=lambda i: selected_sizes[group][i], reverse=True)[:num_bundles]
     top_idx_group_noncontrol = sorted(range(len(selected_sizes[non_control])),
                             key=lambda i: selected_sizes[group][i], reverse=True)[:num_bundles]
-
-    if top_idx_group_control != np.arange(num_bundles) and top_idx_group_noncontrol != np.arange(num_bundles):
+                            
+    if not np.all(top_idx_group_control == np.arange(num_bundles)) or not np.all(top_idx_group_noncontrol == np.arange(num_bundles)):
         warnings.warn('There is indeed a difference between the two')
     else:
         print('no difference between the two')
+    """
 
-    for g3 in range(len(selected_centroids[control][:num_bundles])):
-        for g4 in range(len(selected_centroids[non_control][:num_bundles])):
-            id3 = top_idx_group_control[g3]
-            id4 = top_idx_group_noncontrol[g4]
+    for g3 in np.arange(num_bundles):
+        for g4 in np.arange(num_bundles):
             dist_all[g3, g4] = (mdf(selected_centroids[control][g3], selected_centroids[non_control][g4]))
 
     dist_all_fix = copy.copy(dist_all)
     dist_all_idx = []
-    for i in range(len(selected_centroids[group])):
+    #for i in range(len(selected_centroids[group])):
+    for i in np.arange(num_bundles):
         idx = np.argmin(dist_all_fix[i, :])
         dist_all_idx.append([i, idx])
         dist_all_fix[:, idx] = 100000
@@ -345,34 +361,51 @@ for target_tuple in target_tuples:
     dist_group3_idx = [dist_all_idx[iii][0] for iii in range(num_bundles)]  # size id
     dist_group4_idx = [dist_all_idx[iii][1] for iii in range(num_bundles)]  # size id
 
-    group3List = [top_idx_group_control[dist_all_idx[i][0]] for i in range(num_bundles)]
-    group4List = [top_idx_group_noncontrol[dist_all_idx[i][1]] for i in range(num_bundles)]
+    group_list = {}
+    dist_idx = {}
+    for j,group in enumerate(groups):
+        dist_idx[group] = [dist_all_idx[iii][j] for iii in range(num_bundles)]
+        group_list[group]=([np.arange(num_bundles)[dist_all_idx[i][j]] for i in range(num_bundles)])
 
     import pandas as pd
     from dipy.tracking import utils
 
-    for group in groups:
-        groupcsv = np.zeros((1, 6))
-        for i in range(6):
-            idsize = dist_group3_idx[i]
-            idbundle = group3List[i]
-            fa = []
-            for s in selected_bundles[group][idbundle].indices:
-                temp = np.hstack((idsize * np.ones((num_points2, 1)),
-                                  idbundle * np.ones((num_points2, 1)),
-                                  s * np.ones((num_points2, 1)),
-                                  np.array(range(num_points2)).reshape(num_points2, 1),
-                                  np.array(groupPointsFA3[s]).reshape(num_points2, 1),
-                                  list(utils.length([streamlines[group][s]])) * np.ones((num_points2, 1))))
-                group3csv = np.vstack((group3csv, temp))
-        groupcsv = groupcsv[1:, :]
-        groupcsvDF = pd.DataFrame(groupcsv)
-        groupcsvDF.rename(index=str, columns={0: "Bundle Size Rank", 1: "Bundle ID", 2: "Steamlines ID",
-                                               3: "Point ID", 4: "FA", 5: "length"})
-        csv_summary = os.path.join(stats_folder, group + region_connection + '_FA.csv')
+    num_bundles_full_stats = 10
 
-        groupcsvDF.to_csv(csv_summary, header=["Bundle Size Rank", "Bundle ID", "Streamlines ID",
-                                     "Point ID", "FA", "Length"])
+    for group in groups:
+        groupcsv = np.zeros((1, 5+np.size(references)))
+        references_string = "_".join(references)
+        csv_summary = os.path.join(stats_folder, group + '_' + region_connection + ratio_str + f'_bundle_stats_{references_string}.csv')
+        if not os.path.exists(csv_summary) or overwrite:
+            for i in range(num_bundles_full_stats):
+                idsize = dist_idx[group][i]
+                idbundle = group_list[group][i]
+                fa = []
+                for s in selected_bundles[group][idbundle].indices:
+                    #temp = np.hstack((idsize * np.ones((num_points2, 1)),
+                    #                  idbundle * np.ones((num_points2, 1)),
+                    #                  s * np.ones((num_points2, 1)),
+                    #                  np.array(range(num_points2)).reshape(num_points2, 1),
+                    #                  list(utils.length([streamlines[group][s]])) * np.ones((num_points2, 1)),
+                    #                  np.array(ref_points[group, ref][s]).reshape(num_points2, 1)))
+                    temp = np.hstack((idsize * np.ones((num_points2, 1)),
+                                      idbundle * np.ones((num_points2, 1)),
+                                      s * np.ones((num_points2, 1)),
+                                      np.array(range(num_points2)).reshape(num_points2, 1),
+                                      list(utils.length([streamlines[group][s]])) * np.ones((num_points2, 1))))
+                    for ref in references:
+                        temp = np.hstack((temp,np.array(ref_points[group, ref][s]).reshape(num_points2, 1)))
+                    groupcsv = np.vstack((groupcsv, temp))
+            groupcsvDF = pd.DataFrame(groupcsv)
+            groupcsvDF.rename(index=str, columns={0: "Bundle Size Rank", 1: "Bundle ID", 2: "Steamlines ID",
+                                                   3: "Point ID", 4: "length"})
+            for i,ref in enumerate(references):
+                groupcsvDF.rename(index=str, columns={5+i: ref})
+            print('writing')
+            groupcsvDF.to_csv(csv_summary, header=["Bundle Size Rank", "Bundle ID", "Streamlines ID", "Point ID", "Length"] + references)
+            print(f'Writing bundle stats for {group} and {region_connection} to {csv_summary}')
+        else:
+            print(f'The file {csv_summary} already exists and no overwrite enabled: skipping')
 
 
 

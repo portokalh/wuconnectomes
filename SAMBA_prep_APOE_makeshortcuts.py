@@ -47,7 +47,9 @@ for subject in subjects_fpath:
     subject_fname = os.path.basename(subject)
     subjects.append(subject_fname.split('diffusion_prep_')[1])
 
-subjects = ['N58952', 'N58995', 'N58997', 'N58999', 'N59003', 'N59010', 'N59022', 'N59026',                                         'N59033', 'N59035', 'N59039', 'N59041', 'N59065', 'N59066', 'N59072', 'N59076',                                         'N59078', 'N59080', 'N59097', 'N59099', 'N59109', 'N59116', 'N59118', 'N59120']
+subjects = ['N58952', 'N58995', 'N58997', 'N58999', 'N59003', 'N59010', 'N59022', 'N59026', 'N59033', 'N59035',
+            'N59039', 'N59041', 'N59065', 'N59066', 'N59072', 'N59076', 'N59078', 'N59080', 'N59097', 'N59099',
+            'N59109', 'N59116', 'N59118', 'N59120']
 
 removed_list = []
 for remove in removed_list:

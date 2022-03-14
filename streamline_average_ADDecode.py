@@ -71,7 +71,7 @@ write_streamlines = True
 allow_preprun = False
 verbose=True
 picklesave=True
-overwrite=True
+overwrite=False
 inclusive = False
 symmetric = True
 write_stats = True
@@ -223,6 +223,7 @@ metric1 = AveragePointwiseEuclideanMetric(feature=feature1)
 feature2 = ResampleFeature(nb_points=num_points2)
 metric2 = AveragePointwiseEuclideanMetric(feature=feature2)
 
+overwrite=True
 
 for target_tuple in target_tuples:
 
@@ -343,7 +344,7 @@ for target_tuple in target_tuples:
                             # Convert streamline to voxel coordinates
                             entire = _to_voxel_coordinates(target_streamlines_set[sl], lin_T, offset)
                             i, j, k = entire.T
-                            ref_values = list(OrderedDict.fromkeys(ref_data[i, j, k]))
+                            ref_values = ref_data[i, j, k]
                             stream_point_ref.append(ref_values)
                             stream_ref.append(np.mean(ref_values))
                     else:
