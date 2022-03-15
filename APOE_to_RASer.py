@@ -13,6 +13,7 @@ subjects_list = ["N58214", "N58215",
                 'N58514', 'N58794', 'N58733', 'N58655', 'N58735', 'N58310', 'N58400', 'N58708', 'N58780', 'N58512',
                 'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
                 'N58613', 'N58732', 'N58516', 'N58402']
+subjects_list = ["N58831","N59022","N59026","N59033","N59035","N59039","N59041","N59065","N59066","N59072","N59076","N59078","N59080","N59097","N59099","N59109","N59116","N59118","N59120"]
 #removed 'N58398' could not find
 computer_name = socket.gethostname()
 
@@ -31,6 +32,8 @@ subjects_list = []
 for subject in subjects_all:
     subject_name = os.path.basename(subject)
     subjects_list.append(subject_name[:6])
+subjects_list.sort()
+subjects_list = subjects_list[:]
 print(subjects_list)
 mkcdir(output_folder)
 
