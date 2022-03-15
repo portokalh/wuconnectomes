@@ -14,10 +14,13 @@ subjects = ["N58214", "N58215", "N58216", "N58217", "N58218", "N58219", "N58221"
         'N58747', 'N58303', 'N58404', 'N58751', 'N58611', 'N58745', 'N58406', 'N58359', 'N58742', 'N58396',
         'N58613', 'N58732', 'N58516', 'N58402']
 subjects = ['N57437', 'N57442', 'N57446', 'N57447', 'N57449', 'N57451', 'N57496', 'N57498', 'N57500', 'N57502', 'N57504', 'N57513', 'N57515', 'N57518', 'N57520', 'N57522', 'N57546', 'N57548', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709']
-
+#subjects = ["N59120"]
 diffpath = '/mnt/paros_MRI/jacques/APOE/DWI_allsubj_RAS'
+#diffpath = '/Users/jas/jacques/APOE_testing/labels'
 verbose = True
 ROI_excel = "/mnt/paros_MRI/jacques/atlases/CHASSSYMM3AtlasLegends.xlsx"
+#ROI_excel = '/Volumes/Data/Badea/Lab/atlases/CHASSSYMM3AtlasLegends.xlsx'
+overwrite=True
 
 for subject in subjects:
 	labelmask, labelaffine, labelpath = getlabelmask(diffpath, subject, verbose)
@@ -29,7 +32,7 @@ for subject in subjects:
 
 	converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = atlas_converter(ROI_excel)
 
-	labeloutpath = labelpath.replace('.nii.gz','_lr_ordered.nii.gz')
-	if not os.path.isfile(labeloutpath):
-	    labelmask = convert_labelmask(labelmask, converter_comb, atlas_outpath=labeloutpath,
+	labeloutpath = labelpath.replace('_labels','_labels_lr_ordered')
+	if not os.path.isfile(labeloutpath) or overwrite:
+	    labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
 		                  affine_labels=labelaffine)
