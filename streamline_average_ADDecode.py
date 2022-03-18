@@ -5,30 +5,30 @@ from dipy.io.streamline import load_trk, save_trk
 from dipy.segment.metric import ResampleFeature, AveragePointwiseEuclideanMetric,mdf
 from dipy.io.image import load_nifti
 import warnings
-from dipy.viz import window, actor
-from time import sleep
+
 from dipy.tracking.streamline import set_number_of_points
 from dipy.tracking.streamline import transform_streamlines
 import os, glob
-from tract_save import unload_trk
 import pickle
-from dipy.tracking.utils import connectivity_matrix
 from nifti_handler import getlabeltypemask
 from file_tools import mkcdir, check_files
 from tract_handler import ratio_to_str, gettrkpath
-from convert_atlas_mask import convert_labelmask, atlas_converter
+from convert_atlas_mask import atlas_converter
 import errno
 import socket
-from dipy.segment.clustering import ClusterCentroid
-from dipy.tracking.streamline import Streamlines
-from tract_visualize import show_bundles, setup_view
 from tract_save import save_trk_header
 from excel_management import M_grouping_excel_save, extract_grouping
 import sys
 from argument_tools import parse_arguments_function
 from connectome_handler import connectivity_matrix_func
 from dipy.tracking.utils import length
-
+from dipy.viz import window, actor
+from time import sleep
+from dipy.segment.clustering import ClusterCentroid
+from dipy.tracking.streamline import Streamlines
+from tract_visualize import show_bundles, setup_view
+from dipy.tracking.utils import connectivity_matrix
+from tract_save import unload_trk
 
 def get_grouping(grouping_xlsx):
     print('not done yet')

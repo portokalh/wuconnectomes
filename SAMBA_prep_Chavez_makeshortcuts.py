@@ -13,18 +13,15 @@ import shutil
 from argument_tools import parse_arguments
 from bvec_handler import orient_to_str
 
-gunniespath = "/Users/jas/bass/gitfolder/gunnies/"
+
+gunniespath = "~/gunnies/"
+mainpath="/Volumes/Data/Badea/Lab/"
 diffpath = "/Volumes/Data/Badea/Lab/RaulChavezValdez/"
-# diffpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/research/"
-# outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/"
-outpath = "/Volumes/Data/Badea/Lab/mouse/Chavez_series/diffusion_prep_locale/"
 
-# bonusshortcutfolder = "/Volumes/Data/Badea/Lab/19abb14/"
-
-SAMBA_inputs_folder = "/Volumes/Data/Badea/Lab/Chavez_prep/"
-shortcuts_all_folder = "/Volumes/Data/Badea/Lab/mouse/Chavez_symlink_pool_allfiles/"
-SAMBA_inputs_folder = None
-shortcuts_all_folder = None
+#outpath = "/Users/alex/jacques/APOE_temp"
+outpath = "/mnt/munin6/Badea/Lab/mouse/Chavez_series/diffusion_prep_locale/"
+SAMBA_inputs_folder = "/mnt/munin6/Badea/Lab/Chavez_prep/"
+shortcuts_all_folder = "/mnt/munin6/Badea/Lab/mouse/Chavez_symlink_pool_allfiles/"
 
 if SAMBA_inputs_folder is not None:
     mkcdir(SAMBA_inputs_folder)
@@ -32,7 +29,6 @@ if shortcuts_all_folder is not None:
     mkcdir(shortcuts_all_folder)
 mkcdir(outpath)
 subjects = ['C_20220124_001', 'C_20220124_002', 'C_20220124_003', 'C_20220124_004', 'C_20220124_005', 'C_20220124_006', 'C_20220124_007']
-#subjects = ['C_20220124_007']
 
 """
 subjects_folders = glob.glob(os.path.join(diffpath,'diffusion*/'))

@@ -242,7 +242,7 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, id
     if outpath is None:
         base, ext = splitext(fbvals)
     else:
-        base=str(outpath)+os.path.basename(fbvals).replace(".txt","")
+        base=os.path.join(outpath,os.path.basename(fbvals).replace(".txt",""))
         ext=".txt"
 
     fbvals = base + identifier + ext
@@ -460,18 +460,21 @@ def find_bval_bvecs(subjectpath, subject=""):
     fbvals=glob.glob(os.path.join(subjectpath,"input_bvals.txt"))
     fbvecs=glob.glob(os.path.join(subjectpath, "*input_gradient_matrix*"))
     bxhs=glob.glob(os.path.join(subjectpath, "*.bxh*"))
+    fbvals_txt = glob.glob(os.path.join(subjectpath,"*bvals.txt"))
     if np.size(fbtable)>0:
-        bvals=[]
-        bvecs=[]
+        fbvals=[]
+        fbvecs=[]
         fbtable=fbtable[0]
         with open(fbtable, 'rb') as source:
             for line in source:
                 bvals_all = str(line).split("'")[1]
                 bvals_all = bvals_all.split("\\n")[0]
                 bvals_all = bvals_all.split("\\t")
-                bvals.append(float(bvals_all[0]))
-                bvecs.append([float(bvals_all[1]), float(bvals_all[2]), float(bvals_all[3])])
-        return np.array(bvals), np.array(bvecs)
+                fbvals.append(float(bvals_all[0]))
+                fbvecs.append([float(bvals_all[1]), float(bvals_all[2]), float(bvals_all[3])])
+        #return np.array(bvals), np.array(bvecs)
+        fbvals = np.array(fbvals)
+        fbvecs = np.array(fbvecs)
     elif np.size(fbvals) > 0 and np.size(fbvecs) > 0:
         fbvals = fbvals[0]
         fbvecs = fbvecs[0]
@@ -482,12 +485,15 @@ def find_bval_bvecs(subjectpath, subject=""):
         fbvals, fbvecs, _, _, _, _ = extractbvec_fromheader(bxhpath,
                                                             fileoutpath=os.path.join(subjectpath, subject),
                                                             save="all")
+    elif np.size(fbvals_txt) > 0:
+        fbvecs_txt = glob.glob(os.path.join(subjectpath, "*bvec*.txt"))
+        if np.size(fbvals_txt)==1 and np.size(fbvecs_txt)==1:
+            fbvals, fbvecs = read_bval_bvec(fbvals_txt[0], fbvecs_txt[0])
+        else:
+            raise Exception('Too many possible bvalue files in folder')
     else:
         raise Exception("Sorry, nothing here looks like it could serve as a way to extract bvalues")
-
-        bvals, bvecs = read_bval_bvec(fbvals, fbvecs)
-
-        return bvals, bvecs
+    return fbvals, fbvecs
 
 
 def writebval(bvals, outpath, subject, writeformat = "line", overwrite=False):
@@ -515,12 +521,9 @@ def writebval(bvals, outpath, subject, writeformat = "line", overwrite=False):
 def writebvec(bvecs, outpath, subject, writeformat = "line", overwrite=False):
     
     if os.path.isdir(outpath):
-        bvec_file = os.path.join(outpath, subject+"_bvals.txt")
+        bvec_file = os.path.join(outpath, subject+"_bvecs.txt")
     else:
         bvec_file = outpath
-    
-    if os.path.exists(bvec_file) and overwrite:
-        os.remove(bvec_file)
 
     if writeformat=="dsi":
         with open(bvec_file, 'w') as File_object:
@@ -533,8 +536,19 @@ def writebvec(bvecs, outpath, subject, writeformat = "line", overwrite=False):
                     File_object.write(str(bvec)+"\t")
                 File_object.write("\n")
             File_object.close()
-    else:
-        shutil.copyfile(bvecs[0], bvec_file)
+    elif writeformat=="line":
+        with open(bvec_file, 'w') as File_object:
+            for i in [0,1,2]:
+                for j in np.arange(np.shape(bvecs)[0]):
+                    if bvecs[j,i]==0:
+                        bvec=0
+                    elif bvecs[j,i]==1:
+                        bvec=1
+                    else:
+                        bvec=bvecs[j,i]
+                    File_object.write(str(bvec)+" ")
+            File_object.close()
+        #shutil.copyfile(bvecs[0], bvec_file)
         
     return bvec_file
 
@@ -707,6 +721,7 @@ def extractbvals_research(dwipath, subject, outpath=None, writeformat="tab", fix
                 if fix:
                     fix_bvals_bvecs(fbvals, fbvecs)
 
+import shutil
 
 def extractbvals(dwipath, subject, outpath=None, writeformat="tab", fix=True, overwrite=False):
 
@@ -726,7 +741,10 @@ def extractbvals(dwipath, subject, outpath=None, writeformat="tab", fix=True, ov
             if (np.size(fbvals) > 0 and np.size(fbvecs) > 0) and not overwrite and fix:
                 fbvals = fbvals[0]
                 fbvecs = fbvecs[0]
-                fix_bvals_bvecs(fbvals, fbvecs)
+                if outpath != subjectpath:
+                    shutil.copy(fbvals,outpath)
+                    shutil.copy(fbvecs,outpath)
+                fix_bvals_bvecs(fbvals, fbvecs,outpath=outpath)
             else:
                 bvals, bvecs = find_bval_bvecs(subjectpath)
                 bval_file, bvec_file = writebfiles(bvals, bvecs, outpath, subject, writeformat = writeformat, overwrite=overwrite)

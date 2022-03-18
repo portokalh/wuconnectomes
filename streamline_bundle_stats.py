@@ -28,6 +28,20 @@ target_tuples = [(80, 58)]
 computer_name = socket.gethostname()
 
 project = 'AD_Decode'
+#genotype_noninclusive
+#target_tuples = [(9, 1), (24, 1), (58, 57), (64, 57), (22, 1)]
+#genotype_noninclusive_volweighted_fa
+#target_tuples = [(9, 1), (57, 9), (61, 23), (84, 23), (80, 9)]
+
+#sex_noninclusive
+#target_tuples = [(64, 57), (58, 57), (9, 1), (64, 58), (80,58)]
+#target_tuples = [(64,57)]
+#sex_noninclusive_volweighted_fa
+#target_tuples = [(58, 24), (58, 30), (64, 30), (64, 24), (58,48)]
+
+#target_tuples = [(9,1)]
+#groups = ['APOE4', 'APOE3']
+
 
 fixed = True
 record = ''
@@ -35,7 +49,7 @@ record = ''
 inclusive = False
 symmetric = True
 write_txt = True
-ratio = 1
+ratio = 100
 top_percentile = 100
 num_bundles = 20
 
@@ -51,25 +65,6 @@ control = groups[1]
 write_stats = False
 registration = False
 overwrite = True
-
-#genotype_noninclusive
-target_tuples = [(9, 1), (24, 1), (58, 57), (64, 57), (22, 1)]
-#genotype_noninclusive_volweighted_fa
-#target_tuples = [(9, 1), (57, 9), (61, 23), (84, 23), (80, 9)]
-
-#sex_noninclusive
-#target_tuples = [(64, 57), (58, 57), (9, 1), (64, 58), (80,58)]
-#target_tuples = [(64,57)]
-#sex_noninclusive_volweighted_fa
-#target_tuples = [(58, 24), (58, 30), (64, 30), (64, 24), (58,48)]
-
-#target_tuples = [(9,1)]
-#target_tuples = [(9,1)]
-
-#groups = ['APOE4', 'APOE3']
-
-#target_tuples = [(64, 57)]
-#target_tuples = [(9,1)]
 
 changewindow_eachtarget = False
 
@@ -102,10 +97,6 @@ elif 'blade' in computer_name:
 else:
     raise Exception('No other computer name yet')
 
-# target_tuple = (24,1)
-# target_tuple = [(58, 57)]
-# target_tuples = [(64, 57)]
-
 
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
@@ -113,7 +104,6 @@ if ratio_str == '_all':
     folder_ratio_str = ''
 else:
     folder_ratio_str = ratio_str.replace('_ratio', '')
-# target_tuple = (9,77)
 
 _, _, index_to_struct, _ = atlas_converter(ROI_legends)
 
@@ -329,7 +319,6 @@ for target_tuple in target_tuples:
 
     from dipy.segment.metric import ResampleFeature, AveragePointwiseEuclideanMetric, mdf
 
-    num_bundles = 20
     #dist_all = np.zeros((np.size(selected_bundles[control]), np.size(selected_bundles[non_control])))
     dist_all = np.zeros((num_bundles, num_bundles))
 
@@ -396,6 +385,7 @@ for target_tuple in target_tuples:
                     for ref in references:
                         temp = np.hstack((temp,np.array(ref_points[group, ref][s]).reshape(num_points2, 1)))
                     groupcsv = np.vstack((groupcsv, temp))
+                    groupcsv = groupcsv[1:, :]
             groupcsvDF = pd.DataFrame(groupcsv)
             groupcsvDF.rename(index=str, columns={0: "Bundle Size Rank", 1: "Bundle ID", 2: "Steamlines ID",
                                                    3: "Point ID", 4: "length"})

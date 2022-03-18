@@ -11,7 +11,7 @@ from diff_preprocessing import make_tensorfit
 from dipy.io.image import load_nifti
 import shutil
 from convert_atlas_mask import convert_labelmask, atlas_converter
-
+import errno
 
 def getfa(mypath, subject, bvec_orient, verbose=None):
 
@@ -421,6 +421,13 @@ def getmask(mypath, subject, masktype = "subjspace", verbose=None):
     elif np.size(maskpath)>1:
         raise Warning("too many masks fitting parameters!!")
 
+
+def get_diff_ref(label_folder, subject, ref):
+    diff_path = os.path.join(label_folder,f'{subject}_{ref}_to_MDT.nii.gz')
+    if os.path.exists(diff_path):
+        return diff_path
+    else:
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), diff_path)
 
 def move_bvals(mypath, subject, diffpathnew):
 

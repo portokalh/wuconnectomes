@@ -13,13 +13,63 @@ import getpass
 #project = "APOE"
 #project = "AMD"
 project = 'APOE'
+project = 'AMD'
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
 SAMBA_headfile_dir = os.path.join(mainpath, "samba_startup_cache")
 file_ids = ["coreg", "subjspace_fa", "subjspace_b0", "bval", "bvec", "subjspace_mask", "reference", "subjspace_dwi", "relative_orientation"]
+
 if project == 'AMD':
     file_ids = ["relative_orientation"]
+
+
+if project == 'Chavez':
+    SAMBA_mainpath = os.path.join(mainpath, "mouse")
+
+    #SAMBA_projectname = "VBM_20APOE01_chass_symmetric3_allAPOE"
+    SAMBA_projectname = "VBM_22_Chavez"
+
+    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "jas297_SAMBA_APOE.headfile")
+
+    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "tbd.headfile")
+
+    gunniespath = "~/gunnies/"
+    recenter = 0
+    # SAMBA_prep_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-inputs")
+    #SAMBA_prep_folder = os.path.join(mainpath, "APOE_symlink_pool")
+    #SAMBA_prep_folder = os.path.join(mainpath, '19abb14')
+    SAMBA_prep_folder = os.path.join(mainpath, "mouse","Chavez_symlink_pool_allfiles")
+
+    atlas_labels = os.path.join(mainpath,"atlases","chass_symmetric3","chass_symmetric3_labels.nii.gz")
+
+    DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_DB/Projects/21.chavez.01/Analysis/DWI_allsubj/"
+    DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_DB/Projects/21.chavez.01/Analysis/DWI_allsubj/"
+
+    SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-results", "connectomics")
+    SAMBA_work_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-work")
+    orient_string = os.path.join(SAMBA_prep_folder, "relative_orientation.txt")
+    superpose = False
+    copytype = "truecopy"
+    overwrite = False
+    preppath = None
+    subjects = ['C_20220124_001', 'C_20220124_002', 'C_20220124_003', 'C_20220124_004', 'C_20220124_005', 'C_20220124_006', 'C_20220124_007']
+
+    #subjects_folders = glob.glob(os.path.join(SAMBA_work_folder, '*affine.mat/'))
+
+    """
+    subjects_all = glob.glob(os.path.join(SAMBA_work_folder, 'preprocess','*_dwi_masked.nii.gz'))
+    subjects = []
+    for subject in subjects_all:
+        subject_name = os.path.basename(subject)
+        subjects.append(subject_name[:6])
+    """
+
+    removed_list = []
+    for remove in removed_list:
+        if remove in subjects:
+            subjects.remove(remove)
+
 
 if project == "AD_Decode":
 

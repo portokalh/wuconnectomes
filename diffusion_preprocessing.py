@@ -7,6 +7,7 @@ from transform_handler import img_transform_exec, space_transpose, affine_superp
 import glob
 from basic_LPCA_denoise import basic_LPCA_denoise_func
 from mask_handler import applymask_samespace, median_mask_make
+import numpy as np
 import warnings
 import time
 
@@ -16,7 +17,6 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
 
     proc_name ="diffusion_prep_" # Not gonna call it diffusion_calc so we don't assume it does the same thing as the civm pipeline
     work_dir=os.path.join(outpath,proc_name+subj)
-    overwrite = False
     """
     for filePath in glob.glob(os.path.join(work_dir,'*')):
         modTimesinceEpoc = os.path.getmtime(filePath)
@@ -31,9 +31,9 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
 
     sbatch_folder =os.path.join(work_dir,"sbatch")
     mkcdir(sbatch_folder)
-    nii_path = os.path.join(work_dir,'nii4D_'+subj + '.nii.gz')
-    if not os.path.exists(nii_path):
-        shutil.copy(raw_nii, nii_path)
+    #nii_path = os.path.join(work_dir,'nii4D_'+subj + '.nii.gz')
+    #if not os.path.exists(nii_path):
+    #    shutil.copy(raw_nii, nii_path)
     nii_name=os.path.split(raw_nii)[1]
     niifolder = os.path.dirname(raw_nii)
     ext = ".nii.gz"
@@ -58,9 +58,9 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     orient_string = os.path.join(work_dir,"relative_orientation.txt")
 
     if shortcuts_all_folder is not None:
-        raw_nii_link = os.path.join(shortcuts_all_folder, f"{subj}_rawnii{ext}")
-        if not os.path.exists(raw_nii_link) or overwrite:
-            buildlink(raw_nii, raw_nii_link)
+        #nii_path_link = os.path.join(shortcuts_all_folder, f"{subj}_rawnii{ext}")
+        #if not os.path.exists(nii_path_link) or overwrite:
+        #    buildlink(nii_path, nii_path_link)
         bvecs_new = os.path.join(shortcuts_all_folder, subj + "_bvecs.txt")
         bvals_new = os.path.join(shortcuts_all_folder, subj + "_bvals.txt")
         if not os.path.exists(bvecs_new) or not os.path.exists(bvals_new) or overwrite:
@@ -75,9 +75,13 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
             select_cmd = f"select_dwi_vols {raw_nii} {bvals} {raw_dwi} {nominal_bval} -m"
             os.system(select_cmd)
         if not os.path.exists(tmp_mask) or overwrite:
-            if masking=="median":
+            if 'median' in masking:
                 tmp = tmp_mask.replace("_mask", "")
-                median_mask_make(raw_dwi, tmp, outpathmask=tmp_mask)
+                if np.size(masking.split('_'))>1:
+                    median_radius = int(masking.split('_')[1])
+                else:
+                    median_radius = 4
+                median_mask_make(raw_dwi, tmp, outpathmask=tmp_mask, median_radius = median_radius, numpass=median_radius)
             elif masking=="bet":
                 tmp=tmp_mask.replace("_mask", "")
                 bet_cmd = f"bet {raw_dwi} {tmp} -m -n -R"
@@ -326,14 +330,14 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
         if not os.path.isfile(linked_file_w) or overwrite:
             buildlink(inputspace, linked_file_w)
         if SAMBA_inputs_folder is not None:
-            warnings.warn('should reach this!')
+            #warnings.warn('should reach this!')
             blinked_file = os.path.join(SAMBA_inputs_folder, f'{subj}_{contrast}{ext}')
             if not os.path.exists(blinked_file) or overwrite:
                 buildlink(inputspace, blinked_file)
                 print(f'build link from {inputspace} to {blinked_file}')
 
         if shortcuts_all_folder is not None:
-            warnings.warn('should reach this!')
+            #warnings.warn('should reach this!')
             blinked_file = os.path.join(shortcuts_all_folder, f'{subj}_{contrast}{ext}')
             if not os.path.exists(blinked_file) or overwrite:
                 buildlink(inputspace, blinked_file)
@@ -368,6 +372,18 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     #    tmp_files = glob.glob(os.path.join(work_dir, '*tmp*'))
     #    for file in tmp_files:
     #        os.remove(file)
+
+    nii_path = os.path.join(work_dir,'nii4D_'+subj + ext)
+    if os.path.exists(nii_path):
+        os.remove(nii_path)
+
+    if cleanup:
+        reg_src = os.path.join(work_dir,'Reg_' + subj + f'_nii4D{ext}.src.gz')
+        if os.path.exists(reg_src):
+            os.remove(reg_src)
+        reg_src_fib = os.path.join(work_dir,'Reg_' + subj + f'_nii4D{ext}.src.gz.dti.fib.gz')
+        if os.path.exists(reg_src):
+            os.remove(reg_src)
 
 
 """

@@ -1,44 +1,38 @@
 import numpy as np
-from dipy.segment.clustering import QuickBundles
-from dipy.io.streamline import load_trk, save_trk
-from dipy.segment.metric import ResampleFeature, AveragePointwiseEuclideanMetric,mdf
-from dipy.io.image import load_nifti
+from dipy.io.streamline import load_trk
 import warnings
-from dipy.viz import window, actor
-from time import sleep
-from dipy.tracking.streamline import set_number_of_points
 from dipy.tracking.streamline import transform_streamlines
 import os, glob
-from tract_save import unload_trk
-import pickle
-from dipy.tracking.utils import connectivity_matrix
 from nifti_handler import getlabeltypemask
 from file_tools import mkcdir
 from tract_handler import ratio_to_str, gettrkpath
-from convert_atlas_mask import convert_labelmask, atlas_converter
-import errno
+from convert_atlas_mask import atlas_converter
 import socket
-from dipy.segment.clustering import ClusterCentroid
-from dipy.tracking.streamline import Streamlines
-from tract_visualize import show_bundles, setup_view
-from tract_save import save_trk_header
-from excel_management import M_grouping_excel_save, extract_grouping
+from excel_management import M_grouping_excel_save
 import sys
 from argument_tools import parse_arguments_function
 from connectome_handler import connectivity_matrix_custom, connectivity_matrix_func
 import random
-from nibabel.streamlines.array_sequence import ArraySequence
 from time import time
 
-def get_grouping(grouping_xlsx):
-    print('not done yet')
+from nibabel.streamlines.array_sequence import ArraySequence
+from dipy.segment.clustering import ClusterCentroid
+from dipy.tracking.streamline import Streamlines
+from tract_visualize import show_bundles, setup_view
+from tract_save import save_trk_header
+from tract_save import unload_trk
+import pickle
+from dipy.tracking.utils import connectivity_matrix
+import errno
+from dipy.segment.metric import ResampleFeature, AveragePointwiseEuclideanMetric,mdf
+from dipy.io.image import load_nifti
+from dipy.viz import window, actor
+from time import sleep
+from dipy.tracking.streamline import set_number_of_points
+from dipy.segment.clustering import QuickBundles
 
-def get_diff_ref(label_folder, subject, ref):
-    diff_path = os.path.join(label_folder,f'{subject}_{ref}_to_MDT.nii.gz')
-    if os.path.exists(diff_path):
-        return diff_path
-    else:
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), diff_path)
+#def get_grouping(grouping_xlsx):
+#    print('not done yet')
 
 project = 'AD_Decode'
 
