@@ -165,6 +165,11 @@ elif project == 'AMD':
     groups_all = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
     groups = ['Paired Initial Control', 'Paired Initial AMD']
 
+    str_identifier = '_MDT' + folder_ratio_str
+
+    target_tuples = [(9, 1), (24, 1), (76, 42), (76, 64), (77, 9), (43, 9)]
+    target_tuples = [(9, 1)]
+    #target_tuples = [(76, 64), (77, 9), (43, 9)]
     removed_list = []
 
 elif project == 'APOE':

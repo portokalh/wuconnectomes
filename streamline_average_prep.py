@@ -79,7 +79,6 @@ if fixed:
 else:
     fixed_str = ''
 
-str_identifier = f'_stepsize_2{ratio_str}_wholebrain_pruned'
 labeltype = 'lrordered'
 verbose = True
 picklesave = True
@@ -127,6 +126,8 @@ if project == 'AD_Decode':
                 'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321', 'S03343', 'S03350', 'S03378', 'S03391',
                 'S03394']
     removed_list = ['S02523']
+    str_identifier = f'_stepsize_2{ratio_str}_wholebrain_pruned'
+
 elif project == 'AMD':
     groups_subjects['testing'] = ['H22825']
     groups_subjects['Initial AMD'] = ['H27640', 'H27778', 'H29020', 'H26637', 'H27680', 'H26765', 'H27017',
@@ -162,8 +163,10 @@ elif project == 'AMD':
     # groups = ['Paired 2-YR Control']
     # groups=[groups[0]]
     subjects = []
+    str_identifier = f'_MDT'
+
     for group in groups:
-        subjects.append(groups_subjects[group])
+        subjects = subjects + groups_subjects[group]
 elif project == 'APOE':
     raise Exception('not implemented')
 else:

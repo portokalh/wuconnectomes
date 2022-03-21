@@ -8,6 +8,32 @@ from file_tools import mkcdir
 from time import time
 from argument_tools import parse_arguments
 from bvec_handler import orient_to_str
+import socket
+
+computer_name = socket.gethostname()
+
+if 'samos' in computer_name:
+    mainpath = '/mnt/paros_MRI/jacques'
+    atlas_legends = mainpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+elif 'santorini' in computer_name or 'hydra' in computer_name:
+    mainpath = '/Volumes/Data/Badea/Lab/human/'
+    atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+elif 'blade' in computer_name:
+    mainpath = '/mnt/munin6/Badea/Lab/human/'
+    atlas_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+else:
+    raise Exception('No other computer name yet')
+
+project = "AMD"
+
+if project == 'AD_Decode':
+    mainpath = os.path.join(mainpath, 'AD_Decode', 'Analysis')
+else:
+    mainpath = os.path.join(mainpath, project)
+
+diff_preprocessed = os.path.join(mainpath, "DWI")
+
+mkcdir([mainpath, diff_preprocessed])
 
 subjects = ["H29056", "H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660", "H29304", "H26890",
             "H29556", "H26862", "H29410", "H26966", "H29403", "H26841", "H21593", "H27126", "H29618", "H27111", "H29627",
@@ -23,8 +49,8 @@ subjects = ["H29056", "H26578", "H29060", "H26637", "H29264", "H26765", "H29225"
             "H26880", "H26890", "H26958", "H26974", "H27017", "H27111", "H27164", "H27381", "H27391", "H27495", "H27610",
             "H27640", "H27680", "H27778", "H27982", "H28115", "H28308", "H28338", "H28373", "H28377", "H28433", "H28437",
             "H28463", "H28532", "H28662", "H28698", "H28748", "H28809", "H28857", "H28861", "H29013", "H29020", "H29025"]
-subjects = ['H21850']
-subjects = ['H26841']
+
+
 subject_processes, function_processes = parse_arguments(sys.argv,subjects)
 
 #"S02230" "S02490" these subjects are strange, to investigate
@@ -39,16 +65,11 @@ for bxhfile in subjbxh:
         break
 """
 
-outpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
-outpath = "/Users/alex/jacques/AMD_TRK_testing/"
-figspath = os.path.join(outpath, "Figures")
-diff_preprocessed = os.path.join(outpath, "DWI_attempted_recreation")
-trkpath = os.path.join(outpath, "TRK_attempted_recreation")
+#outpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
+#outpath = "/Users/alex/jacques/AMD_TRK_testing/"
+diff_preprocessed = os.path.join(mainpath, "DWI")
 
-atlas_legends = outpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-
-
-mkcdir([outpath, figspath, diff_preprocessed, trkpath])
+mkcdir([mainpath, figspath, diff_preprocessed])
 masktype = "FA"
 masktype = "T1"
 masktype = "dwi"
@@ -88,17 +109,23 @@ doprune = True
 classifier = "binary"
 labelslist = []
 bvec_orient = [1,2,-3]
-
 vol_b0 = [0,1,2]
-
 dwi_results = []
 donelist = []
 notdonelist = []
 createmask = masktype
-inclusive = True
+inclusive = False
 denoise = "coreg"
 savefa = True
 make_connectomes = False
+
+stepsize = 2
+symmetric = True
+
+reference_weighting = 'fa'
+volume_weighting = True
+make_tracts = False
+make_connectomes = True
 
 classifiertype = "FA"
 classifiertype = "binary"
@@ -110,10 +137,69 @@ if classifiertype == "FA":
 else:
     classifiertype = "_binary"
 
+if ratio == 1:
+    saved_streamlines = "_all"
+    trk_folder_name = ""
+else:
+    saved_streamlines = "_ratio_" + str(ratio)
+    trk_folder_name = "_" + str(ratio)
+trkpath = os.path.join(mainpath, "TRK_MPCA_fixed"+trk_folder_name)
 
 #atlas_legends = None
 #atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-atlas_legends = outpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+
+ratio = 1
+
+if ratio == 1:
+    saved_streamlines = "_all"
+    trk_folder_name = ""
+else:
+    saved_streamlines = "_ratio_" + str(ratio)
+    trk_folder_name = "_" + str(ratio)
+
+trkpath = os.path.join(mainpath, "TRK_MPCA_fixed")
+trkpath = os.path.join(mainpath, "TRK_MPCA_100")
+trkpath = os.path.join(mainpath, "TRK_MPCA_fixed"+trk_folder_name)
+mkcdir(trkpath)
+
+trkroi = ["wholebrain"]
+if len(trkroi)==1:
+    roistring = "_" + trkroi[0] #+ "_"
+elif len(trkroi)>1:
+    roistring="_"
+    for roi in trkroi:
+        roistring = roistring + roi[0:4]
+    roistring = roistring #+ "_"
+str_identifier = '_stepsize_' + str(stepsize).replace(".","_") + saved_streamlines + roistring
+
+duration1=time()
+
+if forcestart:
+    print("WARNING: FORCESTART EMPLOYED. THIS WILL COPY OVER PREVIOUS DATA")
+
+labelslist = []
+dwi_results = []
+donelist = []
+notdonelist = []
+
+if classifiertype == "FA":
+    classifiertype = "_fa"
+else:
+    classifiertype = "_binary"
+
+if inclusive:
+    inclusive_str = '_inclusive'
+else:
+    inclusive_str = '_non_inclusive'
+
+if symmetric:
+    symmetric_str = '_symmetric'
+else:
+    symmetric_str = '_non_symmetric'
+
+figspath = os.path.join(mainpath,"Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
+
+mkcdir(figspath, trkpath)
 
 if make_connectomes:
     for subject in subjects:
@@ -127,40 +213,36 @@ if make_connectomes:
 
 dwi_results = []
 tract_results = []
-overwrite=True
+
+print(f'Overwrite is {overwrite}')
 
 if subject_processes>1:
     if function_processes>1:
         pool = MyPool(subject_processes)
     else:
         pool = mp.Pool(subject_processes)
-
-    tract_results = pool.starmap_async(create_tracts, [(diff_preprocessed, trkpath, subject, figspath, stepsize,
-                                                        function_processes, str_identifier, ratio, brainmask, classifier,
-                                                        labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
-                                                        verbose) for subject
+    if make_tracts:
+        tract_results = pool.starmap_async(create_tracts, [(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
+                          ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
+                          verbose) for subject
                                                        in subjects]).get()
     if make_connectomes:
         tract_results = pool.starmap_async(tract_connectome_analysis, [(diff_preprocessed, trkpath, str_identifier, figspath,
-                                                                       subject, atlas_legends, bvec_orient, inclusive,
-                                                                       function_processes, forcestart, picklesave, labeltype, verbose)
+                                                                       subject, atlas_legends, bvec_orient, brainmask, inclusive,
+                                                                       function_processes, overwrite, picklesave, labeltype, symmetric, reference_weighting, volume_weighting, verbose)
                                                                      for subject in subjects]).get()
     pool.close()
 else:
     for subject in subjects:
-        tract_results.append(
+        if make_tracts:
+            tract_results.append(
             create_tracts(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
                           ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
                           verbose))
         #get_diffusionattributes(diff_preprocessed, diff_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
-        #                        createmask, overwrite, verbose)
+        #                        masktype, overwrite, verbose)
         if make_connectomes:
             tract_results.append(tract_connectome_analysis(diff_preprocessed, trkpath, str_identifier, figspath, subject,
                                                            atlas_legends, bvec_orient,  brainmask, inclusive,
-                                                           function_processes, forcestart, picklesave, labeltype, verbose))
+                                                           function_processes, overwrite, picklesave, labeltype, symmetric, reference_weighting, volume_weighting, verbose))
     print(tract_results)
-
-# dwi_results.append(diff_preprocessing(datapath, diff_preprocessed, subject, bvec_orient, denoise, savefa,
-#                                     function_processes, createmask, vol_b0, verbose)) ##Unnecessary, replaced by SAMBA_prep
-#dwi_results = pool.starmap_async(diff_preprocessing, [(datapath, diff_preprocessed, subject, bvec_orient, denoise, savefa, function_processes,
-#                                 createmask, vol_b0, verbose) for subject in subjects]).get()
