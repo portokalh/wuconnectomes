@@ -103,7 +103,7 @@ else:
         max_file= os.path.join(subjectpath, "nii4D_"+subject+".nii.gz")
         print(max_file)
         #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
-        if os.path.exists(os.path.join(shortcuts_all_folder,f'{proc_subjn + subject}_fa.nii.gz')):
+        if os.path.exists(os.path.join(shortcuts_all_folder,f'{proc_subjn + subject}_fa.nii.gz')) and os.path.exists(os.path.join(SAMBA_inputs_folder, f'{proc_subjn + subject}_fa.nii.gz')):
             print(f'already did subject {proc_subjn + subject}')
         else:
             #print('notyet')

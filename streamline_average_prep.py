@@ -91,6 +91,7 @@ if project == 'AD_Decode':
 else:
     mainpath = os.path.join(mainpath, project)
 TRK_folder = os.path.join(mainpath, f'TRK_MPCA_MDT{fixed_str}{folder_ratio_str}')
+TRK_folder = os.path.join(mainpath, f'TRK_MDT{fixed_str}{folder_ratio_str}')
 label_folder = os.path.join(mainpath, 'DWI')
 trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
 excel_folder = os.path.join(mainpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
@@ -181,7 +182,11 @@ for remove in removed_list:
 
 _, _, index_to_struct, _ = atlas_converter(ROI_legends)
 labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
-                                                                         labeltype=labeltype, verbose=verbose)
+                    
+                                                     labeltype=labeltype, verbose=verbose)
+
+print(f'Beginning streamline_prep run from {trkpaths} for folder {excel_folder}')
+
 for subject in subjects:
     trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
     if not exists:

@@ -69,7 +69,7 @@ for bxhfile in subjbxh:
 #outpath = "/Users/alex/jacques/AMD_TRK_testing/"
 diff_preprocessed = os.path.join(mainpath, "DWI")
 
-mkcdir([mainpath, figspath, diff_preprocessed])
+mkcdir([mainpath, diff_preprocessed])
 masktype = "FA"
 masktype = "T1"
 masktype = "dwi"
@@ -143,7 +143,7 @@ if ratio == 1:
 else:
     saved_streamlines = "_ratio_" + str(ratio)
     trk_folder_name = "_" + str(ratio)
-trkpath = os.path.join(mainpath, "TRK_MPCA_fixed"+trk_folder_name)
+trkpath = os.path.join(mainpath, "TRK"+trk_folder_name)
 
 #atlas_legends = None
 #atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
@@ -199,7 +199,7 @@ else:
 
 figspath = os.path.join(mainpath,"Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
 
-mkcdir(figspath, trkpath)
+mkcdir([figspath, trkpath])
 
 if make_connectomes:
     for subject in subjects:
