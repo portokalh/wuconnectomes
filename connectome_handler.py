@@ -4,6 +4,7 @@ from numpy import ravel_multi_index
 from collections import defaultdict, OrderedDict
 from dipy.tracking.streamline import Streamlines
 import warnings
+import multiprocessing as mp
 
 def _mapping_to_voxel(affine):
     """Inverts affine and returns a mapping so voxel coordinates. This
@@ -151,7 +152,9 @@ def connectivity_matrix_func(pruned_streamlines_SL, affine_streams, labelmask, i
     pruned_cut = []
     for i in np.arange(n):
         pruned_cut.append(pruned_streamlines_SL[listcut[i]:listcut[i+1]])
-    pool = Pool()
+
+    pool = mp.Pool(function_processes)
+
     if verbose:
         print("The streamline is split into "+str(function_processes)+" of size "+str(np.int(size_SL / n)))
 
@@ -160,12 +163,22 @@ def connectivity_matrix_func(pruned_streamlines_SL, affine_streams, labelmask, i
                                                                           inclusive, symmetric, return_mapping,
                                                                           mapping_as_streamlines,reference_weighting, volume_weighting) for i in np.arange(n)]).get()
 
-    M = np.zeros(np.shape(connectomic_results[0][0]))
+    matrix =  np.zeros(np.shape(connectomic_results[0][0]))
+    matrix_vol = np.zeros(np.shape(connectomic_results[0][0]))
+    matrix_refweighted = np.zeros(np.shape(connectomic_results[0][0]))
+    matrix_vol_refweighted = np.zeros(np.shape(connectomic_results[0][0]))
     grouping = {}
     i=0
     for connectome_results in connectomic_results:
-        M += connectome_results[0]
-        for key, val in connectome_results[1].items():
+        matrix += connectome_results[0]
+        if volume_weighting:
+            matrix_vol += connectome_results[1]
+        if reference_weight is not None:
+            matrix_refweighted += connectome_results[2]
+        if volume_weighting and reference_weight is not None:
+            matrix_vol_refweighted += connectome_results[3]
+
+        for key, val in connectome_results[4].items():
             if key in grouping:
                 grouping[key].extend([j+listcut[i] for j in val])
             else:

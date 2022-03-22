@@ -5,7 +5,7 @@ from dipy.tracking.streamline import transform_streamlines
 import os, glob
 from nifti_handler import getlabeltypemask
 from file_tools import mkcdir
-from tract_handler import ratio_to_str, gettrkpath
+from tract_handler import ratio_to_str, gettrkpath, gettrkpath_testsftp
 from convert_atlas_mask import atlas_converter
 import socket
 from excel_management import M_grouping_excel_save
@@ -14,6 +14,7 @@ from argument_tools import parse_arguments_function
 from connectome_handler import connectivity_matrix_custom, connectivity_matrix_func
 import random
 from time import time
+import getpass
 
 from dipy.viz import window, actor
 from time import sleep
@@ -36,19 +37,50 @@ project = 'AMD'
 
 computer_name = socket.gethostname()
 
+
 samos = False
 if 'samos' in computer_name:
-    mainpath = '/mnt/paros_MRI/jacques/'
+    outpath = '/mnt/paros_MRI/jacques/'
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 elif 'santorini' in computer_name or 'hydra' in computer_name:
     # mainpath = '/Users/alex/jacques/'
-    mainpath = '/Volumes/Data/Badea/Lab/human/'
+    outpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 elif 'blade' in computer_name:
-    mainpath = '/mnt/munin6/Badea/Lab/human/'
+    outpath = '/mnt/munin6/Badea/Lab/human/'
     ROI_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 else:
     raise Exception('No other computer name yet')
+
+
+inpath = 'alex@samos.dhe.duke.edu:/mnt/paros_MRI/jacques/'
+outpath = '/Volumes/Data/Badea/Lab/human/'
+remote=False
+
+if "." and ":" in inpath:
+    if computer_name not in inpath:
+        import paramiko
+        if "@" in inpath:
+            DTC_DWI_folder_split = inpath.split("@")
+            username = DTC_DWI_folder_split[0]
+            server = DTC_DWI_folder_split[1].split(".")[0]
+            password = getpass.getpass()
+        else:
+            server = inpath.split(".")[0]
+            username = getpass.getuser()
+            password = getpass.getpass()
+            DTC_DWI_folder_split = username + "@" + inpath
+        inpath = inpath.split(":")[1]
+        ssh = paramiko.SSHClient()
+        ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
+        #ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(server, username=username, password=password)
+        remote=True
+    else:
+        inpath = inpath.split(":")[1]
+
+if remote:
+    sftp = ssh.open_sftp()
 
 # Setting identification parameters for ratio, labeling type, etc
 ratio = 1
@@ -59,7 +91,7 @@ if ratio_str == '_all':
 else:
     folder_ratio_str = ratio_str.replace('_ratio', '')
 
-inclusive = True
+inclusive = False
 symmetric = True
 fixed = True
 overwrite = False
@@ -86,19 +118,23 @@ picklesave = True
 function_processes = parse_arguments_function(sys.argv)
 print(f'there are {function_processes} function processes')
 
-if project == 'AD_Decode':
-    mainpath = os.path.join(mainpath, project, 'Analysis')
+if project=='AD_Decode':
+    outpath = os.path.join(outpath, project, 'Analysis')
+    inpath = os.path.join(inpath, project, 'Analysis')
 else:
-    mainpath = os.path.join(mainpath, project)
-TRK_folder = os.path.join(mainpath, f'TRK_MPCA_MDT{fixed_str}{folder_ratio_str}')
-TRK_folder = os.path.join(mainpath, f'TRK_MDT{fixed_str}{folder_ratio_str}')
-label_folder = os.path.join(mainpath, 'DWI')
-trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
-excel_folder = os.path.join(mainpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+    outpath = os.path.join(outpath, project)
+    inpath = os.path.join(inpath, project)
+
+TRK_folder = os.path.join(inpath, f'TRK_MPCA_MDT{fixed_str}{folder_ratio_str}')
+TRK_folder = os.path.join(inpath, f'TRK_MDT{fixed_str}{folder_ratio_str}')
+label_folder = os.path.join(outpath, 'DWI')
+#trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
+excel_folder = os.path.join(outpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 
 print(excel_folder)
 mkcdir(excel_folder)
-if not os.path.exists(TRK_folder):
+
+if not remote and os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
 
 # Initializing dictionaries to be filled
@@ -168,6 +204,7 @@ elif project == 'AMD':
 
     for group in groups:
         subjects = subjects + groups_subjects[group]
+
 elif project == 'APOE':
     raise Exception('not implemented')
 else:
@@ -182,13 +219,16 @@ for remove in removed_list:
 
 _, _, index_to_struct, _ = atlas_converter(ROI_legends)
 labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
-                    
                                                      labeltype=labeltype, verbose=verbose)
 
-print(f'Beginning streamline_prep run from {trkpaths} for folder {excel_folder}')
+print(f'Beginning streamline_prep run from {TRK_folder} for folder {excel_folder}')
 
 for subject in subjects:
-    trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
+    if not remote:
+        trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
+    else:
+        trkpath, exists = gettrkpath_testsftp(TRK_folder, subject, str_identifier, sftp = sftp, pruned=False, verbose=verbose)
+
     if not exists:
         txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
         warnings.warn(txt)
@@ -202,14 +242,23 @@ for subject in subjects:
         continue
     else:
         t1 = time()
-        trkdata = load_trk(trkpath, 'same')
+        if remote:
+            temp_path = f'{os.path.join(os.path.expanduser("~"),os.path.basename(trkpath))}'
+            sftp.get(trkpath, temp_path)
+            try:
+                trkdata = load_trk(temp_path, 'same')
+                os.remove(temp_path)
+            except Exception as e:
+                os.remove(temp_path)
+                raise Exception(e)
+        else:
+            load_trk(trkpath, 'same')
         if verbose:
             print(f"Time taken for loading the trk file {trkpath} set was {str((- t1 + time()) / 60)} minutes")
         t2 = time()
         header = trkdata.space_attributes
 
         streamlines_world = transform_streamlines(trkdata.streamlines, np.linalg.inv(labelaffine))
-
         if function_processes == 1:
 
             M, _, _, _, grouping = connectivity_matrix_custom(streamlines_world, np.eye(4), labelmask,
@@ -222,7 +271,8 @@ for subject in subjects:
                                                             inclusive=inclusive,
                                                             symmetric=symmetric, return_mapping=True,
                                                             mapping_as_streamlines=False, reference_weighting=None,
-                                                            volume_weighting=False, verbose=False)
+                                                            volume_weighting=False,
+                                                            function_processes = function_processes, verbose=False)
 
         M_grouping_excel_save(M, grouping, M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
 

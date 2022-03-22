@@ -34,6 +34,8 @@ import os, shutil
 from tract_save import save_trk_header
 from streamline_nocheck import load_trk as load_trk_spe
 import nibabel as nib
+import fnmatch
+
 
 def longstring(string,margin=0):
 
@@ -211,6 +213,28 @@ def gettrkpath(trkpath, subject, str_identifier, pruned=False, verbose=False):
     else:
         print("Could not find "+filepath)
         return filepath, False
+
+def gettrkpath_testsftp(trkpath, subject, str_identifier, sftp = None, pruned=False, verbose=False):
+    #Finds the right trk file based on certain established parameters (folder, subject, extra identifiers)
+    if os.path.isfile(trkpath):
+        if os.path.splitext(trkpath)[1] == ".trk":
+            return trkpath, True
+        else:
+            trkpath = os.path.abspath(trkpath)
+    if pruned:
+        filepath = os.path.join(trkpath,subject + str_identifier + '_pruned.trk')
+    else:
+        filepath = os.path.join(trkpath, subject + str_identifier + '.trk')
+
+    try:
+        sftp.stat(filepath)
+        if verbose:
+            print("Subject " + subject + " was found at " + filepath)
+        return filepath, True
+    except:
+        print("Could not find "+filepath)
+        return filepath, False
+
 
 def get_trk_params(streamlines, verbose = False):
     #Gets extra parameters from a set of streamlines and returns them (num tracts, average/min/max length, std length)
