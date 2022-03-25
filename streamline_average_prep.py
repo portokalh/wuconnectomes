@@ -40,22 +40,24 @@ computer_name = socket.gethostname()
 
 samos = False
 if 'samos' in computer_name:
+    inpath = '/mnt/paros_MRI/jacques/'
     outpath = '/mnt/paros_MRI/jacques/'
     ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 elif 'santorini' in computer_name or 'hydra' in computer_name:
     # mainpath = '/Users/alex/jacques/'
+    inpath = '/Volumes/Data/Badea/Lab/human/'
     outpath = '/Volumes/Data/Badea/Lab/human/'
     ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 elif 'blade' in computer_name:
+    inpath = '/mnt/munin6/Badea/Lab/human/'
     outpath = '/mnt/munin6/Badea/Lab/human/'
     ROI_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
 else:
     raise Exception('No other computer name yet')
 
-
-inpath = 'alex@samos.dhe.duke.edu:/mnt/paros_MRI/jacques/'
-outpath = '/Volumes/Data/Badea/Lab/human/'
-remote=False
+remote=True
+if remote and not 'samos' in computer_name:
+    inpath = 'alex@samos.dhe.duke.edu:/mnt/paros_MRI/jacques/'
 
 if "." and ":" in inpath:
     if computer_name not in inpath:
@@ -72,6 +74,7 @@ if "." and ":" in inpath:
             DTC_DWI_folder_split = username + "@" + inpath
         inpath = inpath.split(":")[1]
         ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
         #ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(server, username=username, password=password)
@@ -252,7 +255,7 @@ for subject in subjects:
                 os.remove(temp_path)
                 raise Exception(e)
         else:
-            load_trk(trkpath, 'same')
+            trkdata = load_trk(trkpath, 'same')
         if verbose:
             print(f"Time taken for loading the trk file {trkpath} set was {str((- t1 + time()) / 60)} minutes")
         t2 = time()

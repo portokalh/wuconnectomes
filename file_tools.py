@@ -13,15 +13,29 @@ import warnings
 import subprocess, pipes
 from scipy.io import loadmat
 
-def mkcdir(folderpaths):
+def mkcdir(folderpaths, remote=False, sftp=None):
     #creates new folder only if it doesnt already exists
-    if np.size(folderpaths) == 1:
-        if not os.path.exists(folderpaths):
-            os.mkdir(folderpaths)
+
+    if not remote:
+        if np.size(folderpaths) == 1:
+            if not os.path.exists(folderpaths):
+                os.mkdir(folderpaths)
+        else:
+            for folderpath in folderpaths:
+                if not os.path.exists(folderpath):
+                    os.mkdir(folderpath)
     else:
-        for folderpath in folderpaths:
-            if not os.path.exists(folderpath):
-                os.mkdir(folderpath)
+        if np.size(folderpaths) == 1:
+            try:
+                sftp.chdir(folderpaths)
+            except:
+                sftp.mkdir(folderpaths)
+        else:
+            for folderpath in folderpaths:
+                try:
+                    sftp.chdir(folderpath)
+                except:
+                    sftp.mkdir(folderpath)
 
 def check_for_duplicates(checklist,checklist2):
     lenlist = np.size(checklist)

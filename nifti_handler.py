@@ -12,6 +12,7 @@ from dipy.io.image import load_nifti
 import shutil
 from convert_atlas_mask import convert_labelmask, atlas_converter
 import errno
+from computer_nav import nii_load_remote, load_nifti_remote, glob_remote
 
 def getfa(mypath, subject, bvec_orient, verbose=None):
 
@@ -155,25 +156,32 @@ def get_reference_info(reference, affine = np.eye(4).astype(np.float32)):
 
     return affine, dimensions, voxel_sizes, voxel_order
 
-def getrefpath(mypath, subject, reference = 'fa', verbose=None):
+def getrefpath(mypath, subject, reference = 'fa', verbose=None, sftp=None):
 
-    subjfolder = glob.glob(os.path.join(mypath, "*" + subject + "*/"))
-    if os.path.exists(os.path.join(mypath,subject+"_subjspace_"+reference+".nii.gz")):
-        refpath = (os.path.join(mypath,subject+"_subjspace_"+reference+".nii.gz"))
-    elif os.path.exists(os.path.join(mypath,subject+"_"+reference+"_RAS.nii.gz")):
-        refpath = (os.path.join(mypath,subject+"_coreg_RAS.nii.gz"))
+    if sftp is None:
+        if os.path.exists(os.path.join(mypath,subject+"_subjspace_"+reference+".nii.gz")):
+            refpath = (os.path.join(mypath,subject+"_subjspace_"+reference+".nii.gz"))
+        elif os.path.exists(os.path.join(mypath,subject+"_"+reference+"_RAS.nii.gz")):
+            refpath = (os.path.join(mypath,subject+"_coreg_RAS.nii.gz"))
 
-    if 'refpath' not in locals():
-        txt = "The subject " + subject + " was not detected, exit"
-        print(txt)
-        send_mail(txt, subject="Error")
-        return None
-
+        if 'refpath' not in locals():
+            txt = "The subject " + subject + " was not detected, exit"
+            print(txt)
+            send_mail(txt, subject="Error")
+            return None
+    else:
+        refpaths = glob_remote(os.path.join(mypath,subject+"_subjspace_"+reference+"*.nii.gz"),sftp)
+        if np.size(refpaths)==1:
+            refpath = refpaths[0]
+        else:
+            for refpath_t in refpaths:
+                if 'RAS' not in refpath_t:
+                    refpath = refpath_t
     return refpath
 
 
 
-def getdiffpath(mypath, subject, denoise="", verbose=None):
+def getdiffpath_old(mypath, subject, denoise="", verbose=None):
 
     if denoise is None:
         denoise=""
@@ -233,12 +241,49 @@ def getdiffpath(mypath, subject, denoise="", verbose=None):
 
     return(fdiffpath)
 
-def extract_nii_info(path, verbose=None):
+def getdiffpath(mypath, subject, denoise="", verbose=None, sftp=None):
+    if denoise is None:
+        denoise=""
+
+    listoptions = [mypath,os.path.join(mypath,subject+"_subjspace_coreg.nii.gz"), os.path.join(mypath,subject+"_coreg_RAS.nii.gz")]
+
+    if sftp is None:
+        for list_option in list_options:
+            if '*' in list_option:
+                option = glob.glob(list_option)
+                if np.size(option) > 0:
+                    fdiffpath = option[0]
+                    break
+            else:
+                if os.path.exists(list_option):
+                    fdiffpath = list_option
+    else:
+        for list_option in list_options:
+            option = sftp.listdir(list_option)
+            if np.size(option) > 0:
+                if np.size(option)>1:
+                    raise Warning("too many diffusion fitting parameters!!")
+                fdiffpath = option[0]
+                break
+
+    if 'fdiffpath' not in locals():
+        txt = "The subject " + subject + " was not detected, exit"
+        print(txt)
+        send_mail(txt, subject="Error")
+        return None
+
+    return fdiffpath
+
+def extract_nii_info(path, verbose=None, sftp=None):
     if verbose:
         txt = "Extracting information from the nifti file located at " + path
         print(txt)
         send_mail(txt, subject="Begin data extraction")
-    img = nib.load(path)
+    if sftp is None:
+        img = nib.load(path)
+    else:
+        nii_load_remote(niipath, sftp)
+
     data = img.get_data()
     vox_size = img.header.get_zooms()[:3]
     affine = img.affine
@@ -247,34 +292,47 @@ def extract_nii_info(path, verbose=None):
     ref_info = get_reference_info(path)
     return data, affine, vox_size, header, ref_info
 
-def getrefdata(mypath, subject, reference, verbose=None):
+def getrefdata(mypath, subject, reference, verbose=None, sftp=None):
 
-    ref_fpath = getrefpath(mypath, subject, reference, verbose=verbose)
+    ref_fpath = getrefpath(mypath, subject, reference, verbose=verbose, sftp=sftp)
     if ref_fpath is None:
         return None, None, None, None, None, None
-    ref_data, affine, vox_size, header, ref_info = extract_nii_info(ref_fpath, verbose)
+    ref_data, affine, vox_size, header, ref_info = extract_nii_info(ref_fpath, verbose,sftp=sftp)
 
     return ref_data, affine, vox_size, ref_fpath, header, ref_info
 
 
-def getdiffdata(mypath, subject, denoise="", verbose=None):
+def getdiffdata(mypath, subject, denoise="", verbose=None,sftp=None):
 
-    diff_fpath = getdiffpath(mypath, subject, denoise=denoise, verbose=verbose)
-    diff_data, affine, vox_size, header, ref_info = extract_nii_info(diff_fpath, verbose)
+    diff_fpath = getdiffpath(mypath, subject, denoise=denoise, verbose=verbose,sftp=sftp)
+    diff_data, affine, vox_size, header, ref_info = extract_nii_info(diff_fpath, verbose,sftp=sftp)
 
     return diff_data, affine, vox_size, diff_fpath, header, ref_info
 
-def get_bvals_bvecs(mypath, subject):
-    try:
-        fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
-        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
-    except IndexError:
-        print(mypath + '/' + subject + '*_bvals.txt')
-        fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
-        fbvecs = glob.glob(mypath + '/' + subject + '*_bvec*.txt')[0]
-        fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
-    print(fbvecs)
-    bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
+def get_bvals_bvecs(mypath, subject,sftp=None):
+    if sftp is None:
+        try:
+            fbvals = glob.glob(mypath + '/' + subject + '*_bvals_fix.txt')[0]
+            fbvecs = glob.glob(mypath + '/' + subject + '*_bvec_fix.txt')[0]
+        except IndexError:
+            print(mypath + '/' + subject + '*_bvals.txt')
+            fbvals = glob.glob(mypath + '/' + subject + '*_bvals.txt')[0]
+            fbvecs = glob.glob(mypath + '/' + subject + '*_bvec*.txt')[0]
+            fbvals, fbvecs = fix_bvals_bvecs(fbvals,fbvecs)
+        print(fbvecs)
+        bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs)
+
+    else:
+        try:
+            fbvals = sftp.listdir(mypath + '/' + subject + '*_bvals_fix.txt')[0]
+            fbvecs = sftp.listdir(mypath + '/' + subject + '*_bvec_fix.txt')[0]
+        except IndexError:
+            print(mypath + '/' + subject + '*_bvals.txt')
+            fbvals = sftp.listdir(mypath + '/' + subject + '*_bvals.txt')[0]
+            fbvecs = sftp.listdir(mypath + '/' + subject + '*_bvec*.txt')[0]
+            fbvals, fbvecs = fix_bvals_bvecs(fbvals, fbvecs,sftp)
+        print(fbvecs)
+        bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs,sftp)
     return bvals, bvecs
 
 
@@ -290,8 +348,8 @@ def getgtab(mypath, subject, bvec_orient=[1,2,3]):
 
     return gtab
 
-def getb0s(mypath, subject):
-    bvals, _ = get_bvals_bvecs(mypath, subject)
+def getb0s(mypath, subject,sftp):
+    bvals, _ = get_bvals_bvecs(mypath, subject,sftp)
     b0s = []
     i=0
     for bval in bvals:
@@ -324,9 +382,32 @@ def getdiffdata_all(mypath, subject, bvec_orient=[1,2,3], denoise="", verbose=No
 
     return fdiff_data, affine, gtab, vox_size, fdiffpath, header, ref_info
 
-def getlabelmask(mypath, subject, verbose=None):
+def getlabelmask(mypath, subject, verbose=None, sftp=None):
 
+    list_options = [mypath + '/' + subject + '/' + subject + '*labels.nii.gz',
+                    mypath + '/*' + subject + '*labels.nii.gz', mypath + '/' + subject + '_labels_RAS.nii.gz', (mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'),
+                    (mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'), (mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz')
+                    (mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz'), (mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz'), (mypath + '/mask.nii.gz')
+                    (mypath + '/mask.nii')]
 
+    if sftp is None:
+        for list_option in list_options:
+            if '*' in list_option:
+                labelsoption = glob.glob(list_option)
+                if np.size(labelsoption) > 0:
+                    labelspath = labelsoption[0]
+                    break
+            else:
+                if os.path.exists(list_option):
+                    labelspath=list_option
+    else:
+        for list_option in list_options:
+            labelsoption = sftp.listdir(list_option)
+            if np.size(labelsoption) > 0:
+                labelspath = labelsoption[0]
+                break
+
+    """       
     labelsoption = glob.glob(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
     print(mypath + '/' + subject + '/' + subject + '*labels.nii.gz')
     if np.size(labelsoption)>0:
@@ -351,10 +432,18 @@ def getlabelmask(mypath, subject, verbose=None):
         labelspath = mypath + '/mask.nii.gz'
     elif os.path.exists(mypath + '/mask.nii'):
         labelspath = mypath + '/mask.nii'
-
+    """
 
     if 'labelspath' in locals():
-        labels, affine_labels = load_nifti(labelspath)
+        if sftp is None:
+            img = nib.load(labelspath)
+        else:
+            img = nii_load_remote(labelspath)
+
+        labels = np.asanyarray(img.dataobj)
+        affine_labels = img.header.get_zooms()[:3]
+
+        #labels, affine_labels = load_nifti(labelspath)
         if verbose:
             print("Label mask taken from " + labelspath)
     else:
@@ -393,7 +482,7 @@ def getlabeltypemask(mypath, subject, ROI_legends, labeltype = '', verbose=False
     return labelmask, labelaffine, labeloutpath, index_to_struct
 
 
-def getmask(mypath, subject, masktype = "subjspace", verbose=None):
+def getmask_old(mypath, subject, masktype = "subjspace", verbose=None):
     if os.path.isfile(mypath):
         if mypath.contains(masktype+'binary_mask.nii.gz'):
             mask, affine_mask = load_nifti(mypath)
@@ -420,6 +509,43 @@ def getmask(mypath, subject, masktype = "subjspace", verbose=None):
         return None, None
     elif np.size(maskpath)>1:
         raise Warning("too many masks fitting parameters!!")
+
+
+def getmask(mypath, subject, masktype = "subjspace", verbose=None, sftp=None):
+    list_options = [mypath, os.path.join(mypath, "*" + subject + "*"), os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz')]
+
+    if sftp is None:
+        for list_option in list_options:
+            if '*' in list_option:
+                maskoption = glob.glob(list_option)
+                if np.size(maskoption) > 0:
+                    maskpath = maskoption[0]
+                    break
+            else:
+                if os.path.exists(list_option):
+                    maskpath = list_option
+    else:
+        for list_option in list_options:
+            maskoption = sftp.listdir(list_option)
+            if np.size(maskoption) > 0:
+                if np.size(maskoption)>1:
+                    raise Warning("too many masks fitting parameters!!")
+                maskpath = maskoption[0]
+                break
+
+    if 'maskpath' in locals():
+        if sftp is None:
+            mask, affine_mask = load_nifti(maskpath)
+        else:
+            mask, affine_mask = load_nifti_remote(maskpath, sftp)
+        if verbose:
+            print("Mask taken from " + maskpath)
+        return mask, affine_mask
+    else:
+        print(f"mask not found {os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz')}")
+        raise Exception(
+            f"here is what is going on {os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz')}")
+
 
 
 def get_diff_ref(label_folder, subject, ref):

@@ -76,7 +76,7 @@ for remove in removed_list:
 print(subjects)
 
 #subjects = ['N58610', 'N58612', 'N58613']
-
+subjects = ['N58610']
 subject_processes, function_processes = parse_arguments(sys.argv, subjects)
 
 #subject 'N58610' retired, weird? to investigate
@@ -95,7 +95,7 @@ transpose=None
 overwrite=False
 
 #btables=["extract","copy","None"]
-btables="copy"
+btables="extract"
 #Neither copy nor extract are fully functioning right now, for now the bvec extractor from extractdiffdirs works
 #go back to this if ANY issue with bvals/bvecs
 #extract is as the name implies here to extract the bvals/bvecs from the files around subject data
@@ -103,11 +103,11 @@ btables="copy"
 if btables=="extract":
     for subject in subjects:
         #outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
-        outpathsubj = outpath + "_" + subject
+        outpathsubj = os.path.join(outpath,proc_name+subject)
         writeformat="tab"
         writeformat="dsi"
         overwrite=True
-        fbvals, fbvecs = extractbvals(diffpath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite) #extractbvals_research
+        fbvals, fbvecs = extractbvals(diffpath, subject, outpath=outpathsubj, writeformat=writeformat, overwrite=overwrite) #extractbvals_research
         #fbvals, fbvecs = rewrite_subject_bvalues(diffpath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
 elif btables=="copy":
     for subject in subjects:

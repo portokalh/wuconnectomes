@@ -49,9 +49,9 @@ def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_l
     #gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
     #project_name = "VBM_21ADDecode03_IITmean_RPI_fullrun"
     #atlas_labels = "/Volumes/Data/Badea/Lab/atlas/IITmean_RPI/IITmean_RPI_labels.nii.gz"
-
-    out_dir = os.path.join(mainpath, f"{project_name}-results","connectomics",subject)
-    mkcdir(out_dir)
+    out_dir_base = os.path.join(mainpath, f"{project_name}-results","connectomics")
+    out_dir = os.path.join(out_dir_base,subject)
+    mkcdir([out_dir_base,out_dir])
     work_dir = os.path.join(mainpath, f"{project_name}-work")
     dirty_dir = os.path.join(mainpath,"burn_after_reading")
     mkcdir(dirty_dir)

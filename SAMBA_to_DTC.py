@@ -14,6 +14,7 @@ import getpass
 #project = "AMD"
 project = 'APOE'
 project = 'AMD'
+project = 'Chavez'
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
@@ -28,11 +29,9 @@ if project == 'Chavez':
     SAMBA_mainpath = os.path.join(mainpath, "mouse")
 
     #SAMBA_projectname = "VBM_20APOE01_chass_symmetric3_allAPOE"
-    SAMBA_projectname = "VBM_22_Chavez"
+    SAMBA_projectname = "VBM_21Chavez01_chass_symmetric3_all"
 
-    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "jas297_SAMBA_APOE.headfile")
-
-    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "tbd.headfile")
+    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "jas297_SAMBA_Chavez.headfile")
 
     gunniespath = "~/gunnies/"
     recenter = 0
@@ -71,7 +70,7 @@ if project == 'Chavez':
             subjects.remove(remove)
 
 
-if project == "AD_Decode":
+elif project == "AD_Decode":
 
     SAMBA_mainpath = os.path.join(mainpath, "mouse")
     SAMBA_projectname = "VBM_21ADDecode03_IITmean_RPI_fullrun"
@@ -213,8 +212,8 @@ elif project == "AMD":
 else:
     raise Exception("Unknown project name")
 
-#for subject in subjects:
-#    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, headfile = SAMBA_headfile, overwrite=overwrite)
+for subject in subjects:
+    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, headfile = SAMBA_headfile, overwrite=overwrite)
 
 remote=False
 
@@ -436,6 +435,10 @@ for subject in subjects:
                 filepath=Path(filepath).resolve()
             filename = os.path.basename(filepath)
             filenewpath = os.path.join(DTC_transforms, filename)
+            try:
+                sftp.chdir(DTC_transforms)
+            except IOError:
+                sftp.mkdir(DTC_transforms)
             if not os.path.isfile(filenewpath) or overwrite:
                 if copytype=="shortcut":
                     if remote:

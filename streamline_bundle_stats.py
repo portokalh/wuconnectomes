@@ -27,20 +27,51 @@ target_tuples = [(80, 58)]
 
 computer_name = socket.gethostname()
 
-project = 'AD_Decode'
-#genotype_noninclusive
-#target_tuples = [(9, 1), (24, 1), (58, 57), (64, 57), (22, 1)]
-#genotype_noninclusive_volweighted_fa
-#target_tuples = [(9, 1), (57, 9), (61, 23), (84, 23), (80, 9)]
+samos = False
+if 'samos' in computer_name:
+    mainpath = '/mnt/paros_MRI/jacques/'
+    ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+elif 'santorini' in computer_name:
+    # mainpath = '/Users/alex/jacques/'
+    mainpath = '/Volumes/Data/Badea/Lab/human/'
+    ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+elif 'blade' in computer_name:
+    mainpath = '/mnt/munin6/Badea/Lab/human/'
+    ROI_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+else:
+    raise Exception('No other computer name yet')
 
-#sex_noninclusive
-#target_tuples = [(64, 57), (58, 57), (9, 1), (64, 58), (80,58)]
-#target_tuples = [(64,57)]
-#sex_noninclusive_volweighted_fa
-#target_tuples = [(58, 24), (58, 30), (64, 30), (64, 24), (58,48)]
 
-#target_tuples = [(9,1)]
-#groups = ['APOE4', 'APOE3']
+project = 'AMD'
+
+if project == 'AD_Decode':
+    #genotype_noninclusive
+    #target_tuples = [(9, 1), (24, 1), (58, 57), (64, 57), (22, 1)]
+    #genotype_noninclusive_volweighted_fa
+    target_tuples = [(9, 1), (57, 9), (61, 23), (84, 23), (80, 9)]
+
+    #sex_noninclusive
+    #target_tuples = [(64, 57), (58, 57), (9, 1), (64, 58), (80,58)]
+    #target_tuples = [(64,57)]
+    #sex_noninclusive_volweighted_fa
+    #target_tuples = [(58, 24), (58, 30), (64, 30), (64, 24), (58,48)]
+
+    #target_tuples = [(9,1)]
+    #groups = ['Male', 'Female']
+    groups = ['APOE4', 'APOE3']
+
+    mainpath = os.path.join(mainpath, project, 'Analysis')
+    anat_path = os.path.join(mainpath,'/../mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_b0.nii.gz')
+
+elif project == 'AMD':
+    groups_all = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
+    groups = ['Paired Initial Control', 'Paired Initial AMD']
+    groups = ['Paired 2-YR Control', 'Paired 2-YR AMD']
+    target_tuples = [(9, 1),(24, 1), (76, 42), (76, 64), (77, 9), (43, 9)]
+
+    mainpath = os.path.join(mainpath, project)
+    anat_path = os.path.join(mainpath,'/../mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/median_images/MDT_b0.nii.gz')
+
 
 
 fixed = True
@@ -49,7 +80,7 @@ record = ''
 inclusive = False
 symmetric = True
 write_txt = True
-ratio = 100
+ratio = 1
 top_percentile = 100
 num_bundles = 20
 
@@ -58,8 +89,7 @@ coloring = 'bundles_coloring'
 references = ['fa','md']
 references = ['fa']
 cutoffref = 0
-groups = ['Male','Female']
-groups = ['APOE4', 'APOE3']
+
 non_control = groups[0]
 control = groups[1]
 write_stats = False
@@ -83,19 +113,6 @@ else:
 # else:
 #    fixed_str = ''
 
-samos = False
-if 'samos' in computer_name:
-    mainpath = '/mnt/paros_MRI/jacques/'
-    ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'santorini' in computer_name:
-    # mainpath = '/Users/alex/jacques/'
-    mainpath = '/Volumes/Data/Badea/Lab/human/'
-    ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'blade' in computer_name:
-    mainpath = '/mnt/munin6/Badea/Lab/human/'
-    ROI_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-else:
-    raise Exception('No other computer name yet')
 
 
 ratio_str = ratio_to_str(ratio)
@@ -106,16 +123,6 @@ else:
     folder_ratio_str = ratio_str.replace('_ratio', '')
 
 _, _, index_to_struct, _ = atlas_converter(ROI_legends)
-
-if project == 'AMD':
-    mainpath = os.path.join(mainpath, project)
-    groups = ['Initial AMD', 'Paired 2-YR AMD', 'Initial Control', 'Paired 2-YR Control', 'Paired Initial Control',
-              'Paired Initial AMD']
-    anat_path = '/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/median_images/MDT_dwi.nii.gz'
-
-if project == 'AD_Decode':
-    mainpath = os.path.join(mainpath, project, 'Analysis')
-    anat_path = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/median_images/MDT_b0.nii.gz'
 
 # figures_path = '/Volumes/Data/Badea/Lab/human/AMD/Figures_MDT_non_inclusive/'
 # centroid_folder = '/Volumes/Data/Badea/Lab/human/AMD/Centroids_MDT_non_inclusive/'

@@ -11,7 +11,7 @@ import os, glob
 import pickle
 from nifti_handler import getlabeltypemask, get_diff_ref
 from file_tools import mkcdir, check_files
-from tract_handler import ratio_to_str, gettrkpath
+from tract_handler import ratio_to_str, gettrkpath, gettrkpath_testsftp
 from convert_atlas_mask import atlas_converter
 import socket
 from tract_save import save_trk_header
@@ -20,6 +20,8 @@ import sys
 from argument_tools import parse_arguments_function
 from connectome_handler import connectivity_matrix_func
 from dipy.tracking.utils import length
+import getpass
+import random
 
 def get_grouping(grouping_xlsx):
     print('not done yet')
@@ -35,6 +37,66 @@ ratio = 1
 #projects = ['AD_Decode', 'AMD', 'APOE']
 project = 'AMD'
 
+
+computer_name = socket.gethostname()
+
+
+samos = False
+if 'samos' in computer_name:
+    inpath = '/mnt/paros_MRI/jacques/'
+    outpath = '/mnt/paros_MRI/jacques/'
+    ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+elif 'santorini' in computer_name or 'hydra' in computer_name:
+    # mainpath = '/Users/alex/jacques/'
+    inpath = '/Volumes/Data/Badea/Lab/human/'
+    outpath = '/Volumes/Data/Badea/Lab/human/'
+    ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+    ref_MDT_folder = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_images/'
+elif 'blade' in computer_name:
+    inpath = '/mnt/munin6/Badea/Lab/human/'
+    outpath = '/mnt/munin6/Badea/Lab/human/'
+    ROI_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+    ref_MDT_folder = '/mnt/munin6/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_images/'
+else:
+    raise Exception('No other computer name yet')
+
+if project == 'AD_Decode':
+    ref_MDT_folder = os.path.join(outpath,'../mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_images/')
+elif project == 'AMD':
+    ref_MDT_folder = os.path.join(outpath,'../mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/reg_images/')
+
+
+remote=True
+if remote and not 'samos' in computer_name:
+    inpath = 'alex@samos.dhe.duke.edu:/mnt/paros_MRI/jacques/'
+
+if "." and ":" in inpath:
+    if computer_name not in inpath:
+        import paramiko
+        if "@" in inpath:
+            DTC_DWI_folder_split = inpath.split("@")
+            username = DTC_DWI_folder_split[0]
+            server = DTC_DWI_folder_split[1].split(".")[0]
+            password = getpass.getpass()
+        else:
+            server = inpath.split(".")[0]
+            username = getpass.getuser()
+            password = getpass.getpass()
+            DTC_DWI_folder_split = username + "@" + inpath
+        inpath = inpath.split(":")[1]
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
+        #ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(server, username=username, password=password)
+        remote=True
+    else:
+        inpath = inpath.split(":")[1]
+
+if remote:
+    sftp = ssh.open_sftp()
+
+
 skip_subjects = True
 write_streamlines = True
 allow_preprun = False
@@ -46,36 +108,30 @@ symmetric = True
 write_stats = True
 write_txt = True
 constrain_groups = True
+fixed = True
 
 labeltype = 'lrordered'
 #reference_img refers to statistical values that we want to compare to the streamlines, say fa, rd, etc
 
 references = ['fa', 'md', 'ln', 'rd', 'ad']
 
+# Setting identification parameters for ratio, labeling type, etc
+
 if inclusive:
     inclusive_str = '_inclusive'
 else:
     inclusive_str = '_non_inclusive'
 
-computer_name = socket.gethostname()
-
-samos = False
-if 'samos' in computer_name:
-    mainpath = '/mnt/paros_MRI/jacques/'
-    ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'santorini' in computer_name or 'hydra' in computer_name:
-    #mainpath = '/Users/alex/jacques/'
-    mainpath = '/Volumes/Data/Badea/Lab/human/'
-    ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-    ref_MDT_folder = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_images/'
-elif 'blade' in computer_name:
-    mainpath = '/mnt/munin6/Badea/Lab/human/'
-    ROI_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-    ref_MDT_folder = '/mnt/munin6/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_images/'
+if symmetric:
+    symmetric_str = '_symmetric'
 else:
-    raise Exception('No other computer name yet')
+    symmetric_str = '_non_symmetric'
 
-# Setting identification parameters for ratio, labeling type, etc
+if fixed:
+    fixed_str = '_fixed'
+else:
+    fixed_str = ''
+
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
 if ratio_str == '_all':
@@ -90,25 +146,28 @@ function_processes = parse_arguments_function(sys.argv)
 print(f'there are {function_processes} function processes')
 
 if project=='AD_Decode':
-    mainpath=os.path.join(mainpath,project,'Analysis')
+    outpath = os.path.join(outpath, project, 'Analysis')
+    inpath = os.path.join(inpath, project, 'Analysis')
 else:
-    mainpath = os.path.join(mainpath, project)
-TRK_folder = os.path.join(mainpath, f'TRK_MPCA_MDT_fixed{folder_ratio_str}')
+    outpath = os.path.join(outpath, project)
+    inpath = os.path.join(inpath, project)
 
-label_folder = os.path.join(mainpath, 'DWI')
+TRK_folder = os.path.join(inpath, f'TRK_MPCA_MDT{fixed_str}{folder_ratio_str}')
+TRK_folder = os.path.join(inpath, f'TRK_MDT{fixed_str}{folder_ratio_str}')
+
+label_folder = os.path.join(outpath, 'DWI')
 if symmetric:
     symmetric_str = '_symmetric'
 else:
     symmetric_str = '_non_symmetric'
 
 
-trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
-pickle_folder = os.path.join(mainpath, f'Pickle_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
-centroid_folder = os.path.join(mainpath, f'Centroids_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
-stats_folder = os.path.join(mainpath, f'Statistics_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
-excel_folder = os.path.join(mainpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+pickle_folder = os.path.join(outpath, f'Pickle_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+centroid_folder = os.path.join(outpath, f'Centroids_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+stats_folder = os.path.join(outpath, f'Statistics_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+excel_folder = os.path.join(outpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 mkcdir([pickle_folder, centroid_folder, stats_folder, excel_folder])
-if not os.path.exists(TRK_folder):
+if not remote and not os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
 
 #Initializing dictionaries to be filled
@@ -164,11 +223,19 @@ elif project == 'AMD':
     #groups to go through
     groups_all = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
     groups = ['Paired Initial Control', 'Paired Initial AMD']
+    groups = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
 
     str_identifier = '_MDT' + folder_ratio_str
 
+    for group in groups:
+        random.shuffle(groups_subjects[group])
+
     target_tuples = [(9, 1), (24, 1), (76, 42), (76, 64), (77, 9), (43, 9)]
-    target_tuples = [(9, 1)]
+    target_tuples = [(9, 1),(24, 1), (76, 42), (76, 64), (77, 9), (43, 9)]
+    #target_tuples = [(24, 1)]
+    #target_tuples = [(76, 42)]
+    #target_tuples = [(76, 64), (77, 9), (43, 9)]
+    #target_tuples = [(76, 42)]
     #target_tuples = [(76, 64), (77, 9), (43, 9)]
     removed_list = []
 
@@ -201,7 +268,7 @@ metric1 = AveragePointwiseEuclideanMetric(feature=feature1)
 feature2 = ResampleFeature(nb_points=num_points2)
 metric2 = AveragePointwiseEuclideanMetric(feature=feature2)
 
-overwrite=True
+overwrite=False
 
 for target_tuple in target_tuples:
 
@@ -247,7 +314,11 @@ for target_tuple in target_tuples:
             subjects = groups_subjects[group]
             subj = 1
             for subject in subjects:
-                trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=True)
+                if not remote:
+                    trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
+                else:
+                    trkpath, exists = gettrkpath_testsftp(TRK_folder, subject, str_identifier, sftp=sftp, pruned=False,
+                                                          verbose=verbose)
                 if not exists:
                     txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
                     warnings.warn(txt)
@@ -255,7 +326,19 @@ for target_tuple in target_tuples:
                 #streamlines, header, _ = unload_trk(trkpath)
                 if np.shape(groupLines[group, ref])[0] != np.shape(groupstreamlines[group])[0]:
                     raise Exception('happened from there')
-                trkdata = load_trk(trkpath, 'same')
+
+                if remote:
+                    temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(trkpath))}'
+                    sftp.get(trkpath, temp_path)
+                    try:
+                        trkdata = load_trk(temp_path, 'same')
+                        os.remove(temp_path)
+                    except Exception as e:
+                        os.remove(temp_path)
+                        raise Exception(e)
+                else:
+                    trkdata = load_trk(trkpath, 'same')
+
                 header = trkdata.space_attributes
                 picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectomes.p')
                 picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')

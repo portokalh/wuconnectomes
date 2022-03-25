@@ -13,7 +13,7 @@ from nibabel.streamlines import Field
 from nibabel.orientations import aff2axcodes
 from dipy.io.streamline import load_trk
 from dipy.io.utils import create_tractogram_header
-import time
+import time, os
 import numpy as np
 
 def make_tractogram_object(fname, streamlines, affine, vox_size=None, shape=None, header=None):
@@ -61,7 +61,7 @@ def save_trk_header(filepath, streamlines, header, affine=np.eye(4), fix_streaml
         print(f'Saved in {time2 - time1:0.4f} seconds')
 
 def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, header=None, fix_streamlines = False,
-                        return_tractogram=False):
+                        return_tractogram=False,sftp=None):
     """ Saves tractogram files (*.trk)
 
     Parameters
@@ -92,7 +92,17 @@ def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, h
     if fix_streamlines:
         tractogram.remove_invalid_streamlines()
     trk_file = nib.streamlines.TrkFile(tractogram, header=header)
-    nib.streamlines.save(trk_file, fname)
+    if sftp is not None:
+        nib.streamlines.save(trk_file, fname)
+    else:
+        temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(fname))}'
+        nib.streamlines.save(trk_file, temp_path)
+        try:
+            sftp.put(temp_path, fname)
+            os.remove(temp_path)
+        except Exception as e:
+            os.remove(temp_path)
+            raise Exception(e)
     if return_tractogram:
         return tractogram, trk_file
 

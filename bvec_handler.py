@@ -111,9 +111,17 @@ def reorient_bvecs(bvecs, bvec_orient=[1,2,3]):
                   bvec_sign[2]*bvecs[:, np.abs(bvec_orient[2])-1]]
     return bvecs
 
-def read_bvals(fbvals,fbvecs):
+def read_bvals(fbvals,fbvecs, sftp = None):
 
     vals=[]
+    if sftp is not None:
+        temp_path_bval = f'{os.path.join(os.path.expanduser("~"), os.path.basename(fbvals))}'
+        temp_path_bvec = f'{os.path.join(os.path.expanduser("~"), os.path.basename(fbvecs))}'
+        sftp.get(fbvals, temp_path_bval)
+        sftp.get(fbvecs, temp_path_bvec)
+        fbvals = temp_path_bval
+        fbvecs = temp_path_bvec
+
     for this_fname in [fbvals, fbvecs]:
         # If the input was None or empty string, we don't read anything and
         # move on:
@@ -139,6 +147,9 @@ def read_bvals(fbvals,fbvecs):
             else:
                 raise ValueError('String with full path to file is required')
 
+    if sftp is not None:
+        os.remove(fbvals)
+        os.remove(fbvecs)
     # Once out of the loop, unpack them:
     bvals, bvecs = vals[0], vals[1]
     return bvals, bvecs
@@ -168,7 +179,7 @@ def cut_bvals_bvecs(fbvals, fbvecs, tocut, format="classic"):
     return(fbvals_new)
 
 
-def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, identifier = "_fix", writeformat="classic"):
+def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, identifier = "_fix", writeformat="classic",sftp=None):
     """
     Read b-values and b-vectors from disk
 
@@ -192,14 +203,21 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, id
 
     # Loop over the provided inputs, reading each one in turn and adding them
     # to this list:
-    bvals, bvecs = read_bvals(fbvals,fbvecs)
+    bvals, bvecs = read_bvals(fbvals,fbvecs, sftp)
 
     # If bvecs is None, you can just return now w/o making more checks:
     if bvecs is None:
         return bvals, bvecs
 
     if bvecs.ndim != 2:
-        raise IOError('bvec file should be saved as a two dimensional array')
+        if np.shape(bvecs)[0]%3 == 0:
+            bvecs_new = np.zeros([3, int(np.shape(bvecs)[0] / 3)])
+            bvecs_new[0, :] = bvecs[:int(np.shape(bvecs)[0] / 3)]
+            bvecs_new[1, :] = bvecs[int(np.shape(bvecs)[0] / 3):int(2 * np.shape(bvecs)[0] / 3)]
+            bvecs_new[2, :] = bvecs[int(2 * np.shape(bvecs)[0] / 3):]
+            bvecs = bvecs_new
+        else:
+            raise IOError('bvec file should be saved as a two dimensional array')
     if bvecs.shape[1] > bvecs.shape[0]:
         bvecs = bvecs.T
 
@@ -555,8 +573,8 @@ def writebvec(bvecs, outpath, subject, writeformat = "line", overwrite=False):
 
 def writebfiles(bvals, bvecs, outpath, subject, writeformat = "line", overwrite=False):
 
-    bval_file = writebval(bvals, outpath, subject, writeformat = "line", overwrite=False)
-    bvec_file = writebvec(bvecs, outpath, subject, writeformat = "line", overwrite=False)
+    bval_file = writebval(bvals, outpath, subject, writeformat = writeformat, overwrite=False)
+    bvec_file = writebvec(bvecs, outpath, subject, writeformat = writeformat, overwrite=False)
     """
     bvec_file = os.path.join(outpath, subject+"_bvecs.txt")
     bval_file = os.path.join(outpath, subject+"_bvals.txt")

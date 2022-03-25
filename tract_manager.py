@@ -95,7 +95,7 @@ from multiprocessing import Pool
 from convert_atlas_mask import convert_labelmask, atlas_converter
 #from connectivity_own import connectivity_matrix_special
 from excel_management import connectomes_to_excel, grouping_to_excel
-
+from computer_nav import load_trk_remote
 
 def strfile(string):
     # Converts strings into more usable 'file strings (mostly takes out . and turns it into _
@@ -418,7 +418,7 @@ def makedir(dir):
 
 def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subject, ROI_excel, bvec_orient, masktype = "T1",
                               inclusive = False, function_processes = 1, overwrite = False, picklesave = True, labeltype='orig',
-                              symmetric = True, reference_weighting_type = None, volume_weighting=False, verbose = None):
+                              symmetric = True, reference_weighting_type = None, volume_weighting=False, verbose = None, sftp = None):
 
     picklepath_connect = os.path.join(outpath, subject + str_identifier + '_connectomes.p')
     connectome_xlsxpath = os.path.join(outpath, subject + str_identifier + "_connectomes.xlsx")
@@ -427,7 +427,7 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
     picklepath_index = os.path.join(outpath, subject + str_identifier + '_index_struct.p')
 
     if reference_weighting_type is not None:
-        reference_weight, ref_affine, _, ref_fpath, _, _ = getrefdata(diffpath, subject, reference_weighting_type, verbose)
+        reference_weight, ref_affine, _, ref_fpath, _, _ = getrefdata(diffpath, subject, reference_weighting_type, verbose, sftp=sftp)
         if reference_weight is None:
             txt = f'Subject is {subject} did not have reference {reference_weighting_type} at {diffpath}'
             warnings.warn(txt)
@@ -454,19 +454,19 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
 
     trkfilepath, trkexists = gettrkpath(trkpath, subject, str_identifier, pruned = False, verbose = verbose)
     trkprunepath, trkpruneexists = gettrkpath(trkpath, subject, str_identifier, pruned = True, verbose = verbose)
-    labelmask, labelaffine, labelpath = getlabelmask(diffpath, subject, verbose)
-    mask, affinemask = getmask(diffpath,subject,masktype,verbose)
+    labelmask, labelaffine, labelpath = getlabelmask(diffpath, subject, verbose, sftp=sftp)
+    mask, affinemask = getmask(diffpath,subject,masktype,verbose,sftp=sftp)
     if mask is None:         # Build Brain Mask
         if masktype == 'dwi':
             if verbose:
                 print("Beginning to read the dwifile of subject " + subject + " at " + diffpath)
-            diff_data, diffaffine, _, diff_fpath, _, _ = getdiffdata(diffpath, subject, verbose)
+            diff_data, diffaffine, _, diff_fpath, _, _ = getdiffdata(diffpath, subject, verbose,sftp=sftp)
             if verbose:
                 print("loaded the file " + diff_fpath)
             outpathmask = str(pathlib.Path(diff_fpath).parent.absolute())
             if verbose:
                 print("Creating mask for subject " + subject + " at " + outpathmask)
-            vol_idx = getb0s(diffpath, subject)
+            vol_idx = getb0s(diffpath, subject,sftp=sftp)
             mask, _ = dwi_to_mask(diff_data, subject, diffaffine, outpathmask, makefig=False, vol_idx=vol_idx, median_radius=5,
                                   numpass=6, dilate=2)
     mypath = diffpath
@@ -511,13 +511,16 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         if 'dwi_data' not in locals():
             if verbose:
                 print("Beginning to read the dwifile of subject " + subject + " at "+diffpath)
-            dwi_data, _, _, diffpath, _, _ = getdiffdata(diffpath, subject, verbose)
+            dwi_data, _, _, diffpath, _, _ = getdiffdata(diffpath, subject, verbose,sftp=sftp)
             if verbose:
                 print("loaded the file " + diffpath)
 
         if verbose:
             print("Beginning to read " + trkfilepath)
-        trkdata = load_trk(trkfilepath, "same")
+        if sftp is None:
+            trkdata = load_trk(trkfilepath, "same")
+        else:
+            trkdata = load_trk_remote(trkfilepath, "same",sftp=sftp)
         if verbose:
             print("loaded the file " + trkfilepath)
         print(trkfilepath)
@@ -541,13 +544,17 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         myheader = create_tractogram_header(trkprunepath, *header)
         prune_sl = lambda: (s for s in pruned_streamlines)
         if prunesave:
-            tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader)
+            tract_save.save_trk_heavy_duty(trkprunepath, streamlines=prune_sl, affine=affine, header=myheader,sftp=sftp)
         del(prune_sl,pruned_streamlines,trkdata)
     elif trkpruneexists:
         if verbose:
             print("Beginning to read " + trkprunepath)
         #trkprunepath = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_100/S02715_ratio100_badrun.trk'
-        trkprunedata = load_trk(trkprunepath, "same")
+        #trkprunedata = load_trk(trkprunepath, "same")
+        if sftp is None:
+            trkprunedata = load_trk(trkprunepath, "same")
+        else:
+            trkprunedata = load_trk_remote(trkprunepath, "same",sftp=sftp)
         if verbose:
             print("loaded the file " + trkprunepath)
         affine = trkprunedata._affine

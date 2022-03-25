@@ -18,19 +18,15 @@ if munin:
     mainpath = "/mnt/munin/Whitson/BrainChAMD.01/"
     outpath = "/mnt/munin6/Badea/Lab/human/AMD/diffusion_prep_locale/"
 
-    SAMBA_inputs_folder = "/Volumes/Data/Badea/Lab/mouse/whiston_symlink_pool_test/"
-    shortcuts_all_folder = "/Volumes/Data/Badea/Lab/mouse/whiston_symlink_pool_allfiles/"
-    SAMBA_inputs_folder = None
-    shortcuts_all_folder = None
+    SAMBA_inputs_folder = "/mnt/munin6/Badea/Lab/mouse/whiston_symlink_pool_test/"
+    shortcuts_all_folder = "/mnt/munin6/Badea/Lab/mouse/whiston_symlink_pool_allfiles/"
 else:
-    gunniespath = "/Users/jas/bass/gitfolder/gunnies/"
+    gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"
     mainpath ="/Volumes/Data/Whitson/BrainChAMD.01/"
     outpath = "/Volumes/Data/Badea/Lab/human/AMD/diffusion_prep_locale/"
 
     SAMBA_inputs_folder = "/Volumes/Data/Badea/Lab/mouse/whiston_symlink_pool_test/"
     shortcuts_all_folder = "/Volumes/Data/Badea/Lab/mouse/whiston_symlink_pool_allfiles/"
-    SAMBA_inputs_folder = None
-    shortcuts_all_folder = None
 
 
 diffpath = os.path.join(mainpath, "Data","Anat")
@@ -45,7 +41,7 @@ proc_subjn="H"
 proc_name ="diffusion_prep_"+proc_subjn
 denoise = "mpca"
 masking = "bet"
-overwrite=False
+overwrite=True
 cleanup = True
 atlas = None
 gettranspose=False
@@ -89,32 +85,20 @@ elif btables=="copy":
                 shutil.copy(bvecs[0], outpathbvec)
 
 results=[]
-if subject_processes>1:
-    if function_processes>1:
-        pool = MyPool(subject_processes)
-    else:
-        pool = mp.Pool(subject_processes)
 
-    results = pool.starmap_async(launch_preprocessing, [(proc_subjn+subject,
-                                                         largerfile(glob.glob(os.path.join(os.path.join(diffpath, "*" + subject + "*")))[0]),
-                                                         outpath, cleanup, nominal_bval, bonusshortcutfolder,
-                                                         gunniespath, function_processes, masking, ref, transpose,
-                                                         overwrite, denoise, recenter, verbose)
-                                                        for subject in subjects]).get()
-else:
-    for subject in subjects:
-        max_size=0
-        subjectpath = glob.glob(os.path.join(os.path.join(diffpath, "*"+subject+"*")))[0]
-        subject_outpath = os.path.join(outpath, 'diffusion_prep_' + proc_subjn + subject)
-        subject_n = proc_subjn + subject
-        max_file=largerfile(subjectpath)
-        if os.path.exists(os.path.join(subject_outpath, f'{subject_n}_subjspace_fa.nii.gz')) and not overwrite:
-            print(f'already did subject {subject_n}')
-        elif os.path.exists(os.path.join('/Volumes/Badea/Lab/whiston_symlink_pool_allfiles/', f'{subject_n}_subjspace_coreg.nii.gz')) and not overwrite:
-            print(f'Could not find subject {subject_n} in main diffusion folder but result was found in SAMBA prep folder')
-        #elif os.path.exists(os.path.join('/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/reg_images/',f'{subject_n}_rd_to_MDT.nii.gz')) and not overwrite:
-        #    print(f'Could not find subject {subject_n} in main diff folder OR samba init but was in results of SAMBA')
-        else:
-            launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, SAMBA_inputs_folder,
-                                 shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose,
-                                 overwrite, denoise, recenter, verbose)
+
+for subject in subjects:
+    max_size=0
+    print(os.path.join(os.path.join(outpath, "diffusion*"+subject+"*")))
+    subjectpath = glob.glob(os.path.join(os.path.join(outpath, "diffusion*"+subject+"*")))[0]
+    max_file=largerfile(subjectpath)
+    max_file= os.path.join(subjectpath, "nii4D_"+subject+".nii.gz")
+    print(max_file)
+    #command = gunniespath + "mouse_diffusion_preprocessing.bash"+ f" {subject} {max_file} {outpath}"
+    if os.path.exists(os.path.join(shortcuts_all_folder,f'{proc_subjn + subject}_fa.nii.gz')) and os.path.exists(os.path.join(SAMBA_inputs_folder, f'{proc_subjn + subject}_fa.nii.gz')):
+        print(f'already did subject {proc_subjn + subject}')
+    else:
+        #print('notyet')
+        launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, SAMBA_inputs_folder,
+                             shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose, overwrite, denoise,
+                         recenter, verbose)
