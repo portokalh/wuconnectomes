@@ -2,6 +2,7 @@
 import socket, os, getpass, paramiko
 from dipy.io.image import load_nifti
 import fnmatch
+import numpy as np
 
 def get_mainpaths(remote=False, project='any',username=None,password=None):
     computer_name = socket.gethostname()
@@ -68,29 +69,24 @@ def get_atlas(atlas_folder, atlas_type):
     return index_path
 
 
-def nii_load_remote(niipath, sftp):
-    temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(niipath))}'
-    sftp.get(niipath, temp_path)
-    import nibabel as nib
-    try:
-        img = nib.load(temp_path)
-        os.remove(temp_path)
-    except Exception as e:
-        os.remove(temp_path)
-        raise Exception(e)
-    return img
-
 
 def load_nifti_remote(niipath, sftp):
     temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(niipath))}'
     sftp.get(niipath, temp_path)
     try:
-        data, affine = load_nifti(temp_path)
+        import nibabel as nib
+        from nifti_handler import get_reference_info
+        img = nib.load(temp_path)
+        data = img.get_data()
+        vox_size = img.header.get_zooms()[:3]
+        affine = img.affine
+        header = img.header
+        ref_info = get_reference_info(temp_path)
         os.remove(temp_path)
     except Exception as e:
         os.remove(temp_path)
         raise Exception(e)
-    return data, affine
+    return data, affine, vox_size, header, ref_info
 
 
 def read_bvals_bvecs_remote(fbvals, fbvecs, sftp):
@@ -125,9 +121,20 @@ def load_trk_remote(trkpath,reference,sftp):
 
 def glob_remote(path, sftp):
     dirpath = os.path.dirname(path)
-    allfiles = sftp.listdir(dirpath)
     match_files = []
+    try:
+        sftp.stat(dirpath)
+    except:
+        return(match_files)
+    allfiles = sftp.listdir(dirpath)
     for filepath in allfiles:
         if fnmatch.fnmatch(os.path.basename(filepath), os.path.basename(path)):
-            match_files.append(filepath)
+            match_files.append(os.path.join(dirpath,filepath))
     return(match_files)
+
+def checkfile_exists_remote(path, sftp):
+    match_files = glob_remote(path,sftp)
+    if np.size(match_files)>0:
+        return True
+    else:
+        return False

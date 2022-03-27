@@ -95,7 +95,7 @@ from multiprocessing import Pool
 from convert_atlas_mask import convert_labelmask, atlas_converter
 #from connectivity_own import connectivity_matrix_special
 from excel_management import connectomes_to_excel, grouping_to_excel
-from computer_nav import load_trk_remote
+from computer_nav import load_trk_remote, checkfile_exists_remote
 
 def strfile(string):
     # Converts strings into more usable 'file strings (mostly takes out . and turns it into _
@@ -445,17 +445,20 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         picklepath_connect_volref = os.path.join(outpath, subject + str_identifier + '_volweighted' + '_' + reference_weighting_type + '_connectomes.p')
         connectome_xlsxpath_volref = os.path.join(outpath, subject + str_identifier + '_volweighted' + '_' + reference_weighting_type + "_connectomes.xlsx")
 
-    mkcdir(outpath)
+    mkcdir(outpath, sftp=sftp)
     print(f'Volume weighting is {volume_weighting}, reference weighting is {reference_weighting_type}\ninclusive is {inclusive}, symmetric is {symmetric}, saving connectomes at {outpath}')
 
-    if os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and not overwrite:
+    if sftp is None and os.path.exists(picklepath_connect) and os.path.exists(connectome_xlsxpath) and os.path.exists(grouping_xlsxpath) and not overwrite:
+        print(f"The writing of pickle and excel of {str(subject)} at {connectome_xlsxpath} is already done")
+        return
+    if sftp is not None and checkfile_exists_remote(picklepath_connect,sftp) and checkfile_exists_remote(connectome_xlsxpath,sftp) and checkfile_exists_remote(grouping_xlsxpath,sftp) and not overwrite:
         print(f"The writing of pickle and excel of {str(subject)} at {connectome_xlsxpath} is already done")
         return
 
-    trkfilepath, trkexists = gettrkpath(trkpath, subject, str_identifier, pruned = False, verbose = verbose)
-    trkprunepath, trkpruneexists = gettrkpath(trkpath, subject, str_identifier, pruned = True, verbose = verbose)
-    labelmask, labelaffine, labelpath = getlabelmask(diffpath, subject, verbose, sftp=sftp)
     mask, affinemask = getmask(diffpath,subject,masktype,verbose,sftp=sftp)
+    trkfilepath, trkexists = gettrkpath(trkpath, subject, str_identifier, pruned = False, verbose = verbose, sftp = sftp)
+    trkprunepath, trkpruneexists = gettrkpath(trkpath, subject, str_identifier, pruned = True, verbose = verbose, sftp = sftp)
+    labelmask, labelaffine, labelpath = getlabelmask(diffpath, subject, verbose, sftp=sftp)
     if mask is None:         # Build Brain Mask
         if masktype == 'dwi':
             if verbose:

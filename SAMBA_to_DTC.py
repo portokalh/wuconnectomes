@@ -14,15 +14,15 @@ import getpass
 #project = "AMD"
 project = 'APOE'
 project = 'AMD'
-project = 'Chavez'
+#project = 'Chavez'
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
 SAMBA_headfile_dir = os.path.join(mainpath, "samba_startup_cache")
 file_ids = ["coreg", "subjspace_fa", "subjspace_b0", "bval", "bvec", "subjspace_mask", "reference", "subjspace_dwi", "relative_orientation"]
 
-if project == 'AMD':
-    file_ids = ["relative_orientation"]
+#if project == 'AMD':
+#    file_ids = ["relative_orientation"]
 
 
 if project == 'Chavez':
@@ -181,7 +181,7 @@ elif project == "AMD":
     SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "rja20_BrainChAMD.01_with_2yr_SAMBA_startup.headfile")
     gunniespath = "~/gunnies/"
     recenter = 0
-    SAMBA_prep_folder = os.path.join(SAMBA_mainpath, "whiston_symlink_pool_test")
+    SAMBA_prep_folder = os.path.join(SAMBA_mainpath, "whiston_symlink_pool_allfiles")
     atlas_labels = os.path.join(mainpath, "atlas","IITmean_RPI","IITmean_RPI_labels.nii.gz")
 
     DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AMD/DWI/"

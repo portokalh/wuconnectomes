@@ -24,7 +24,7 @@ diff_preprocessed = os.path.join(inpath, "DWI")
 if not remote:
     mkcdir([outpath, diff_preprocessed])
 else:
-    mkcdir([outpath, diff_preprocessed], remote, sftp)
+    mkcdir([outpath, diff_preprocessed], sftp)
 
 subjects = ["H29056", "H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660", "H29304", "H26890",
             "H29556", "H26862", "H29410", "H26966", "H29403", "H26841", "H21593", "H27126", "H29618", "H27111", "H29627",
@@ -145,9 +145,20 @@ else:
     saved_streamlines = "_ratio_" + str(ratio)
     trk_folder_name = "_" + str(ratio)
 
+fixed=False
+if fixed:
+    fixed_str = '_fixed'
+else:
+    fixed_str = ''
+
+
+
 trkpath = os.path.join(inpath, "TRK_MPCA_fixed")
 trkpath = os.path.join(inpath, "TRK_MPCA_100")
-trkpath = os.path.join(inpath, "TRK_MPCA_fixed"+trk_folder_name)
+
+
+
+trkpath = os.path.join(inpath, f"TRK_MPCA{fixed_str}"+trk_folder_name)
 
 trkroi = ["wholebrain"]
 if len(trkroi)==1:
@@ -189,7 +200,7 @@ figspath = os.path.join(outpath,"Figures_MPCA"+inclusive_str+symmetric_str+saved
 if not remote:
     mkcdir([figspath, trkpath])
 else:
-    mkcdir([figspath, trkpath], remote, sftp)
+    mkcdir([figspath, trkpath], sftp)
 
 if make_connectomes:
     for subject in subjects:

@@ -13,10 +13,10 @@ import warnings
 import subprocess, pipes
 from scipy.io import loadmat
 
-def mkcdir(folderpaths, remote=False, sftp=None):
+def mkcdir(folderpaths, sftp=None):
     #creates new folder only if it doesnt already exists
 
-    if not remote:
+    if sftp is None:
         if np.size(folderpaths) == 1:
             if not os.path.exists(folderpaths):
                 os.mkdir(folderpaths)

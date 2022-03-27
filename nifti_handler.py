@@ -12,7 +12,7 @@ from dipy.io.image import load_nifti
 import shutil
 from convert_atlas_mask import convert_labelmask, atlas_converter
 import errno
-from computer_nav import nii_load_remote, load_nifti_remote, glob_remote
+from computer_nav import load_nifti_remote, glob_remote
 
 def getfa(mypath, subject, bvec_orient, verbose=None):
 
@@ -259,7 +259,7 @@ def getdiffpath(mypath, subject, denoise="", verbose=None, sftp=None):
                     fdiffpath = list_option
     else:
         for list_option in list_options:
-            option = sftp.listdir(list_option)
+            option = glob_remote(list_option, sftp)
             if np.size(option) > 0:
                 if np.size(option)>1:
                     raise Warning("too many diffusion fitting parameters!!")
@@ -281,15 +281,13 @@ def extract_nii_info(path, verbose=None, sftp=None):
         send_mail(txt, subject="Begin data extraction")
     if sftp is None:
         img = nib.load(path)
+        data = img.get_data()
+        vox_size = img.header.get_zooms()[:3]
+        affine = img.affine
+        header = img.header
+        ref_info = get_reference_info(path)
     else:
-        nii_load_remote(niipath, sftp)
-
-    data = img.get_data()
-    vox_size = img.header.get_zooms()[:3]
-    affine = img.affine
-    header = img.header
-    del(img)
-    ref_info = get_reference_info(path)
+        data, affine, vox_size, header, ref_info = load_nifti_remote(path, sftp)
     return data, affine, vox_size, header, ref_info
 
 def getrefdata(mypath, subject, reference, verbose=None, sftp=None):
@@ -324,12 +322,12 @@ def get_bvals_bvecs(mypath, subject,sftp=None):
 
     else:
         try:
-            fbvals = sftp.listdir(mypath + '/' + subject + '*_bvals_fix.txt')[0]
-            fbvecs = sftp.listdir(mypath + '/' + subject + '*_bvec_fix.txt')[0]
+            fbvals = glob_remote(mypath + '/' + subject + '*_bvals_fix.txt', sftp)[0]
+            fbvecs = glob_remote(mypath + '/' + subject + '*_bvec_fix.txt', sftp)[0]
         except IndexError:
             print(mypath + '/' + subject + '*_bvals.txt')
-            fbvals = sftp.listdir(mypath + '/' + subject + '*_bvals.txt')[0]
-            fbvecs = sftp.listdir(mypath + '/' + subject + '*_bvec*.txt')[0]
+            fbvals = glob_remote(mypath + '/' + subject + '*_bvals.txt', sftp)[0]
+            fbvecs = glob_remote(mypath + '/' + subject + '*_bvec*.txt', sftp)[0]
             fbvals, fbvecs = fix_bvals_bvecs(fbvals, fbvecs,sftp)
         print(fbvecs)
         bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs,sftp)
@@ -386,8 +384,8 @@ def getlabelmask(mypath, subject, verbose=None, sftp=None):
 
     list_options = [mypath + '/' + subject + '/' + subject + '*labels.nii.gz',
                     mypath + '/*' + subject + '*labels.nii.gz', mypath + '/' + subject + '_labels_RAS.nii.gz', (mypath + '/Reg_' + subject + '_nii4D_brain_mask.nii.gz'),
-                    (mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'), (mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz')
-                    (mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz'), (mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz'), (mypath + '/mask.nii.gz')
+                    (mypath + '/' + subject + '_chass_symmetric3_labels_RAS.nii.gz'), (mypath + '/' + subject + '_chass_symmetric3_labels_RAS_combined.nii.gz'),
+                    (mypath + '/fa_labels_warp_' + subject + '_RAS.nii.gz'), (mypath + '/labels/fa_labels_warp_' + subject + '_RAS.nii.gz'), (mypath + '/mask.nii.gz'),
                     (mypath + '/mask.nii')]
 
     if sftp is None:
@@ -402,7 +400,7 @@ def getlabelmask(mypath, subject, verbose=None, sftp=None):
                     labelspath=list_option
     else:
         for list_option in list_options:
-            labelsoption = sftp.listdir(list_option)
+            labelsoption = glob_remote(list_option, sftp)
             if np.size(labelsoption) > 0:
                 labelspath = labelsoption[0]
                 break
@@ -437,11 +435,10 @@ def getlabelmask(mypath, subject, verbose=None, sftp=None):
     if 'labelspath' in locals():
         if sftp is None:
             img = nib.load(labelspath)
+            labels = np.asanyarray(img.dataobj)
+            affine_labels = img.header.get_zooms()[:3]
         else:
-            img = nii_load_remote(labelspath)
-
-        labels = np.asanyarray(img.dataobj)
-        affine_labels = img.header.get_zooms()[:3]
+            labels, affine_labels, _, _,_ = load_nifti_remote(labelspath, sftp)
 
         #labels, affine_labels = load_nifti(labelspath)
         if verbose:
@@ -512,7 +509,7 @@ def getmask_old(mypath, subject, masktype = "subjspace", verbose=None):
 
 
 def getmask(mypath, subject, masktype = "subjspace", verbose=None, sftp=None):
-    list_options = [mypath, os.path.join(mypath, "*" + subject + "*"), os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz')]
+    list_options = [mypath, os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz'), os.path.join(mypath,subject + '*_mask*.nii.gz')]
 
     if sftp is None:
         for list_option in list_options:
@@ -526,8 +523,8 @@ def getmask(mypath, subject, masktype = "subjspace", verbose=None, sftp=None):
                     maskpath = list_option
     else:
         for list_option in list_options:
-            maskoption = sftp.listdir(list_option)
-            if np.size(maskoption) > 0:
+            maskoption = glob_remote(list_option, sftp)
+            if np.size(maskoption) > 0 and '.nii' in maskoption[0]:
                 if np.size(maskoption)>1:
                     raise Warning("too many masks fitting parameters!!")
                 maskpath = maskoption[0]
@@ -537,7 +534,7 @@ def getmask(mypath, subject, masktype = "subjspace", verbose=None, sftp=None):
         if sftp is None:
             mask, affine_mask = load_nifti(maskpath)
         else:
-            mask, affine_mask = load_nifti_remote(maskpath, sftp)
+            mask, affine_mask,_,_,_ = load_nifti_remote(maskpath, sftp)
         if verbose:
             print("Mask taken from " + maskpath)
         return mask, affine_mask
