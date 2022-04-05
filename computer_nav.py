@@ -1,5 +1,5 @@
 
-import socket, os, getpass, paramiko
+import socket, os, getpass, paramiko, glob
 from dipy.io.image import load_nifti
 import fnmatch
 import numpy as np
@@ -114,22 +114,57 @@ def load_trk_remote(trkpath,reference,sftp):
         trkdata = load_trk(temp_path, reference)
         os.remove(temp_path)
     except Exception as e:
-        os.remove(temp_path)
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
         raise Exception(e)
     return trkdata
 
+def loadmat_remote(matpath, sftp):
+    from scipy.io import loadmat
+    temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(matpath))}'
+    sftp.get(matpath, temp_path)
+    try:
+        mymat = loadmat(temp_path)
+        os.remove(temp_path)
+    except Exception as e:
+        os.remove(temp_path)
+        raise Exception(e)
+    return mymat
 
 def glob_remote(path, sftp):
-    dirpath = os.path.dirname(path)
     match_files = []
-    try:
-        sftp.stat(dirpath)
-    except:
-        return(match_files)
-    allfiles = sftp.listdir(dirpath)
-    for filepath in allfiles:
-        if fnmatch.fnmatch(os.path.basename(filepath), os.path.basename(path)):
-            match_files.append(os.path.join(dirpath,filepath))
+    if sftp is not None:
+        if '.' not in path:
+            allfiles = sftp.listdir(path)
+            for filepath in allfiles:
+                match_files.append(os.path.join(path, filepath))
+            return match_files
+        else:
+            dirpath = os.path.dirname(path)
+            try:
+                sftp.stat(dirpath)
+            except:
+                return match_files
+            allfiles = sftp.listdir(dirpath)
+            #if '*' in path:
+            #    for filepath in allfiles:
+            #            match_files.append(os.path.join(dirpath,filepath))
+            #else:
+            for filepath in allfiles:
+                if fnmatch.fnmatch(os.path.basename(filepath), os.path.basename(path)):
+                    match_files.append(os.path.join(dirpath, filepath))
+    else:
+        if '.' not in path:
+            match_files = glob.glob(path)
+        else:
+            dirpath = os.path.dirname(path)
+            if not os.path.exists(dirpath):
+                return(match_files)
+            else:
+                allfiles = glob.glob(dirpath)
+                for filepath in allfiles:
+                    if fnmatch.fnmatch(os.path.basename(filepath), os.path.basename(path)):
+                        match_files.append(os.path.join(dirpath, filepath))
     return(match_files)
 
 def checkfile_exists_remote(path, sftp):

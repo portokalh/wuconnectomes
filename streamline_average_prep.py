@@ -4,7 +4,7 @@ import warnings
 from dipy.tracking.streamline import transform_streamlines
 import os, glob
 from nifti_handler import getlabeltypemask
-from file_tools import mkcdir
+from file_tools import mkcdir, getfromfile
 from tract_handler import ratio_to_str, gettrkpath, gettrkpath_testsftp
 from convert_atlas_mask import atlas_converter
 import socket
@@ -29,64 +29,24 @@ import errno
 import pickle
 from dipy.segment.clustering import QuickBundles
 from dipy.io.image import load_nifti
+from computer_nav import get_mainpaths, get_atlas
 
 #def get_grouping(grouping_xlsx):
 #    print('not done yet')
 
 project = 'AMD'
 
-computer_name = socket.gethostname()
-
-
-samos = False
-if 'samos' in computer_name:
-    inpath = '/mnt/paros_MRI/jacques/'
-    outpath = '/mnt/paros_MRI/jacques/'
-    ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'santorini' in computer_name or 'hydra' in computer_name:
-    # mainpath = '/Users/alex/jacques/'
-    inpath = '/Volumes/Data/Badea/Lab/human/'
-    outpath = '/Volumes/Data/Badea/Lab/human/'
-    ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'blade' in computer_name:
-    inpath = '/mnt/munin6/Badea/Lab/human/'
-    outpath = '/mnt/munin6/Badea/Lab/human/'
-    ROI_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-else:
-    raise Exception('No other computer name yet')
-
 remote=True
-if remote and not 'samos' in computer_name:
-    inpath = 'alex@samos.dhe.duke.edu:/mnt/paros_MRI/jacques/'
-
-if "." and ":" in inpath:
-    if computer_name not in inpath:
-        import paramiko
-        if "@" in inpath:
-            DTC_DWI_folder_split = inpath.split("@")
-            username = DTC_DWI_folder_split[0]
-            server = DTC_DWI_folder_split[1].split(".")[0]
-            password = getpass.getpass()
-        else:
-            server = inpath.split(".")[0]
-            username = getpass.getuser()
-            password = getpass.getpass()
-            DTC_DWI_folder_split = username + "@" + inpath
-        inpath = inpath.split(":")[1]
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
-        #ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server, username=username, password=password)
-        remote=True
-    else:
-        inpath = inpath.split(":")[1]
-
 if remote:
-    sftp = ssh.open_sftp()
+    username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
+
+inpath, outpath, atlas_folder, sftp = get_mainpaths(remote,project = project, username=username,password=passwd)
+
+if project=='AMD' or project=='AD_Decode':
+    atlas_legends = get_atlas(atlas_folder, 'IIT')
 
 # Setting identification parameters for ratio, labeling type, etc
-ratio = 1
+ratio = 100
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
 if ratio_str == '_all':
@@ -122,11 +82,9 @@ function_processes = parse_arguments_function(sys.argv)
 print(f'there are {function_processes} function processes')
 
 if project=='AD_Decode':
-    outpath = os.path.join(outpath, project, 'Analysis')
-    inpath = os.path.join(inpath, project, 'Analysis')
-else:
-    outpath = os.path.join(outpath, project)
-    inpath = os.path.join(inpath, project)
+    outpath = os.path.join(outpath,'Analysis')
+    inpath = os.path.join(inpath, 'Analysis')
+
 
 TRK_folder = os.path.join(inpath, f'TRK_MPCA_MDT{fixed_str}{folder_ratio_str}')
 TRK_folder = os.path.join(inpath, f'TRK_MDT{fixed_str}{folder_ratio_str}')
@@ -134,8 +92,7 @@ label_folder = os.path.join(outpath, 'DWI')
 #trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
 excel_folder = os.path.join(outpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 
-print(excel_folder)
-mkcdir(excel_folder)
+mkcdir(excel_folder,sftp)
 
 if not remote and os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
@@ -198,6 +155,8 @@ elif project == 'AMD':
     # groups to go through
     groups_all = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
     groups = ['Paired Initial Control', 'Paired Initial AMD']
+    groups = ['Paired 2-YR Control', 'Paired 2-YR AMD']
+
     removed_list=[]
     # groups = ['Paired 2-YR AMD']
     # groups = ['Paired 2-YR Control']
@@ -220,17 +179,15 @@ for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
 
-_, _, index_to_struct, _ = atlas_converter(ROI_legends)
-labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', ROI_legends,
-                                                     labeltype=labeltype, verbose=verbose)
+_, _, index_to_struct, _ = atlas_converter(atlas_legends)
+labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', atlas_legends,
+                                                     labeltype=labeltype, verbose=verbose, sftp=sftp)
 
 print(f'Beginning streamline_prep run from {TRK_folder} for folder {excel_folder}')
 
 for subject in subjects:
-    if not remote:
-        trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
-    else:
-        trkpath, exists = gettrkpath_testsftp(TRK_folder, subject, str_identifier, sftp = sftp, pruned=False, verbose=verbose)
+
+    trkpath, exists = gettrkpath(trkpath, subject, str_identifier, pruned = False, verbose = verbose, sftp = sftp)
 
     if not exists:
         txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'

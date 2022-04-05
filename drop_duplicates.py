@@ -18,13 +18,13 @@ for i in old_list:
 
 new_list = sorted(new_list)
 #new_list = "',' ".join(new_list)
-print(new_list[:142])
-print(np.size(new_list[:142]))
+print(new_list)
+#print(np.size(new_list[:142]))
 
 new_list = new_list[:142]
 new_list.remove('N58610')
 new_list.append('N59010')
-write_excel=True
+write_excel=False
 
 if write_excel:
     excel_path = '/Users/jas/Downloads/allnames.xlsx'

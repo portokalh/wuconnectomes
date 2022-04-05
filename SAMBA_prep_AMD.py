@@ -18,8 +18,8 @@ if munin:
     mainpath = "/mnt/munin/Whitson/BrainChAMD.01/"
     outpath = "/mnt/munin6/Badea/Lab/human/AMD/diffusion_prep_locale/"
 
-    SAMBA_inputs_folder = "/Volumes/Data/Badea/Lab/mouse/whiston_symlink_pool/"
-    shortcuts_all_folder = "/Volumes/Data/Badea/Lab/mouse/whiston_symlink_pool_allfiles/"
+    SAMBA_inputs_folder = "/Volumes/Data/Badea/Lab/mouse/whitson_symlink_pool/"
+    shortcuts_all_folder = "/Volumes/Data/Badea/Lab/mouse/whitson_symlink_pool_allfiles/"
     SAMBA_inputs_folder = None
     shortcuts_all_folder = None
 else:
@@ -27,8 +27,8 @@ else:
     mainpath ="/Volumes/Data/Whitson/BrainChAMD.01/"
     outpath = "/Volumes/Data/Badea/Lab/human/AMD/diffusion_prep_locale/"
 
-    SAMBA_inputs_folder = "/Volumes/Data/Badea/Lab/mouse/whiston_symlink_pool/"
-    shortcuts_all_folder = "/Volumes/Data/Badea/Lab/mouse/whiston_symlink_pool_allfiles/"
+    SAMBA_inputs_folder = "/Volumes/Data/Badea/Lab/mouse/whitson_symlink_pool/"
+    shortcuts_all_folder = "/Volumes/Data/Badea/Lab/mouse/whitson_symlink_pool_allfiles/"
     SAMBA_inputs_folder = None
     shortcuts_all_folder = None
 
@@ -61,7 +61,7 @@ recenter=0
 transpose=None
 
 #btables=["extract","copy","None"]
-btables="copy"
+btables="extract"
 #Neither copy nor extract are fully functioning right now, for now the bvec extractor from extractdiffdirs works
 #go back to this if ANY issue with bvals/bvecs
 #extract is as the name implies here to extract the bvals/bvecs from the files around subject data
@@ -69,10 +69,12 @@ btables="copy"
 if btables=="extract":
     for subject in subjects:
         #outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
-        outpathsubj = outpath + "_" + subject
+        subjectpath = glob.glob(os.path.join(os.path.join(diffpath, "*"+subject+"*")))[0]
+        outpathsubj = os.path.join(outpath,proc_name+subject)
         writeformat="tab"
         writeformat="dsi"
-        fbvals, fbvecs = extractbvals(diffpath, subject, outpath=outpath, writeformat=writeformat, overwrite=True)
+        mkcdir(outpathsubj)
+        fbvals, fbvecs = extractbvals(subjectpath, proc_subjn + subject, outpath=outpathsubj, writeformat=writeformat, overwrite=False)
         #fbvals, fbvecs = rewrite_subject_bvalues(diffpath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
 elif btables=="copy":
     for subject in subjects:
@@ -94,6 +96,8 @@ print(f'overwrite is {overwrite}')
 
 
 results=[]
+
+"""
 if subject_processes>1:
     if function_processes>1:
         pool = MyPool(subject_processes)
@@ -106,21 +110,21 @@ if subject_processes>1:
                                                          gunniespath, function_processes, masking, ref, transpose,
                                                          overwrite, denoise, recenter, verbose)
                                                         for subject in subjects]).get()
-else:
-    for subject in subjects:
-        max_size=0
-        subjectpath = glob.glob(os.path.join(os.path.join(diffpath, "*"+subject+"*")))[0]
-        subject_outpath = os.path.join(outpath, 'diffusion_prep_' + proc_subjn + subject)
-        subject_n = proc_subjn + subject
-        max_file=largerfile(subjectpath)
-        if os.path.exists(os.path.join(subject_outpath, f'{subject_n}_subjspace_fa.nii.gz')) and not overwrite:
-            print(f'already did subject {subject_n}')
-        elif os.path.exists(os.path.join('/Volumes/Badea/Lab/whiston_symlink_pool_allfiles/', f'{subject_n}_subjspace_coreg.nii.gz')) and not overwrite:
-            print(f'Could not find subject {subject_n} in main diffusion folder but result was found in SAMBA prep folder')
-        #elif os.path.exists(os.path.join('/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/reg_images/',f'{subject_n}_rd_to_MDT.nii.gz')) and not overwrite:
-        #    print(f'Could not find subject {subject_n} in main diff folder OR samba init but was in results of SAMBA')
-        else:
-            launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, SAMBA_inputs_folder,
-                                 shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose,
-                                 overwrite, denoise, recenter, verbose)
+"""
+for subject in subjects:
+    max_size=0
+    subjectpath = glob.glob(os.path.join(os.path.join(diffpath, "*"+subject+"*")))[0]
+    subject_outpath = os.path.join(outpath, 'diffusion_prep_' + proc_subjn + subject)
+    subject_n = proc_subjn + subject
+    max_file=largerfile(subjectpath)
+    if os.path.exists(os.path.join(subject_outpath, f'{subject_n}_subjspace_fa.nii.gz')) and not overwrite:
+        print(f'already did subject {subject_n}')
+    elif os.path.exists(os.path.join('/Volumes/Badea/Lab/whiston_symlink_pool_allfiles/', f'{subject_n}_subjspace_coreg.nii.gz')) and not overwrite:
+        print(f'Could not find subject {subject_n} in main diffusion folder but result was found in SAMBA prep folder')
+    #elif os.path.exists(os.path.join('/Volumes/Data/Badea/Lab/mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/reg_images/',f'{subject_n}_rd_to_MDT.nii.gz')) and not overwrite:
+    #    print(f'Could not find subject {subject_n} in main diff folder OR samba init but was in results of SAMBA')
+    else:
+        launch_preprocessing(proc_subjn + subject, max_file, outpath, cleanup, nominal_bval, SAMBA_inputs_folder,
+                             shortcuts_all_folder, gunniespath, function_processes, masking, ref, transpose,
+                             overwrite, denoise, recenter, verbose)
 

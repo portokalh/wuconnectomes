@@ -47,7 +47,7 @@ def make_tractogram_object(fname, streamlines, affine, vox_size=None, shape=None
     trk_file = nib.streamlines.TrkFile(tractogram, header=header)
     return tractogram, trk_file
 
-def save_trk_header(filepath, streamlines, header, affine=np.eye(4), fix_streamlines = False, verbose=False):
+def save_trk_header(filepath, streamlines, header, affine=np.eye(4), fix_streamlines = False, verbose=False, sftp=None):
 
     myheader = create_tractogram_header(filepath, *header)
     trk_sl = lambda: (s for s in streamlines)
@@ -55,7 +55,7 @@ def save_trk_header(filepath, streamlines, header, affine=np.eye(4), fix_streaml
         print(f'Saving streamlines to {filepath}')
         time1 = time.perf_counter()
     save_trk_heavy_duty(filepath, streamlines=trk_sl,
-                        affine=affine, header=myheader, fix_streamlines = fix_streamlines, return_tractogram=False)
+                        affine=affine, header=myheader, fix_streamlines = fix_streamlines, return_tractogram=False, sftp=sftp)
     if verbose:
         time2 = time.perf_counter()
         print(f'Saved in {time2 - time1:0.4f} seconds')
@@ -92,7 +92,7 @@ def save_trk_heavy_duty(fname, streamlines, affine, vox_size=None, shape=None, h
     if fix_streamlines:
         tractogram.remove_invalid_streamlines()
     trk_file = nib.streamlines.TrkFile(tractogram, header=header)
-    if sftp is not None:
+    if sftp is None:
         nib.streamlines.save(trk_file, fname)
     else:
         temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(fname))}'

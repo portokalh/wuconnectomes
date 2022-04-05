@@ -12,7 +12,7 @@ from dipy.io.image import load_nifti
 import shutil
 from convert_atlas_mask import convert_labelmask, atlas_converter
 import errno
-from computer_nav import load_nifti_remote, glob_remote
+from computer_nav import load_nifti_remote, glob_remote, checkfile_exists_remote
 
 def getfa(mypath, subject, bvec_orient, verbose=None):
 
@@ -449,9 +449,9 @@ def getlabelmask(mypath, subject, verbose=None, sftp=None):
 
     return labels, affine_labels, labelspath
 
-def getlabeltypemask(mypath, subject, ROI_legends, labeltype = '', verbose=False):
+def getlabeltypemask(mypath, subject, ROI_legends, labeltype = '', verbose=False, sftp=None):
 
-    labelmask, labelaffine, labelpath = getlabelmask(mypath, subject, verbose=verbose)
+    labelmask, labelaffine, labelpath = getlabelmask(mypath, subject, verbose=verbose, sftp=sftp)
 
     converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = atlas_converter(ROI_legends)
     if labeltype == 'combined':
@@ -464,11 +464,11 @@ def getlabeltypemask(mypath, subject, ROI_legends, labeltype = '', verbose=False
         index_to_struct = index_to_struct_comb
     elif labeltype == 'lrordered':
         labeloutpath = labelpath.replace('.nii.gz', '_lr_ordered.nii.gz')
-        if not os.path.isfile(labeloutpath):
+        if not checkfile_exists_remote(labeloutpath,sftp):
             labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
                                           affine_labels=labelaffine)
         else:
-            labelmask, labelaffine = load_nifti(labeloutpath)
+            labelmask, labelaffine, _, _, _ = load_nifti_remote(labeloutpath, sftp)
         index_to_struct = index_to_struct_lr
     else:
         labeloutpath = labelpath

@@ -10,7 +10,7 @@ from dipy.tracking.streamline import transform_streamlines
 import os, glob
 import pickle
 from nifti_handler import getlabeltypemask, get_diff_ref
-from file_tools import mkcdir, check_files
+from file_tools import mkcdir, check_files, getfromfile
 from tract_handler import ratio_to_str, gettrkpath, gettrkpath_testsftp
 from convert_atlas_mask import atlas_converter
 import socket
@@ -22,6 +22,7 @@ from connectome_handler import connectivity_matrix_func
 from dipy.tracking.utils import length
 import getpass
 import random
+from computer_nav import get_mainpaths, get_atlas
 
 def get_grouping(grouping_xlsx):
     print('not done yet')
@@ -33,68 +34,26 @@ distance1 = 1
 num_points2 = 50
 distance2 = 2
 
-ratio = 1
+ratio = 100
 #projects = ['AD_Decode', 'AMD', 'APOE']
 project = 'AMD'
 
 
 computer_name = socket.gethostname()
 
-
-samos = False
-if 'samos' in computer_name:
-    inpath = '/mnt/paros_MRI/jacques/'
-    outpath = '/mnt/paros_MRI/jacques/'
-    ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'santorini' in computer_name or 'hydra' in computer_name:
-    # mainpath = '/Users/alex/jacques/'
-    inpath = '/Volumes/Data/Badea/Lab/human/'
-    outpath = '/Volumes/Data/Badea/Lab/human/'
-    ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-    ref_MDT_folder = '/Volumes/Data/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_images/'
-elif 'blade' in computer_name:
-    inpath = '/mnt/munin6/Badea/Lab/human/'
-    outpath = '/mnt/munin6/Badea/Lab/human/'
-    ROI_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-    ref_MDT_folder = '/mnt/munin6/Badea/Lab/mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_images/'
-else:
-    raise Exception('No other computer name yet')
-
-if project == 'AD_Decode':
-    ref_MDT_folder = os.path.join(outpath,'../mouse/VBM_21ADDecode03_IITmean_RPI_fullrun-work/dwi/SyN_0p5_3_0p5_fa/faMDT_NoNameYet_n37_i6/reg_images/')
-elif project == 'AMD':
-    ref_MDT_folder = os.path.join(outpath,'../mouse/VBM_19BrainChAMD01_IITmean_RPI_with_2yr-work/dwi/SyN_0p5_3_0p5_dwi/dwiMDT_Control_n72_i6/reg_images/')
-
-
 remote=True
-if remote and not 'samos' in computer_name:
-    inpath = 'alex@samos.dhe.duke.edu:/mnt/paros_MRI/jacques/'
-
-if "." and ":" in inpath:
-    if computer_name not in inpath:
-        import paramiko
-        if "@" in inpath:
-            DTC_DWI_folder_split = inpath.split("@")
-            username = DTC_DWI_folder_split[0]
-            server = DTC_DWI_folder_split[1].split(".")[0]
-            password = getpass.getpass()
-        else:
-            server = inpath.split(".")[0]
-            username = getpass.getuser()
-            password = getpass.getpass()
-            DTC_DWI_folder_split = username + "@" + inpath
-        inpath = inpath.split(":")[1]
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
-        #ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(server, username=username, password=password)
-        remote=True
-    else:
-        inpath = inpath.split(":")[1]
+username = None
+passwd = None
 
 if remote:
-    sftp = ssh.open_sftp()
+    username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
+
+inpath, outpath, atlas_folder, sftp = get_mainpaths(remote,project = project, username=username,password=passwd)
+
+if project=='AMD' or project=='AD_Decode':
+    atlas_legends = get_atlas(atlas_folder, 'IIT')
+
+diff_preprocessed = os.path.join(inpath, "DWI")
 
 
 skip_subjects = True
@@ -146,11 +105,8 @@ function_processes = parse_arguments_function(sys.argv)
 print(f'there are {function_processes} function processes')
 
 if project=='AD_Decode':
-    outpath = os.path.join(outpath, project, 'Analysis')
-    inpath = os.path.join(inpath, project, 'Analysis')
-else:
-    outpath = os.path.join(outpath, project)
-    inpath = os.path.join(inpath, project)
+    outpath = os.path.join(outpath, 'Analysis')
+    inpath = os.path.join(inpath, 'Analysis')
 
 TRK_folder = os.path.join(inpath, f'TRK_MPCA_MDT{fixed_str}{folder_ratio_str}')
 TRK_folder = os.path.join(inpath, f'TRK_MDT{fixed_str}{folder_ratio_str}')
@@ -166,7 +122,7 @@ pickle_folder = os.path.join(outpath, f'Pickle_MDT{inclusive_str}{symmetric_str}
 centroid_folder = os.path.join(outpath, f'Centroids_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 stats_folder = os.path.join(outpath, f'Statistics_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 excel_folder = os.path.join(outpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
-mkcdir([pickle_folder, centroid_folder, stats_folder, excel_folder])
+mkcdir([pickle_folder, centroid_folder, stats_folder, excel_folder],sftp)
 if not remote and not os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
 
@@ -279,7 +235,7 @@ for target_tuple in target_tuples:
             groupLines[group, ref] = []
             groupPoints[group, ref] = []
 
-    _, _, index_to_struct, _ = atlas_converter(ROI_legends)
+    _, _, index_to_struct, _ = atlas_converter(atlas_legends)
     print(f'Starting the run for {index_to_struct[target_tuple[0]]} to {index_to_struct[target_tuple[1]]}')
 
     for group in groups:
@@ -355,7 +311,7 @@ for target_tuple in target_tuples:
                 else:
                     if allow_preprun:
                         labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT',
-                                                                                                 ROI_legends,
+                                                                                                 atlas_legends,
                                                                                                  labeltype=labeltype,
                                                                                                  verbose=verbose)
                         streamlines_world = transform_streamlines(trkdata.streamlines, np.linalg.inv(labelaffine))

@@ -55,6 +55,7 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
     # Make dwi for mask generation purposes.
     tmp_mask = os.path.join(work_dir,f"{subj}_tmp_mask{ext}")
     raw_dwi = os.path.join(work_dir,f"{subj}_raw_dwi.nii.gz")
+    b0_dwi = os.path.join(work_dir,f"{subj}_b0_dwi.nii.gz")  #test average of the b0 images to make a better mask
     orient_string = os.path.join(work_dir,"relative_orientation.txt")
 
     if shortcuts_all_folder is not None:
@@ -74,6 +75,9 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
         if not os.path.exists(raw_dwi) or overwrite:
             select_cmd = f"select_dwi_vols {raw_nii} {bvals} {raw_dwi} {nominal_bval} -m"
             os.system(select_cmd)
+        if not os.path.exists(b0_dwi) or overwrite:
+            select_cmd = f"select_dwi_vols {raw_nii} {bvals} {b0_dwi} 0 -m"
+            os.system(select_cmd)
         if not os.path.exists(tmp_mask) or overwrite:
             if 'median' in masking:
                 tmp = tmp_mask.replace("_mask", "")
@@ -81,7 +85,10 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
                     median_radius = int(masking.split('_')[1])
                 else:
                     median_radius = 4
-                median_mask_make(raw_dwi, tmp, outpathmask=tmp_mask, median_radius = median_radius, numpass=median_radius)
+                median_mask_make(b0_dwi, tmp, outpathmask=tmp_mask, median_radius = median_radius, numpass=median_radius)
+                #median_mask_make(b0_dwi, tmp, outpathmask='/Users/jas/jacques/Chavez_test_temp/b0_test.nii.gz', median_radius = median_radius, numpass=median_radius)
+                #median_mask_make(raw_dwi, tmp, outpathmask='/Users/jas/jacques/Chavez_test_temp/007_mask_rad7.nii.gz',
+                #                 median_radius=7, numpass=7)
             elif masking=="bet":
                 tmp=tmp_mask.replace("_mask", "")
                 bet_cmd = f"bet {raw_dwi} {tmp} -m -n -R"
@@ -384,7 +391,6 @@ def launch_preprocessing(subj, raw_nii, outpath, cleanup=False, nominal_bval=400
         reg_src_fib = os.path.join(work_dir,'Reg_' + subj + f'_nii4D{ext}.src.gz.dti.fib.gz')
         if os.path.exists(reg_src):
             os.remove(reg_src)
-
 
 """
     bonusmask=False

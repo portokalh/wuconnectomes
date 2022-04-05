@@ -14,8 +14,8 @@ from computer_nav import get_mainpaths, get_atlas
 
 remote=True
 project='AMD'
-username='alex'
-passwd='4.alex'
+username=None
+passwd=None
 inpath, outpath, atlas_folder, sftp = get_mainpaths(remote,project = project, username=username,password=passwd)
 atlas_legends = get_atlas(atlas_folder, 'IIT')
 
@@ -151,12 +151,8 @@ if fixed:
 else:
     fixed_str = ''
 
-
-
 trkpath = os.path.join(inpath, "TRK_MPCA_fixed")
 trkpath = os.path.join(inpath, "TRK_MPCA_100")
-
-
 
 trkpath = os.path.join(inpath, f"TRK_MPCA{fixed_str}"+trk_folder_name)
 

@@ -55,7 +55,8 @@ subjects = ['N58712', 'N58790', 'N58606', 'N58350', 'N58608', 'N58779', 'N58500'
 subjects = ['N58302', 'N58612'
     , 'N58784', 'N58706', 'N58361', 'N58355']
 subjects = ['N57452','N57456','N57458','N57462']
-"""
+
+
 subjects_folders = glob.glob(os.path.join(diffpath,'diffusion*/'))
 subjects = []
 for subject_folder in subjects_folders:
@@ -67,7 +68,8 @@ subjects = sorted(subjects)
 subjects = subjects[76:]
 #subjects.reverse()
 #subjects = subjects[:8]
-"""
+
+
 removed_list = ['N58610', 'N58612', 'N58613','N58732']
 for remove in removed_list:
     if remove in subjects:

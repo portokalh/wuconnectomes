@@ -17,10 +17,13 @@ import socket
 from file_tools import mkcdir
 from tract_handler import gettrkpath
 from tract_manager import get_str_identifier
-from file_tools import mkcdir, check_files
+from file_tools import mkcdir, check_files, getfromfile
 from tract_manager import check_dif_ratio
+from computer_nav import get_mainpaths, load_nifti_remote, load_trk_remote, loadmat_remote, checkfile_exists_remote
 import glob, warnings
+import random
 
+project= 'AMD'
 subjects = ["H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660", "H29304", "H26890",
             "H29556", "H26862", "H29410", "H26966", "H29403", "H26841", "H21593", "H27126", "H29618", "H27111", "H29627",
             "H27164", "H29502", "H27100", "H27381", "H21836", "H27391", "H21850", "H27495", "H21729", "H27488", "H21915",
@@ -35,58 +38,64 @@ subjects = ["H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660"
             "H26880", "H26890", "H26958", "H26974", "H27017", "H27111", "H27164", "H27381", "H27391", "H27495", "H27610",
             "H27640", "H27680", "H27778", "H27982", "H28115", "H28308", "H28338", "H28373", "H28377", "H28433", "H28437",
             "H28463", "H28532", "H28662", "H28698", "H28748", "H28809", "H28857", "H28861", "H29013", "H29020", "H29025"]
-subjects = ["H26966"]
+#subjects = ["H26660"]
+#subjects = ["H29410"]
 subjects = sorted(subjects)
+random.shuffle(subjects)
 #temporarily removing "H29056" to recalculate it
 ext = ".nii.gz"
 computer_name = socket.gethostname()
 
-if computer_name == 'samos':
-    main_path = '/mnt/paros_MRI/jacques/'
-elif 'santorini' in computer_name:
-    main_path = '/Volumes/Data/Badea/Lab/human/'
+username=None
+passwd = None
+if 'samos' not in computer_name:
+    remote=True
 else:
-    raise Exception('No other computer name yet')
+    remote=False
+if remote:
+    username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
+inpath, outpath, _, sftp = get_mainpaths(remote,project = 'AMD', username=username,password=passwd)
 
-project = "AMD"
 
 testing = False
 if testing:
-    main_path = '/Users/alex/jacques/AMD_testing_zone/AMD_TRK_testing'
+    inpath = '/Users/alex/jacques/AMD_testing_zone/AMD_TRK_testing'
 
 if project == "AMD":
-    path_TRK = os.path.join(main_path, 'AMD', 'TRK')
-    path_DWI = os.path.join(main_path, 'AMD', 'DWI')
-    path_transforms = os.path.join(main_path, 'AMD','Transforms')
+    path_TRK = os.path.join(inpath, 'TRK')
+    path_DWI = os.path.join(inpath, 'DWI')
+    path_transforms = os.path.join(inpath, 'Transforms')
     ref = "md"
-    path_trk_tempdir = os.path.join(main_path, 'AMD', 'TRK_tempsave')
-    path_TRK_output = os.path.join(main_path, 'AMD', 'TRK_MDT')
-    DWI_save = os.path.join(main_path, 'AMD', 'NII_tempsave')
+    path_trk_tempdir = os.path.join(outpath, 'TRK_transition')
+    path_TRK_output = os.path.join(outpath, 'TRK_rigidaff')
+    DWI_save = os.path.join(outpath, 'NII_toMDT')
     #Get the values from DTC_launcher_ADDecode. Should probably create a single parameter file for each project one day
 
-mkcdir([path_trk_tempdir,path_TRK_output, DWI_save])
+mkcdir([path_trk_tempdir,path_TRK_output, DWI_save],sftp)
 
 stepsize = 2
-ratio = 100
+ratio = 1
 trkroi = ["wholebrain"]
 str_identifier = get_str_identifier(stepsize, ratio, trkroi)
-prune= False
+prune= True
 overwrite = False
 cleanup = False
 verbose=True
-recenter=1
+recenter=True
 
-save_temp_files = False
+save_temp_trk_files = False
 nii_test_files = False
 
 contrast='dwi'
 native_ref=''
 
 
-if save_temp_files:
-    mkcdir(path_trk_tempdir)
+if save_temp_trk_files:
+    mkcdir(path_trk_tempdir, sftp)
 
 for subj in subjects:
+
+    print(f'running move for subject {subj}')
     trans = os.path.join(path_transforms, f"{subj}_0DerivedInitialMovingTranslation.mat")
     rigid = os.path.join(path_transforms, f"{subj}_rigid.mat")
     affine_orig = os.path.join(path_transforms, f"{subj}_affine.mat")
@@ -148,15 +157,20 @@ for subj in subjects:
 
     trk_preprocess_posttrans = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_preprocess_posttrans.trk')
     trk_preprocess_postrigid = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_preprocess_postrigid.trk')
-    trk_preprocess_postrigid_affine = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_preprocess_postrigid_affine.trk')
+    #trk_preprocess_postrigid_affine = os.path.join(path_trk_tempdir, f'{subj}{str_identifier}_preprocess_postrigid_affine.trk')
+    trk_preprocess_postrigid_affine = os.path.join(path_TRK_output, f'{subj}{str_identifier}_preprocess_postrigid_affine.trk')
     trk_MDT_space = os.path.join(path_TRK_output, f'{subj}_MDT.trk')
 
-    if not os.path.exists(trk_MDT_space) or overwrite:
+    #final_img_exists = checkfile_exists_remote(trk_MDT_space)
+    final_img_exists = checkfile_exists_remote(trk_preprocess_postrigid_affine, sftp)
+
+    if not final_img_exists or overwrite:
+
+        _, exists = check_files([trans, rigid, runno_to_MDT], sftp)
+        print('reaching point 1')
 
         subj_dwi = os.path.join(path_DWI, f'{subj}_coreg_diff{ext}')
-        nii = nib.load(subj_dwi)
-        nii_data = nii.get_data()
-        subj_affine = nii._affine
+        nii_data, subj_affine, _, _, _= load_nifti_remote(subj_dwi,sftp)
         subj_affine_new = subj_affine
 
         #subj_torecenter_transform_affine = get_affine_transform_test(subj_affine, subj_affine_new)
@@ -164,25 +178,28 @@ for subj in subjects:
         #added_trans = subj_affine[:3, 3] + np.multiply(subjtorecenter_affine[:3, 3], [-1,-1,-1])
         #subj_torecenter_transform_affine[:3, 3] = reorient_trans + added_trans
 
-        SAMBA_input_real_file =  os.path.join(path_DWI, f'{subj}_dwi{ext}')
-
+        #SAMBA_input_real_file =  os.path.join(path_DWI, f'{subj}_dwi{ext}')
         #new_affine, translation, translate_affine = recenter_nii_affine(SAMBA_input_real_file, return_translation=True)
 
         #subj_trk, _ = gettrkpath(path_TRK, subj, str_identifier, pruned=True, verbose=verbose)
-
-        check_dif_ratio(path_TRK, subj, str_identifier, ratio)
-        subj_trk, trkexists = gettrkpath(path_TRK, subj, str_identifier, pruned=prune, verbose=False)
-
-        _, exists = check_files([trans, rigid, runno_to_MDT])
+        print('reaching point 2')
+        check_dif_ratio(path_TRK, subj, str_identifier, ratio, sftp)
+        subj_trk, trkexists = gettrkpath(path_TRK, subj, str_identifier, pruned=prune, verbose=False, sftp=sftp)
+        if not trkexists:
+            txt = f'Could not find TRK file for subject {subj}'
+            raise Exception(txt)
+        _, exists = check_files([trans, rigid, runno_to_MDT], sftp)
         if np.any(exists==0):
             raise Exception('missing transform file')
-        if not os.path.exists(affine) and not os.path.exists(affine_orig):
+        _, exists = check_files([affine, affine_orig], sftp)
+        if np.any(exists==0):
             raise Exception('missing transform file')
-        streamlines_prepro, header = unload_trk(subj_trk)
-
-
+        #streamlines_prepro, header = unload_trk(subj_trk)
+        streamlines_data = load_trk_remote(subj_trk, 'same', sftp)
+        streamlines_prepro = streamlines_data.streamlines
+        header = streamlines_data.space_attributes
         #streamlines_prepro, header_prepro = unload_trk(trk_preprocess)
-        mat_struct = loadmat(trans)
+        mat_struct = loadmat_remote(trans, sftp)
         var_name = list(mat_struct.keys())[0]
         later_trans_mat = mat_struct[var_name]
         new_transmat = np.eye(4)
@@ -192,44 +209,46 @@ for subj in subjects:
         new_transmat[2, 3] = 0
         print(new_transmat)
         streamlines_posttrans = transform_streamlines(streamlines_prepro, (new_transmat))
-
-        if (not os.path.exists(trk_preprocess_posttrans) or overwrite) and save_temp_files:
+        print('reaching point 3')
+        if (not checkfile_exists_remote(trk_preprocess_posttrans, sftp) or overwrite) and save_temp_trk_files:
             save_trk_header(filepath= trk_preprocess_posttrans, streamlines = streamlines_posttrans, header = header,
-                    affine=np.eye(4), verbose=verbose)
+                    affine=np.eye(4), verbose=verbose, sftp=sftp)
 
-        rigid_struct = loadmat(rigid)
+        rigid_struct = loadmat_remote(rigid,sftp)
         var_name = list(rigid_struct.keys())[0]
         rigid_ants = rigid_struct[var_name]
         rigid_mat = convert_ants_vals_to_affine(rigid_ants)
 
         #streamlines_posttrans, header_posttrans = unload_trk(trk_preprocess_posttrans)
         streamlines_postrigid = transform_streamlines(streamlines_posttrans, np.linalg.inv(rigid_mat))
-
-        if (not os.path.exists(trk_preprocess_postrigid) or overwrite) and save_temp_files:
+        print('reaching point 4')
+        if (not checkfile_exists_remote(trk_preprocess_postrigid, sftp) or overwrite) and save_temp_trk_files:
             save_trk_header(filepath=trk_preprocess_postrigid, streamlines=streamlines_postrigid, header=header,
-                    affine=np.eye(4), verbose=verbose)
+                    affine=np.eye(4), verbose=verbose, sftp=sftp)
 
+        """
         if os.path.exists(affine):
             affine_mat_s = read_affine_txt(affine)
         else:
             cmd = f'ConvertTransformFile 3 {affine_orig} {affine} --matrix'
             os.system(cmd)
             affine_mat_s = read_affine_txt(affine)
+        """
 
-
-        affine_struct = loadmat(affine_orig)
+        affine_struct = loadmat_remote(affine_orig,sftp)
         var_name = list(affine_struct.keys())[0]
         affine_ants = affine_struct[var_name]
         affine_mat = convert_ants_vals_to_affine(affine_ants)
 
         streamlines_postrigidaffine = transform_streamlines(streamlines_postrigid, np.linalg.inv(affine_mat))
-
-        if (not os.path.exists(trk_preprocess_postrigid_affine) or overwrite) and save_temp_files:
+        print('reaching point 5')
+        if (not checkfile_exists_remote(trk_preprocess_postrigid_affine, sftp) or overwrite):
             save_trk_header(filepath=trk_preprocess_postrigid_affine, streamlines=streamlines_postrigidaffine, header=header,
-                    affine=np.eye(4), verbose=verbose)
-
+                    affine=np.eye(4), verbose=verbose, sftp=sftp)
+            print('did this')
+        print('finished')
         #streamlines_postrigidaffine, header_postrigidaffine = unload_trk(trk_preprocess_postrigid_affine)
-
+        """
         warp, affine, vox_size, header_warp, ref_info = extract_nii_info(runno_to_MDT)
         warp = warp[:,:,:,0,:]
 
@@ -244,6 +263,7 @@ for subj in subjects:
 
         if (not os.path.exists(trk_MDT_space) or overwrite):
             save_trk_header(filepath=trk_MDT_space, streamlines=streamlines_post_warp, header=header,
-                    affine=np.eye(4), fix_streamlines=False, verbose=verbose)
+                    affine=np.eye(4), fix_streamlines=False, verbose=verbose, sftp=sftp)
+        """
     else:
         print(f'{trk_MDT_space} already exists')

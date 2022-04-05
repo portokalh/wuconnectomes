@@ -80,7 +80,7 @@ record = ''
 inclusive = False
 symmetric = True
 write_txt = True
-ratio = 1
+ratio = 100
 top_percentile = 100
 num_bundles = 20
 

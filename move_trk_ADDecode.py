@@ -58,17 +58,18 @@ elif 'blade' in computer_name:
     main_path = '/mnt/munin6/Badea/Lab/human/'
 else:
     raise Exception('No other computer name yet')
+AD_Decode_path = os.path.join(main_path, 'AD_Decode', 'Analysis')
 project = "AD_Decode"
 
 if project == "AD_Decode":
-    path_TRK = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA')
-    path_TRK_output = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_MPCA_MDT')
-    path_DWI = os.path.join(main_path, 'AD_Decode', 'Analysis', 'DWI')
-    path_DWI_MDT = os.path.join(main_path, 'AD_Decode', 'Analysis', 'DWI_MDT')
-    path_transforms = os.path.join(main_path, 'AD_Decode', 'Analysis', 'Transforms')
+    path_TRK = os.path.join(AD_Decode_path, 'TRK_MPCA')
+    path_TRK_output = os.path.join(AD_Decode_path, 'TRK_MPCA_MDT')
+    path_DWI = os.path.join(AD_Decode_path, 'DWI')
+    path_DWI_MDT = os.path.join(AD_Decode_path, 'DWI_MDT')
+    path_transforms = os.path.join(AD_Decode_path, 'Transforms')
     ref = "md"
-    path_trk_tempdir = os.path.join(main_path, 'AD_Decode', 'Analysis', 'TRK_save_alt2')
-    DWI_save = os.path.join(main_path, 'AD_Decode', 'Analysis', 'NII_tempsave_alt2')
+    path_trk_tempdir = os.path.join(AD_Decode_path, 'TRK_save_alt2')
+    DWI_save = os.path.join(AD_Decode_path, 'NII_tempsave_alt2')
     mkcdir([path_trk_tempdir, path_TRK_output, DWI_save])
     # Get the values from DTC_launcher_ADDecode. Should probalby create a single parameter file for each project one day
     stepsize = 2

@@ -14,7 +14,7 @@ from argument_tools import parse_arguments
 from bvec_handler import orient_to_str
 
 gunniespath = "/Users/jas/bass/gitfolder/gunnies/"
-diffpath = "/Volumes/Data/Badea/Lab/RaulChavezValdez/"
+diffpath = "/Volumes/Data/Badea/Lab/RaulChavezValdez_RAS/"
 # diffpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/research/"
 # outpath = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_locale/"
 outpath = "/Volumes/Data/Badea/Lab/mouse/Chavez_series/diffusion_prep_locale/"
@@ -32,6 +32,10 @@ if shortcuts_all_folder is not None:
     mkcdir(shortcuts_all_folder)
 mkcdir(outpath)
 subjects = ['C_20220124_001', 'C_20220124_002', 'C_20220124_003', 'C_20220124_004', 'C_20220124_005', 'C_20220124_006', 'C_20220124_007']
+#subjects = ['C_20220124_005', 'C_20220124_006']
+
+#subjects = ['C_20220124_005']
+subjects.reverse()
 #subjects = ['C_20220124_007']
 
 """
@@ -46,7 +50,6 @@ for remove in removed_list:
         subjects.remove(remove)
 
 print(subjects)
-
 # subjects = ['N58610', 'N58612', 'N58613']
 
 subject_processes, function_processes = parse_arguments(sys.argv, subjects)

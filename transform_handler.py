@@ -743,6 +743,104 @@ def get_flip_affine(current_vorder, desired_vorder):
     return affine_transform, newaffine
 
 
+def get_flip_bvecs(bvecs, current_vorder, desired_vorder, output_file=None, writeformat = 'line'):
+
+    if isinstance(bvecs,str):
+        from bvec_handler import read_bvecs
+        bvecs = read_bvecs(bvecs)
+
+    for char in current_vorder:
+        if char.islower():
+            warnings.warn("Use uppercase for current order")
+            current_vorder=current_vorder.upper()
+    for char in desired_vorder:
+        if char.islower():
+            warnings.warn("Use uppercase for desired order")
+            current_vorder=desired_vorder.upper()
+
+    ordervals='RLAPSI'
+    if not ordervals.find(current_vorder[0]) and not ordervals.find(current_vorder[1]) and not ordervals.find(current_vorder[2]):
+        raise TypeError('Please use only R L A P S or I for current voxel order')
+
+    if not ordervals.find(desired_vorder[0]) and not ordervals.find(desired_vorder[1]) and not ordervals.find(desired_vorder[2]):
+        raise TypeError('Please use only R L A P S or I for desired voxel order')
+
+    orig_string = 'RLAPSI';
+    flip_string = 'LRPAIS';
+    orig_current_vorder = current_vorder;
+
+    x_row = bvecs[0,:]
+    y_row = bvecs[1,:]
+    z_row = bvecs[2,:]
+
+    xpos=desired_vorder.find(current_vorder[0])
+    if xpos == -1:
+        print('Flipping first dimension')
+        val=0
+        #new_data = np.flip(new_data, 0)
+        orig_ind=orig_string.find(current_vorder[0])
+        current_vorder = current_vorder[0:val] + flip_string[orig_ind] + current_vorder[val+1:]
+        #if is_vector:
+        #    new_data[:,:,:,0,1]=-new_data[:,:,:,0,1]
+        x_row = [-1 * val for val in x_row]
+
+    ypos=desired_vorder.find(current_vorder[1])
+    if ypos == -1:
+        print('Flipping second dimension')
+        val=1
+        #new_data = np.flip(new_data, 1)
+        orig_ind=orig_string.find(current_vorder[1])
+        current_vorder = current_vorder[0:val] + flip_string[orig_ind] + current_vorder[val+1:]
+        #if is_vector:
+        #    new_data[:,:,:,0,2]=-new_data[:,:,:,0,2]
+        y_row = [-1 * val for val in y_row]
+
+    zpos=desired_vorder.find(current_vorder[2])
+    if zpos == -1:
+        print('Flipping third dimension')
+        val=2
+        #new_data = np.flip(new_data, 2)
+        orig_ind=orig_string.find(current_vorder[2])
+        current_vorder = current_vorder[0:val] + flip_string[orig_ind] + current_vorder[val+1:]
+        #if is_vector:
+        #    new_data[:,:,:,0,2]=-new_data[:,:,:,0,2]
+        z_row = [-1 * val for val in z_row]
+
+    xpos=current_vorder.find(desired_vorder[0])
+    ypos=current_vorder.find(desired_vorder[1])
+    zpos=current_vorder.find(desired_vorder[2])
+
+    bvecs_new = np.array([bvecs[xpos], bvecs[ypos], bvecs[zpos]])
+    print(['Dimension order is:' + str(xpos) + ' ' + str(ypos) + ' ' + str(zpos)] )
+
+    """
+    origin=affine[0:3,3]
+    trueorigin=origin*[x_row[0],y_row[1],z_row[2]]
+    #trueorigin[2]=trueorigin[2]*(-1)
+
+    affine_transform = np.array([x_row,y_row,z_row,affine[3,:]])
+
+    newaffine=np.zeros([4,4])
+    if not desired_vorder==orig_current_vorder:
+
+        newaffine[0:3,0:3]=affine[0:3,0:3]
+        newaffine[3,:]=[0,0,0,1]
+        newaffine[:3,3]=trueorigin
+        #newaffine[0,:]=x_row
+        #newaffine[1,:]=y_row
+        #newaffine[2,:]=z_row
+        #newhdr.srow_x=[newaffine[0,0:3]]
+        #newhdr.srow_y=[newaffine[1,0:3]]
+        #newhdr.srow_z=[newaffine[2,0:3]]
+        #newhdr.pixdim=hdr.pixdim
+    else:
+        newaffine=affine
+    """
+    if output_file is not None:
+        from bvec_handler import writebvec
+        writebvec(bvecs_new, output_file, writeformat=writeformat, overwrite=True)
+    return bvecs_new
+
 def img_transform_exec_streamlines_defunct(trk_data, current_vorder, desired_vorder, output_path=None, write_transform=0, recenter=0):
 
 

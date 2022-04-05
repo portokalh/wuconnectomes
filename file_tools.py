@@ -12,6 +12,7 @@ from pathlib import Path
 import warnings
 import subprocess, pipes
 from scipy.io import loadmat
+from computer_nav import checkfile_exists_remote
 
 def mkcdir(folderpaths, sftp=None):
     #creates new folder only if it doesnt already exists
@@ -83,10 +84,35 @@ def file_rename(folder, initstring, finalstring, identifier_string="*", anti_ide
             else:
                 print(myfile, newfilepath)
 
-def check_files(files):
+def getfromfile(path):
+    import re
+    username = None
+    password = None
+    if os.path.exists(path):
+        with open(path, 'rb') as source:
+            for line in source:
+                username_str = 'Username'
+                rx1 = re.compile(username_str, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+                password_str = 'Password'
+                rx2 = re.compile(password_str, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+                for a in rx1.findall(str(line)):
+                    username = str(line).split('=')[1]
+                    username = username.split('\\')[0]
+                    username = username.strip()
+                for a in rx2.findall(str(line)):
+                    password = str(line).split('=')[1]
+                    password = password.split('\\')[0]
+                    password = password.strip()
+    else:
+        txt = f'could not find connection parameters at {path}'
+        warnings.warn(txt)
+    return username, password
+
+def check_files(files,sftp=None):
     exists=[]
     newfiles = []
-
+    if np.size(files) == 1:
+        files = [files]
     if isinstance(files, dict):
         oldfiles = []
         for filekey in files:
@@ -94,7 +120,7 @@ def check_files(files):
         files = oldfiles
     for file in files:
         if "*" in file:
-            testfile = glob.glob(file)
+            testfile = glob_remote(file,sftp)
             if np.size(testfile) == 1:
                 exists.append(1)
                 newfiles.append(testfile[0])
@@ -107,13 +133,18 @@ def check_files(files):
                 exists.append(np.size())
                 newfiles.append(testfile[0])
         else:
-            if not os.path.exists(file):
-                print(f"{file} does not exist")
-                exists.append(False)
-                newfiles.append("")
-            else:
+            if sftp is None and os.path.exists(file):
                 exists.append(True)
+            elif sftp is not None:
+                exists.append(checkfile_exists_remote(file, sftp))
+            else:
+                exists.append(False)
+            if exists[-1] is True:
                 newfiles.append(file)
+            else:
+                print(f"{file} does not exist")
+                newfiles.append("")
+
     return newfiles, exists
 
 

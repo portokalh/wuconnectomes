@@ -95,7 +95,7 @@ from multiprocessing import Pool
 from convert_atlas_mask import convert_labelmask, atlas_converter
 #from connectivity_own import connectivity_matrix_special
 from excel_management import connectomes_to_excel, grouping_to_excel
-from computer_nav import load_trk_remote, checkfile_exists_remote
+from computer_nav import load_trk_remote, checkfile_exists_remote, glob_remote
 
 def strfile(string):
     # Converts strings into more usable 'file strings (mostly takes out . and turns it into _
@@ -1039,7 +1039,7 @@ def diff_preprocessing(diffpath,outpath,subject, bvec_orient, denoise="none",sav
 import re
 
 
-def check_dif_ratio(trkpath, subject, strproperty, ratio):
+def check_dif_ratio(trkpath, subject, strproperty, ratio,sftp = None):
 
     string_list = ["_ratio_100", "_ratio_10", "_all"]
     strremoved = strproperty
@@ -1049,7 +1049,10 @@ def check_dif_ratio(trkpath, subject, strproperty, ratio):
     for word in string_list:
         strnew = strremoved.replace("_alt", word)
         filepath = (os.path.join(trkpath, subject + "*" + strnew + '*.trk'))
-        trkpaths = glob.glob(filepath)
+        if sftp is None:
+            trkpaths = glob.glob(filepath, sftp)
+        else:
+            trkpaths = glob_remote(filepath, sftp)
         if trkpaths:
             trkfile = trkpaths[0]
             trkname = os.path.basename(trkfile)

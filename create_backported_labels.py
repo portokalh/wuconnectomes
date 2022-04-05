@@ -123,13 +123,13 @@ def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_l
 
     subjspace_coreg = os.path.join(prep_folder, f"{subject}_subjspace_coreg.nii.gz")
     final_refs = [subjspace_coreg]
-    abb20s = glob.glob(f'/Volumes/dusom_civm-atlas/20.abb.15/research/diffusion{subject}*/*.nii')
+    abb20s = glob.glob(f'/Volumes/dusom_civm-atlas/20.abb.15/research/diffusion{subject}*/nii4D*{subject}.nii')
     if np.size(abb20s)>0:
         final_refs.append(abb20s[0])
-    abb19s = glob.glob(f'/Volumes/dusom_civm-atlas/19.abb.14/research/diffusion{subject}*/*.nii')
+    abb19s = glob.glob(f'/Volumes/dusom_civm-atlas/19.abb.14/research/diffusion{subject}*/nii4D*{subject}.nii')
     if np.size(abb19s)>0:
         final_refs.append(abb19s[0])
-    abb18s = glob.glob(f'/Volumes/dusom_civm-atlas/18.abb.11/research/diffusion{subject}*/*.nii')
+    abb18s = glob.glob(f'/Volumes/dusom_civm-atlas/18.abb.11/research/diffusion{subject}*/nii4D*{subject}.nii')
     if np.size(abb18s) > 0:
         final_refs.append(abb18s[0])
     final_ref = None
@@ -137,8 +137,10 @@ def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_l
         if isinstance(pos_final_ref, str) and os.path.exists(pos_final_ref):
             if Path(pos_final_ref).is_symlink():
                 final_ref=str(Path(pos_final_ref).resolve())
+                break
             else:
                 final_ref = pos_final_ref
+                break
     if final_ref is None:
         txt = f"Could not find final registered subject file for subject {subject}"
         warnings.warn(txt)
