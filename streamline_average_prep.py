@@ -29,7 +29,7 @@ import errno
 import pickle
 from dipy.segment.clustering import QuickBundles
 from dipy.io.image import load_nifti
-from computer_nav import get_mainpaths, get_atlas
+from computer_nav import get_mainpaths, get_atlas, load_trk_remote
 
 #def get_grouping(grouping_xlsx):
 #    print('not done yet')
@@ -46,7 +46,7 @@ if project=='AMD' or project=='AD_Decode':
     atlas_legends = get_atlas(atlas_folder, 'IIT')
 
 # Setting identification parameters for ratio, labeling type, etc
-ratio = 100
+ratio = 1
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
 if ratio_str == '_all':
@@ -56,7 +56,7 @@ else:
 
 inclusive = False
 symmetric = True
-fixed = True
+fixed = False
 overwrite = False
 
 if inclusive:
@@ -87,10 +87,10 @@ if project=='AD_Decode':
 
 
 TRK_folder = os.path.join(inpath, f'TRK_MPCA_MDT{fixed_str}{folder_ratio_str}')
-TRK_folder = os.path.join(inpath, f'TRK_MDT{fixed_str}{folder_ratio_str}')
-label_folder = os.path.join(outpath, 'DWI')
+TRK_folder = os.path.join(inpath, f'TRK_rigidaff{fixed_str}{folder_ratio_str}')
+label_folder = os.path.join(inpath, 'DWI')
 #trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
-excel_folder = os.path.join(outpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+excel_folder = os.path.join(outpath, f'Excels_labels_affinerigid{inclusive_str}{symmetric_str}{folder_ratio_str}')
 
 mkcdir(excel_folder,sftp)
 
@@ -162,7 +162,7 @@ elif project == 'AMD':
     # groups = ['Paired 2-YR Control']
     # groups=[groups[0]]
     subjects = []
-    str_identifier = f'_MDT'
+    str_identifier = f'*'
 
     for group in groups:
         subjects = subjects + groups_subjects[group]
@@ -187,7 +187,7 @@ print(f'Beginning streamline_prep run from {TRK_folder} for folder {excel_folder
 
 for subject in subjects:
 
-    trkpath, exists = gettrkpath(trkpath, subject, str_identifier, pruned = False, verbose = verbose, sftp = sftp)
+    trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned = False, verbose = verbose, sftp = sftp)
 
     if not exists:
         txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
@@ -203,14 +203,7 @@ for subject in subjects:
     else:
         t1 = time()
         if remote:
-            temp_path = f'{os.path.join(os.path.expanduser("~"),os.path.basename(trkpath))}'
-            sftp.get(trkpath, temp_path)
-            try:
-                trkdata = load_trk(temp_path, 'same')
-                os.remove(temp_path)
-            except Exception as e:
-                os.remove(temp_path)
-                raise Exception(e)
+            trkdata = load_trk_remote(trkpath, 'same', sftp)
         else:
             trkdata = load_trk(trkpath, 'same')
         if verbose:

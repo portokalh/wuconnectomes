@@ -103,6 +103,9 @@ def basic_LPCA_denoise_func(id,fdwi,bval_or_bvec_or_btable,outpath, processes=1,
         elif path.exists(masked_path.replace(".nii.gz",".nii")):
             masked_path=masked_path.replace(".nii.gz",".nii")
             maskdata, affine, vox_size = load_nifti(masked_path, return_voxsize=True)
+        else:
+            txt = f'Could not find masked path at {masked_path}'
+            raise Exception(txt)
     else:
         data, affine, vox_size = load_nifti(fdwi, return_voxsize=True)
         idx = bvals > 10
