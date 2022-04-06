@@ -2,10 +2,11 @@ from dipy.io.streamline import load_trk
 import os
 import shutil
 from tract_handler import trk_fixer
-from file_tools import mkcdir
+from file_tools import mkcdir, getfromfile
 from tract_handler import reducetractnumber, ratio_to_str, get_ratio
 import random
-
+from computer_nav import get_sftp, glob_remote
+"""
 TRK_folder = '/Users/alex/jacques/AMD_TRK_testing/TRK_MDT'
 TRK_output = '/Users/alex/jacques/AMD_TRK_testing/TRK_MDT_fixed'
 
@@ -29,8 +30,22 @@ TRK_output = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_MDT_fixe
 
 TRK_folder = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_/'
 TRK_output = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_fixed/'
+"""
 
-filelist = os.listdir(TRK_folder)
+TRK_folder = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_/'
+TRK_output = '/Volumes/Data/Badea/Lab/human/AD_Decode/Analysis/TRK_MPCA_fixed/'
+
+remote=True
+if remote:
+    username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
+
+inpath, outpath, atlas_folder, sftp = get_sftp(remote, username=username,password=passwd)
+
+if not remote:
+    filelist = os.listdir(TRK_folder)
+else:
+    filelist = glob_remote(TRK_folder,sftp)
+
 filelist = sorted(filelist)
 #filelist.reverse()
 random.shuffle(filelist)

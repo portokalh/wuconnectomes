@@ -29,7 +29,8 @@ import errno
 import pickle
 from dipy.segment.clustering import QuickBundles
 from dipy.io.image import load_nifti
-from computer_nav import get_mainpaths, get_atlas, load_trk_remote
+from computer_nav import get_mainpaths, get_atlas, load_trk_remote, checkfile_exists_remote
+from streamline_nocheck import load_trk as load_trk_spe
 
 #def get_grouping(grouping_xlsx):
 #    print('not done yet')
@@ -90,7 +91,7 @@ TRK_folder = os.path.join(inpath, f'TRK_MPCA_MDT{fixed_str}{folder_ratio_str}')
 TRK_folder = os.path.join(inpath, f'TRK_rigidaff{fixed_str}{folder_ratio_str}')
 label_folder = os.path.join(inpath, 'DWI')
 #trkpaths = glob.glob(os.path.join(TRK_folder, '*trk'))
-excel_folder = os.path.join(outpath, f'Excels_labels_affinerigid{inclusive_str}{symmetric_str}{folder_ratio_str}')
+excel_folder = os.path.join(outpath, f'Excels_affinerigid{inclusive_str}{symmetric_str}{folder_ratio_str}')
 
 mkcdir(excel_folder,sftp)
 
@@ -194,8 +195,8 @@ for subject in subjects:
         warnings.warn(txt)
         continue
 
-    M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectomes.xlsx")
-    grouping_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_grouping.xlsx")
+    M_xlsxpath = os.path.join(excel_folder, subject + "_connectomes.xlsx")
+    grouping_xlsxpath = os.path.join(excel_folder, subject + "_grouping.xlsx")
 
     if (os.path.exists(M_xlsxpath) or os.path.exists(grouping_xlsxpath)) and not overwrite:
         print(f'Found written file for subject {subject} at {M_xlsxpath} and {grouping_xlsxpath}')
@@ -205,7 +206,7 @@ for subject in subjects:
         if remote:
             trkdata = load_trk_remote(trkpath, 'same', sftp)
         else:
-            trkdata = load_trk(trkpath, 'same')
+            trkdata = load_trk_spe(trkpath, 'same')
         if verbose:
             print(f"Time taken for loading the trk file {trkpath} set was {str((- t1 + time()) / 60)} minutes")
         t2 = time()
@@ -227,12 +228,12 @@ for subject in subjects:
                                                             volume_weighting=False,
                                                             function_processes = function_processes, verbose=False)
 
-        M_grouping_excel_save(M, grouping, M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False)
+        M_grouping_excel_save(M, grouping, M_xlsxpath, grouping_xlsxpath, index_to_struct, verbose=False, sftp=sftp)
 
         del (trkdata)
         if verbose:
             print(f"Time taken for creating this connectome was set at {str((- t2 + time()) / 60)} minutes")
-        if os.path.exists(grouping_xlsxpath) and verbose:
+        if checkfile_exists_remote(grouping_xlsxpath,sftp) and verbose:
             print(f'Saved grouping for subject {subject} at {grouping_xlsxpath}')
         # grouping = extract_grouping(grouping_xlsxpath, index_to_struct, np.shape(M), verbose=verbose)
         else:

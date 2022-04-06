@@ -2,8 +2,9 @@
 import xlsxwriter
 import pandas as pd
 import numpy as np
+from os import remove as file_remove
 from BIAC_tools import send_mail, isempty
-
+from computer_nav import make_temppath
 """
 Created by Jacques Stout
 
@@ -99,7 +100,7 @@ def excel_average(files, file_outpath):
     #for col, data in enumerate(connectome):
     #    worksheet.write(row + 1, col + 1, data)
 
-def M_grouping_excel_save(M,grouping,M_path, grouping_path, index_to_struct, verbose=False):
+def M_grouping_excel_save(M,grouping,M_path, grouping_path, index_to_struct, verbose=False, sftp=None):
 
     matrix_sl = np.empty(np.shape(M), dtype=object)
     for i in np.arange(np.shape(matrix_sl)[0]):
@@ -115,8 +116,22 @@ def M_grouping_excel_save(M,grouping,M_path, grouping_path, index_to_struct, ver
     matrix_sl = np.delete(matrix_sl, 0, 0)
     matrix_sl = np.delete(matrix_sl, 0, 1)
 
-    connectomes_to_excel(M, index_to_struct, M_path)
-    grouping_to_excel(matrix_sl, index_to_struct, grouping_path)
+    if sftp is None:
+        M_tpath = M_path
+        grouping_tpath = grouping_path
+    else:
+        M_tpath = make_temppath(M_path)
+        grouping_tpath = make_temppath(grouping_path)
+
+    connectomes_to_excel(M, index_to_struct, M_tpath)
+    grouping_to_excel(matrix_sl, index_to_struct, grouping_tpath)
+
+    if sftp is not None:
+        sftp.put(M_tpath, M_path)
+        sftp.put(grouping_tpath, grouping_path)
+        file_remove(M_tpath)
+        file_remove(grouping_tpath)
+
     if verbose:
         txt = (f"The excelfile for connectome and grouping were saved at {M_path} and {grouping_path}")
         send_mail(txt, subject="Excel save")

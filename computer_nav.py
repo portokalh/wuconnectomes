@@ -60,6 +60,22 @@ def get_mainpaths(remote=False, project='any',username=None,password=None):
 
     return inpath, outpath, atlas_folder, sftp
 
+def get_sftp(remote, username=None, password=None):
+    computer_name = socket.gethostname()
+    server='samos'
+    if remote and not 'samos' in computer_name:
+        if username is None or password is None:
+            username = input("Username:")
+            password = getpass.getpass("Password for " + username + ":")
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
+        ssh.connect(server, username=username, password=password)
+        sftp = ssh.open_sftp()
+    else:
+        sftp=None
+
+    return sftp
 
 def get_atlas(atlas_folder, atlas_type):
     if atlas_type == 'IIT':
@@ -68,7 +84,8 @@ def get_atlas(atlas_folder, atlas_type):
         raise Exception('unknown atlas')
     return index_path
 
-
+def make_temppath(path):
+    return f'{os.path.join(os.path.expanduser("~"), os.path.basename(path))}'
 
 def load_nifti_remote(niipath, sftp):
     temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(niipath))}'
@@ -107,11 +124,13 @@ def read_bvals_bvecs_remote(fbvals, fbvecs, sftp):
 
 
 def load_trk_remote(trkpath,reference,sftp):
-    from dipy.io.streamline import load_trk
+    #from dipy.io.streamline import load_trk
+    from streamline_nocheck import load_trk as load_trk_spe
     temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(trkpath))}'
     sftp.get(trkpath, temp_path)
     try:
-        trkdata = load_trk(temp_path, reference)
+        trkdata = load_trk_spe(temp_path, reference)
+        #trkdata = load_trk(temp_path, reference)
         os.remove(temp_path)
     except Exception as e:
         if os.path.exists(temp_path):
