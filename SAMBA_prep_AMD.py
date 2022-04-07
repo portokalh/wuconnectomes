@@ -7,10 +7,11 @@ import os
 import sys
 from bvec_handler import extractbvals, rewrite_subject_bvalues, fix_bvals_bvecs
 from diffusion_preprocessing import launch_preprocessing
-from file_tools import mkcdir, largerfile
+from file_tools import mkcdir, largerfile, check_files
 from transform_handler import get_transpose
 import shutil, random
 from argument_tools import parse_arguments
+from bvec_handler import read_bvecs
 
 munin =False
 if munin:
@@ -73,8 +74,9 @@ if btables=="extract":
         outpathsubj = os.path.join(outpath,proc_name+subject)
         writeformat="tab"
         writeformat="dsi"
+        writeformat='classic'
         mkcdir(outpathsubj)
-        fbvals, fbvecs = extractbvals(subjectpath, proc_subjn + subject, outpath=outpathsubj, writeformat=writeformat, overwrite=False)
+        fbvals, fbvecs = extractbvals(subjectpath, proc_subjn + subject, outpath=outpathsubj, writeformat=writeformat, overwrite=overwrite)
         #fbvals, fbvecs = rewrite_subject_bvalues(diffpath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
 elif btables=="copy":
     for subject in subjects:
@@ -93,7 +95,6 @@ elif btables=="copy":
                 shutil.copy(bvecs[0], outpathbvec)
 
 print(f'overwrite is {overwrite}')
-
 
 results=[]
 

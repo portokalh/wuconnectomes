@@ -22,7 +22,8 @@ from connectome_handler import connectivity_matrix_func
 from dipy.tracking.utils import length
 import getpass
 import random
-from computer_nav import get_mainpaths, get_atlas
+from computer_nav import get_mainpaths, get_atlas, make_temppath, checkfile_exists_remote, load_trk_remote, \
+    remote_pickle, pickledump_remote, load_nifti_remote, remove_remote
 
 def get_grouping(grouping_xlsx):
     print('not done yet')
@@ -34,7 +35,7 @@ distance1 = 1
 num_points2 = 50
 distance2 = 2
 
-ratio = 100
+ratio = 1
 #projects = ['AD_Decode', 'AMD', 'APOE']
 project = 'AMD'
 
@@ -54,7 +55,7 @@ if project=='AMD' or project=='AD_Decode':
     atlas_legends = get_atlas(atlas_folder, 'IIT')
 
 diff_preprocessed = os.path.join(inpath, "DWI")
-
+ref_MDT_folder = os.path.join(inpath, "reg_MDT")
 
 skip_subjects = True
 write_streamlines = True
@@ -67,7 +68,7 @@ symmetric = True
 write_stats = True
 write_txt = True
 constrain_groups = True
-fixed = True
+fixed = False
 
 labeltype = 'lrordered'
 #reference_img refers to statistical values that we want to compare to the streamlines, say fa, rd, etc
@@ -109,7 +110,7 @@ if project=='AD_Decode':
     inpath = os.path.join(inpath, 'Analysis')
 
 TRK_folder = os.path.join(inpath, f'TRK_MPCA_MDT{fixed_str}{folder_ratio_str}')
-TRK_folder = os.path.join(inpath, f'TRK_MDT{fixed_str}{folder_ratio_str}')
+TRK_folder = os.path.join(inpath, f'TRK_rigidaff{fixed_str}{folder_ratio_str}')
 
 label_folder = os.path.join(outpath, 'DWI')
 if symmetric:
@@ -117,11 +118,17 @@ if symmetric:
 else:
     symmetric_str = '_non_symmetric'
 
-
+"""
 pickle_folder = os.path.join(outpath, f'Pickle_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 centroid_folder = os.path.join(outpath, f'Centroids_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 stats_folder = os.path.join(outpath, f'Statistics_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
 excel_folder = os.path.join(outpath, f'Excels_MDT{inclusive_str}{symmetric_str}{folder_ratio_str}')
+"""
+pickle_folder = os.path.join(outpath, f'Pickle_affinerigid{inclusive_str}{symmetric_str}{folder_ratio_str}')
+centroid_folder = os.path.join(outpath, f'Centroids_affinerigid{inclusive_str}{symmetric_str}{folder_ratio_str}')
+stats_folder = os.path.join(outpath, f'Statistics_affinerigid{inclusive_str}{symmetric_str}{folder_ratio_str}')
+excel_folder = os.path.join(outpath, f'Excels_affinerigid{inclusive_str}{symmetric_str}{folder_ratio_str}')
+
 mkcdir([pickle_folder, centroid_folder, stats_folder, excel_folder],sftp)
 if not remote and not os.path.exists(TRK_folder):
     raise Exception(f'cannot find TRK folder at {TRK_folder}')
@@ -146,7 +153,7 @@ if project == 'AD_Decode':
     groups_subjects['Female'] = ['S02363', 'S02373', 'S02386', 'S02390', 'S02410', 'S02421', 'S02424', 'S02446', 'S02451', 'S02506', 'S02524', 'S02686', 'S02695', 'S02715', 'S02720', 'S02737', 'S02765', 'S02771', 'S02781', 'S02802', 'S02804', 'S02812', 'S02817', 'S02840', 'S02877', 'S02898', 'S02926', 'S02967', 'S03033', 'S03034', 'S03045', 'S02361', 'S03308', 'S03321', 'S03343', 'S03378']
 
     #groups to go through
-    groups_all = ['APOE4','APOE3']
+    #groups_all = ['APOE4','APOE3']
     groups= ['APOE3', 'APOE4']
 
     #groups = ['APOE3']
@@ -174,14 +181,15 @@ elif project == 'AMD':
     groups_subjects['Initial Control'] = ['H26949', 'H27852', 'H28029', 'H26966', 'H27126', 'H28068', 'H29161', 'H28955', 'H26862', 'H28262', 'H28856', 'H27842', 'H27246', 'H27869', 'H27999', 'H29127', 'H28325', 'H26841', 'H29044', 'H27719', 'H27100', 'H29254', 'H27682', 'H29002', 'H29089', 'H29242', 'H27488', 'H27841', 'H28820', 'H27163', 'H28869', 'H28208', 'H27686']
     groups_subjects['Paired 2-YR Control'] = ['H29403', 'H22102', 'H29502', 'H22276', 'H29878', 'H29410', 'H22331', 'H22368', 'H21729', 'H29556', 'H21956', 'H22140', 'H23309', 'H22101', 'H23157', 'H21593', 'H21990', 'H22228', 'H23028', 'H21915']
     groups_subjects['Paired Initial Control'] = ['H27852', 'H28029', 'H26966', 'H27126', 'H29161', 'H28955', 'H26862', 'H27842', 'H27999', 'H28325', 'H26841', 'H27719', 'H27100', 'H27682', 'H29002', 'H27488', 'H27841', 'H28820', 'H28208', 'H27686']
-    groups_subjects['Paired Initial AMD'] = ['H29020', 'H26637', 'H27111', 'H26765', 'H28308', 'H28433', 'H26660', 'H28182', 'H27111', 'H27391', 'H28748', 'H28662', 'H26578', 'H28698', 'H27495', 'H28861', 'H28115', 'H28377', 'H26890', 'H28373', 'H27164']
+    groups_subjects['Paired Initial AMD'] = ['H29020', 'H26637', 'H26765', 'H28308', 'H28433', 'H26660', 'H28182', 'H27111', 'H27391', 'H28748', 'H28662', 'H26578', 'H28698', 'H27495', 'H28861', 'H28115', 'H28377', 'H26890', 'H28373', 'H27164']
 
     #groups to go through
-    groups_all = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
+    #groups_all = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
+    groups = ['Paired 2-YR AMD','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
     groups = ['Paired Initial Control', 'Paired Initial AMD']
-    groups = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
-
+    groups = ['Paired 2-YR AMD','Paired 2-YR Control']
     str_identifier = '_MDT' + folder_ratio_str
+    str_identifier = f'*'
 
     for group in groups:
         random.shuffle(groups_subjects[group])
@@ -209,11 +217,11 @@ for group in groups:
 
 if constrain_groups:
     group_sizes = []
-    for group in groups_all:
+    for group in groups:
         #group_sizes[group] = np.size(groups_subjects[group])
         group_sizes.append(np.size(groups_subjects[group]))
     group_min = np.min(group_sizes)
-    for group in groups_all:
+    for group in groups:
         groups_subjects[group] = groups_subjects[group][:group_min]
     print(group_sizes)
 
@@ -225,6 +233,13 @@ feature2 = ResampleFeature(nb_points=num_points2)
 metric2 = AveragePointwiseEuclideanMetric(feature=feature2)
 
 overwrite=False
+
+for group in groups:
+    subjects = groups_subjects[group]
+    for subject in subjects:
+        grouping_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_grouping.xlsx")
+        if not checkfile_exists_remote(grouping_xlsxpath, sftp) and not allow_preprun:
+            print(subject)
 
 for target_tuple in target_tuples:
 
@@ -245,9 +260,13 @@ for target_tuple in target_tuples:
         centroid_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_centroid.py')
         streamline_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_streamlines.trk')
         stats_path = os.path.join(stats_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_stats.xlsx')
+        if sftp is None:
+            stats_path_temp = stats_path
+        else:
+            stats_path_temp = make_temppath(stats_path)
         if write_stats:
             import xlsxwriter
-            workbook = xlsxwriter.Workbook(stats_path)
+            workbook = xlsxwriter.Workbook(stats_path_temp)
             worksheet = workbook.add_worksheet()
             l=1
             for ref in references:
@@ -265,16 +284,18 @@ for target_tuple in target_tuples:
         for ref in references:
             grouping_files[ref,'lines']=(os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_lines.py'))
             grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
-            list_files, exists = check_files(grouping_files)
-        if not os.path.exists(centroid_file_path) or not np.all(exists) or (not os.path.exists(streamline_file_path) and write_streamlines) or (not os.path.exists(stats_path) and write_stats) or overwrite:
+            list_files, exists = check_files(grouping_files, sftp)
+
+        if not checkfile_exists_remote(centroid_file_path, sftp) or not np.all(exists) or \
+                (not checkfile_exists_remote(streamline_file_path, sftp) and write_streamlines) or \
+                (not checkfile_exists_remote(stats_path, sftp) and write_stats) or overwrite:
             subjects = groups_subjects[group]
             subj = 1
             for subject in subjects:
-                if not remote:
-                    trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose)
-                else:
-                    trkpath, exists = gettrkpath_testsftp(TRK_folder, subject, str_identifier, sftp=sftp, pruned=False,
-                                                          verbose=verbose)
+
+                trkpath, exists = gettrkpath(TRK_folder, subject, str_identifier, pruned=False, verbose=verbose,
+                                             sftp=sftp)
+
                 if not exists:
                     txt = f'Could not find subject {subject} at {TRK_folder} with {str_identifier}'
                     warnings.warn(txt)
@@ -283,19 +304,6 @@ for target_tuple in target_tuples:
                 if np.shape(groupLines[group, ref])[0] != np.shape(groupstreamlines[group])[0]:
                     raise Exception('happened from there')
 
-                if remote:
-                    temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(trkpath))}'
-                    sftp.get(trkpath, temp_path)
-                    try:
-                        trkdata = load_trk(temp_path, 'same')
-                        os.remove(temp_path)
-                    except Exception as e:
-                        os.remove(temp_path)
-                        raise Exception(e)
-                else:
-                    trkdata = load_trk(trkpath, 'same')
-
-                header = trkdata.space_attributes
                 picklepath_connectome = os.path.join(pickle_folder, subject + str_identifier + '_connectomes.p')
                 picklepath_grouping = os.path.join(pickle_folder, subject + str_identifier + '_grouping.p')
                 M_xlsxpath = os.path.join(excel_folder, subject + str_identifier + "_connectomes.xlsx")
@@ -303,17 +311,19 @@ for target_tuple in target_tuples:
                 #if os.path.exists(picklepath_grouping) and not overwrite:
                 #    with open(picklepath_grouping, 'rb') as f:
                 #        grouping = pickle.load(f)
-                if os.path.exists(picklepath_connectome):
-                    with open(picklepath_connectome, 'rb') as f:
-                        M = pickle.load(f)
-                if os.path.exists(grouping_xlsxpath):
-                    grouping = extract_grouping(grouping_xlsxpath, index_to_struct, None, verbose=verbose)
+                #if checkfile_exists_remote(picklepath_connectome, sftp):
+                #    M = remote_pickle(picklepath_connectome, sftp=sftp)
+                if checkfile_exists_remote(grouping_xlsxpath, sftp):
+                    grouping = extract_grouping(grouping_xlsxpath, index_to_struct, None, verbose=verbose, sftp=sftp)
                 else:
                     if allow_preprun:
-                        labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT',
-                                                                                                 atlas_legends,
-                                                                                                 labeltype=labeltype,
-                                                                                                 verbose=verbose)
+
+                        trkdata = load_trk_remote(trkpath, 'same', sftp=sftp)
+                        header = trkdata.space_attributes
+
+                        labelmask, labelaffine, labeloutpath, index_to_struct = getlabeltypemask(label_folder, 'MDT', atlas_legends,
+                                                     labeltype=labeltype, verbose=verbose, sftp=sftp)
+
                         streamlines_world = transform_streamlines(trkdata.streamlines, np.linalg.inv(labelaffine))
 
                         #M, grouping = connectivity_matrix_func(trkdata.streamlines, function_processes, labelmask,
@@ -330,6 +340,9 @@ for target_tuple in target_tuples:
                         print(f'skipping subject {subject} for now as grouping file is not calculated. Best rerun it afterwards ^^')
                         continue
 
+                trkdata = load_trk_remote(trkpath, 'same', sftp=sftp)
+                header = trkdata.space_attributes
+
                 target_streamlines_list = grouping[target_tuple[0], target_tuple[1]]
                 if np.size(target_streamlines_list) == 0:
                     txt = f'Did not have any streamlines for {index_to_struct[target_tuple[0]]} to {index_to_struct[target_tuple[1]]} for subject {subject}'
@@ -344,10 +357,9 @@ for target_tuple in target_tuples:
                     l = 1
                     worksheet.write(subj, 0, subject)
                 for ref in references:
-
                     if ref != 'ln':
-                        ref_img_path = get_diff_ref(ref_MDT_folder, subject, ref)
-                        ref_data, ref_affine = load_nifti(ref_img_path)
+                        ref_img_path = get_diff_ref(ref_MDT_folder, subject, ref,sftp=sftp)
+                        ref_data, ref_affine, _, _, _ = load_nifti_remote(ref_img_path, sftp=sftp)
 
                         from dipy.tracking._utils import (_mapping_to_voxel, _to_voxel_coordinates)
                         from collections import defaultdict, OrderedDict
@@ -404,30 +416,32 @@ for target_tuple in target_tuples:
                     worksheet.write(subj, l + 3, np.std(groupLines[group, ref]))
                     l=l+4
                 workbook.close()
-
+                if sftp is not None:
+                    sftp.put(stats_path_temp,stats_path)
+                    os.remove(stats_path_temp)
                 #groupstreamlines_orig[group].extend(target_streamlines)
 
 
             group_qb[group] = QuickBundles(threshold=distance2, metric=metric2)
             group_clusters[group] = group_qb[group].cluster(groupstreamlines[group])
             if os.path.exists(centroid_file_path) and overwrite:
-                os.remove(centroid_file_path)
+                remove_remote(centroid_file_path,sftp=sftp)
             if not os.path.exists(centroid_file_path):
                 if verbose:
                     print(f'Summarized the clusters for group {group} at {centroid_file_path}')
-                pickle.dump(group_clusters[group], open(centroid_file_path, "wb"))
-
+                pickledump_remote(group_clusters[group], centroid_file_path, sftp=sftp)
 
             if np.shape(groupLines[group, ref])[0] != np.shape(groupstreamlines[group])[0]:
                 raise Exception('happened from there')
 
             if os.path.exists(streamline_file_path) and overwrite and write_streamlines:
-                os.remove(streamline_file_path)
+                remove_remote(streamline_file_path,sftp=sftp)
             if not os.path.exists(streamline_file_path) and write_streamlines:
                 if verbose:
                     print(f'Summarized the streamlines for group {group} at {streamline_file_path}')
-                pickle.dump(groupstreamlines[group], open(streamline_file_path, "wb"))
-                save_trk_header(filepath= streamline_file_path, streamlines = groupstreamlines[group], header = header, affine=np.eye(4), verbose=verbose)
+                pickledump_remote(groupstreamlines[group], streamline_file_path, sftp=sftp)
+                save_trk_header(filepath= streamline_file_path, streamlines = groupstreamlines[group], header = header,
+                                affine=np.eye(4), verbose=verbose, sftp=sftp)
 
             """
             if not os.path.exists(streamline_file_path_orig) and write_streamlines:
@@ -440,27 +454,27 @@ for target_tuple in target_tuples:
             for ref in references:
                 if overwrite:
                     if os.path.exists(grouping_files[ref,'lines']):
-                        os.remove(grouping_files[ref,'lines'])
+                        remove_remote(grouping_files[ref,'lines'],sftp=sftp)
                     if os.path.exists(grouping_files[ref,'points']):
-                        os.remove(grouping_files[ref,'points'])
+                        remove_remote(grouping_files[ref,'points'],sftp=sftp)
                 if not os.path.exists(grouping_files[ref,'lines']):
                     if verbose:
                         print(f"Summarized the clusters for group {group} and statistics {ref} at {grouping_files[ref,'lines']}")
-                    pickle.dump(groupLines[group, ref], open(grouping_files[ref,'lines'], "wb"))
+                    pickledump_remote(groupLines[group, ref], grouping_files[ref,'lines'], sftp=sftp)
+
                 if not os.path.exists(grouping_files[ref, 'points']):
                     if verbose:
                         print(f"Summarized the clusters for group {group} and statistics {ref} at {grouping_files[ref,'lines']}")
-                    pickle.dump(groupPoints[group, ref], open(grouping_files[ref,'points'], "wb"))
-            pickle.dump(groupLines[group, 'ln'], open(grouping_files['ln', 'lines'], "wb"))
+                    pickledump_remote(groupPoints[group, ref], grouping_files[ref,'points'], sftp=sftp)
+
+            pickledump_remote(groupPoints[group, 'ln'], grouping_files['ln', 'lines'], sftp=sftp)
 
         else:
             print(f'Centroid file was found at {centroid_file_path}, reference files for {references}')
-            with open(centroid_file_path, 'rb') as f:
-                group_clusters[group] = pickle.load(f)
+            group_clusters[group] = remote_pickle(centroid_file_path, sftp=sftp)
             for ref in references:
                 ref_path_lines = grouping_files[ref, 'lines']
-                with open(ref_path_lines, 'rb') as f:
-                    groupLines[group,ref] = pickle.load(f)
+                groupLines[group, ref] = remote_pickle(ref_path_lines, sftp=sftp)
                 #ref_path_points = grouping_files[ref, 'points']
                 #groupPoints[group, ref] = grouping_files[ref, 'points']
 

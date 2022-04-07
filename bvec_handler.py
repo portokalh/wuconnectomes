@@ -278,8 +278,7 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, id
     basevecs = base.replace("bvals","bvecs")
     fbvecs = basevecs + identifier + ext
     if writeformat=="classic":
-        if not os.path.isfile(fbvecs):
-            np.savetxt(fbvecs, bvecs)
+        np.savetxt(fbvecs, bvecs)
     #    with open(fbvecs, 'w') as f:
     #        f.write(str(bvec))
     if writeformat=="dsi":
@@ -798,11 +797,11 @@ def extractbvals(subjectpath, subject, outpath=None, writeformat="tab", fix=True
                 else:
                     raise Exception
                 if fix:
-                    fbvals, fbvecs = fix_bvals_bvecs(fbvals, fbvecs, outpath=outpath)
+                    fbvals, fbvecs = fix_bvals_bvecs(fbvals, fbvecs, outpath=outpath, writeformat=writeformat)
             else:
                 fbvals, fbvecs = find_bval_bvecs(subjectpath, subject = subject, outpath=outpath)
                 if fix:
-                    fbvals, fbvecs = fix_bvals_bvecs(fbvals, fbvecs,outpath=outpath)
+                    fbvals, fbvecs = fix_bvals_bvecs(fbvals, fbvecs,outpath=outpath, writeformat=writeformat)
         return fbvals, fbvecs
 
     elif os.path.isfile(subjectpath):
@@ -816,7 +815,7 @@ def extractbvals(subjectpath, subject, outpath=None, writeformat="tab", fix=True
             fbvals = np.size(glob.glob(subjectpath + '*_bval*'))
             fbvecs = np.size(glob.glob(subjectpath + '*_bvec*'))
             if (fbvals) == 0 or (fbvecs) == 0:
-                bxhpath = subjectpath.replace(".nii.gz", ".bxh")
+                #bxhpath = subjectpath.replace(".nii.gz", ".bxh")
                 bxhpath = subjectpath.replace(".nii", ".bxh")
                 fbvals, fbvecs, _, _, _, _ = extractbvec_fromheader(bxhpath,
                                                                     fileoutpath=os.path.join(dwifolder, subject),

@@ -3,6 +3,8 @@ import socket, os, getpass, paramiko, glob
 from dipy.io.image import load_nifti
 import fnmatch
 import numpy as np
+import pickle
+
 
 def get_mainpaths(remote=False, project='any',username=None,password=None):
     computer_name = socket.gethostname()
@@ -105,6 +107,11 @@ def load_nifti_remote(niipath, sftp):
         raise Exception(e)
     return data, affine, vox_size, header, ref_info
 
+def remove_remote(path, sftp=None):
+    if sftp is None:
+        os.remove(path)
+    else:
+        sftp.remove(path)
 
 def read_bvals_bvecs_remote(fbvals, fbvecs, sftp):
     from dipy.io.gradients import read_bvals_bvecs
@@ -122,20 +129,35 @@ def read_bvals_bvecs_remote(fbvals, fbvecs, sftp):
         raise Exception(e)
     return bvals, bvecs
 
+def remote_pickle(picklepath, sftp=None):
+    if sftp is not None:
+        picklepath_tconnectome = make_temppath(picklepath)
+        sftp.get(picklepath, picklepath_tconnectome)
+    else:
+        picklepath_tconnectome = picklepath
+    with open(picklepath_tconnectome, 'rb') as f:
+        M = pickle.load(f)
+    if sftp is not None:
+        os.remove(picklepath_tconnectome)
+    return M
 
-def load_trk_remote(trkpath,reference,sftp):
+
+def load_trk_remote(trkpath,reference,sftp=None):
     #from dipy.io.streamline import load_trk
     from streamline_nocheck import load_trk as load_trk_spe
-    temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(trkpath))}'
-    sftp.get(trkpath, temp_path)
-    try:
-        trkdata = load_trk_spe(temp_path, reference)
-        #trkdata = load_trk(temp_path, reference)
-        os.remove(temp_path)
-    except Exception as e:
-        if os.path.exists(temp_path):
+    if sftp is not None:
+        temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(trkpath))}'
+        sftp.get(trkpath, temp_path)
+        try:
+            trkdata = load_trk_spe(temp_path, reference)
+            #trkdata = load_trk(temp_path, reference)
             os.remove(temp_path)
-        raise Exception(e)
+        except Exception as e:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            raise Exception(e)
+    else:
+        trkdata = load_trk_spe(trkpath, reference)
     return trkdata
 
 def loadmat_remote(matpath, sftp):
@@ -185,6 +207,15 @@ def glob_remote(path, sftp):
                     if fnmatch.fnmatch(os.path.basename(filepath), os.path.basename(path)):
                         match_files.append(os.path.join(dirpath, filepath))
     return(match_files)
+
+def pickledump_remote(var,path,sftp=None):
+    if sftp is None:
+        pickle.dump(var, open(path, "wb"))
+    else:
+        temp_path = make_temppath(path)
+        pickle.dump(var, open(temp_path, "wb"))
+        sftp.put(temp_path, path)
+        os.remove(temp_path)
 
 def checkfile_exists_remote(path, sftp):
     match_files = glob_remote(path,sftp)

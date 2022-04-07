@@ -4,7 +4,7 @@ import warnings
 from dipy.tracking.streamline import transform_streamlines
 import os, glob
 from nifti_handler import getlabeltypemask
-from file_tools import mkcdir, getfromfile
+from file_tools import mkcdir, getfromfile, check_files
 from tract_handler import ratio_to_str, gettrkpath, gettrkpath_testsftp
 from convert_atlas_mask import atlas_converter
 import socket
@@ -76,7 +76,7 @@ else:
     fixed_str = ''
 
 labeltype = 'lrordered'
-verbose = True
+verbose = False
 picklesave = True
 
 function_processes = parse_arguments_function(sys.argv)
@@ -150,13 +150,13 @@ elif project == 'AMD':
                                                  'H27100', 'H27682', 'H29002', 'H27488', 'H27841', 'H28820',
                                                  'H28208', 'H27686']
     groups_subjects['Paired Initial AMD'] = ['H29020', 'H26637', 'H27111', 'H26765', 'H28308', 'H28433', 'H26660',
-                                             'H28182', 'H27111', 'H27391', 'H28748', 'H28662', 'H26578', 'H28698',
+                                             'H28182', 'H27391', 'H28748', 'H28662', 'H26578', 'H28698',
                                              'H27495', 'H28861', 'H28115', 'H28377', 'H26890', 'H28373', 'H27164']
 
     # groups to go through
     groups_all = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
     groups = ['Paired Initial Control', 'Paired Initial AMD']
-    groups = ['Paired 2-YR Control', 'Paired 2-YR AMD']
+    #groups = ['Paired 2-YR Control', 'Paired 2-YR AMD']
 
     removed_list=[]
     # groups = ['Paired 2-YR AMD']
@@ -198,15 +198,16 @@ for subject in subjects:
     M_xlsxpath = os.path.join(excel_folder, subject + "_connectomes.xlsx")
     grouping_xlsxpath = os.path.join(excel_folder, subject + "_grouping.xlsx")
 
-    if (os.path.exists(M_xlsxpath) or os.path.exists(grouping_xlsxpath)) and not overwrite:
-        print(f'Found written file for subject {subject} at {M_xlsxpath} and {grouping_xlsxpath}')
+    _, exists = check_files([M_xlsxpath,grouping_xlsxpath], sftp=sftp)
+    if np.all(exists) and not overwrite:
+        if verbose:
+            print(f'Found written file for subject {subject} at {M_xlsxpath} and {grouping_xlsxpath}')
         continue
     else:
         t1 = time()
-        if remote:
-            trkdata = load_trk_remote(trkpath, 'same', sftp)
-        else:
-            trkdata = load_trk_spe(trkpath, 'same')
+
+        trkdata = load_trk_remote(trkpath, 'same', sftp)
+
         if verbose:
             print(f"Time taken for loading the trk file {trkpath} set was {str((- t1 + time()) / 60)} minutes")
         t2 = time()

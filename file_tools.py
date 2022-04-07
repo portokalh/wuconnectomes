@@ -111,13 +111,13 @@ def getfromfile(path):
 def check_files(files,sftp=None):
     exists=[]
     newfiles = []
-    if np.size(files) == 1:
-        files = [files]
     if isinstance(files, dict):
         oldfiles = []
         for filekey in files:
             oldfiles.append(files[filekey])
         files = oldfiles
+    elif np.size(files) == 1:
+        files = [files]
     for file in files:
         if "*" in file:
             testfile = glob_remote(file,sftp)

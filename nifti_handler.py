@@ -545,9 +545,9 @@ def getmask(mypath, subject, masktype = "subjspace", verbose=None, sftp=None):
 
 
 
-def get_diff_ref(label_folder, subject, ref):
+def get_diff_ref(label_folder, subject, ref,sftp=None):
     diff_path = os.path.join(label_folder,f'{subject}_{ref}_to_MDT.nii.gz')
-    if os.path.exists(diff_path):
+    if checkfile_exists_remote(diff_path, sftp):
         return diff_path
     else:
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), diff_path)

@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from os import remove as file_remove
 from BIAC_tools import send_mail, isempty
-from computer_nav import make_temppath
+from computer_nav import make_temppath, glob_remote
 """
 Created by Jacques Stout
 
@@ -138,11 +138,23 @@ def M_grouping_excel_save(M,grouping,M_path, grouping_path, index_to_struct, ver
         print(txt)
 
 
-def extract_grouping(grouping_path, index_to_struct, shape=None, verbose=False):
+def extract_grouping(grouping_path, index_to_struct, shape=None, verbose=False, sftp=None):
 
     #grouping_array = np.empty(shape, dtype=object)
     grouping_newdic = {}
-    grouping_frame = pd.read_excel(grouping_path)
+    if sftp is not None:
+        grouping_paths = glob_remote(grouping_path, sftp)
+        if np.size(grouping_paths == 1):
+            grouping_path = grouping_paths[0]
+            sftp.get(grouping_path, make_temppath(grouping_path))
+            grouping_frame = pd.read_excel(make_temppath(grouping_path))
+            file_remove(make_temppath(grouping_path))
+        elif np.size(grouping_paths > 1):
+            raise Exception('too many grouping files???')
+        else:
+            raise Exception('could not find grouping_path')
+    else:
+        grouping_frame = pd.read_excel(grouping_path)
     if shape is None:
         shape = list(grouping_frame.shape)
         shape[0] = shape[0]+1
