@@ -67,6 +67,10 @@ btables="extract"
 #go back to this if ANY issue with bvals/bvecs
 #extract is as the name implies here to extract the bvals/bvecs from the files around subject data
 #copy takes one known good file for bval and bvec and copies it over to all subjects
+
+check=True
+if check:
+    bvecs_orig = read_bvecs('/Volumes/Data/Badea/Lab/human/AMD/diffusion_prep_locale/H29254_bvecs_fix.txt')
 if btables=="extract":
     for subject in subjects:
         #outpathsubj = "/Volumes/dusom_dibs_ad_decode/all_staff/APOE_temp/diffusion_prep_58214/"
@@ -77,6 +81,11 @@ if btables=="extract":
         writeformat='classic'
         mkcdir(outpathsubj)
         fbvals, fbvecs = extractbvals(subjectpath, proc_subjn + subject, outpath=outpathsubj, writeformat=writeformat, overwrite=overwrite)
+        if check:
+            bvecs = read_bvecs(fbvecs)
+            if not np.all(bvecs==bvecs_orig):
+                print('Different bvec value than expected')
+
         #fbvals, fbvecs = rewrite_subject_bvalues(diffpath, subject, outpath=outpath, writeformat=writeformat, overwrite=overwrite)
 elif btables=="copy":
     for subject in subjects:

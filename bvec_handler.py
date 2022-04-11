@@ -25,7 +25,7 @@ import os, re, sys, io, struct, socket, datetime
 from file_tools import largerfile
 from email.mime.text import MIMEText
 import glob
-
+from computer_nav import make_temppath
 """"
 from dipy.tracking.utils import unique_rows
 
@@ -265,7 +265,12 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, id
 
     fbvals = base + identifier + ext
     if writeformat == "classic":
-        np.savetxt(fbvals, bvals)
+        if sftp is None:
+            np.savetxt(fbvals, bvals)
+        else:
+            np.savetxt(make_temppath(fbvals),bvals)
+            sftp.put(make_temppath(fbvals),fbvals)
+            os.remove(make_temppath(fbvals))
     if writeformat=="dsi":
         with open(fbvals, 'w') as File_object:
             for bval in bvals:
@@ -278,8 +283,13 @@ def fix_bvals_bvecs(fbvals, fbvecs, b0_threshold=50, atol=1e-2, outpath=None, id
     basevecs = base.replace("bvals","bvecs")
     fbvecs = basevecs + identifier + ext
     if writeformat=="classic":
-        np.savetxt(fbvecs, bvecs)
-    #    with open(fbvecs, 'w') as f:
+        if sftp is None:
+            np.savetxt(fbvecs, bvecs)
+        else:
+            np.savetxt(make_temppath(fbvecs),bvecs)
+            sftp.put(make_temppath(fbvecs),fbvecs)
+            os.remove(make_temppath(fbvecs))
+            #    with open(fbvecs, 'w') as f:
     #        f.write(str(bvec))
     if writeformat=="dsi":
         with open(fbvecs, 'w') as File_object:
@@ -783,9 +793,9 @@ def extractbvals(subjectpath, subject, outpath=None, writeformat="tab", fix=True
         #subjectpath = os.path.join(dwipath, subject)
         if outpath is None:
             outpath = subjectpath
-        fbvals = np.size(glob.glob(os.path.join(outpath,'*_bvals*fix*')))
-        fbvecs = np.size(glob.glob(os.path.join(outpath,'*_bvecs*fix*')))
-        if (fbvals == 0 and fbvecs == 0) or overwrite:
+        fbvals = (glob.glob(os.path.join(outpath,'*_bvals*fix*')))
+        fbvecs = (glob.glob(os.path.join(outpath,'*_bvecs*fix*')))
+        if (np.size(fbvals) == 0 and np.size(fbvecs) == 0) or overwrite:
             #fbvals = (glob.glob(subjectpath + '*_bval*'))
             #fbvecs = (glob.glob(subjectpath + '*_bvec*'))
             fbvals=(glob.glob(os.path.join(outpath, '*' + subject + '*_bvals.txt')))
@@ -802,6 +812,12 @@ def extractbvals(subjectpath, subject, outpath=None, writeformat="tab", fix=True
                 fbvals, fbvecs = find_bval_bvecs(subjectpath, subject = subject, outpath=outpath)
                 if fix:
                     fbvals, fbvecs = fix_bvals_bvecs(fbvals, fbvecs,outpath=outpath, writeformat=writeformat)
+        else:
+            if (np.size(fbvals) == 1 and np.size(fbvecs) == 1):
+                fbvals = fbvals[0]
+                fbvecs = fbvecs[0]
+            else:
+                raise Exception('too many bvalue files')
         return fbvals, fbvecs
 
     elif os.path.isfile(subjectpath):

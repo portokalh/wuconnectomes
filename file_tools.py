@@ -12,7 +12,7 @@ from pathlib import Path
 import warnings
 import subprocess, pipes
 from scipy.io import loadmat
-from computer_nav import checkfile_exists_remote
+from computer_nav import checkfile_exists_remote, glob_remote
 
 def mkcdir(folderpaths, sftp=None):
     #creates new folder only if it doesnt already exists
@@ -143,7 +143,7 @@ def check_files(files,sftp=None):
                 newfiles.append(file)
             else:
                 print(f"{file} does not exist")
-                newfiles.append("")
+                newfiles.append(file)
 
     return newfiles, exists
 

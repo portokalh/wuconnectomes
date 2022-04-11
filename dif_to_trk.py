@@ -95,7 +95,7 @@ def save_roisubset(trkfile, roislist, roisexcel, labelmask):
 
 
 def QCSA_tractmake(data, affine, vox_size, gtab, mask, masktype, header, step_size, peak_processes, outpathtrk, subject='NA',
-                   ratio=1, overwrite=False, get_params=False, doprune=False, figspath=None, verbose=None):
+                   ratio=1, overwrite=False, get_params=False, doprune=False, figspath=None, verbose=None, sftp=None):
     # Compute odfs in Brain Mask
     t2 = time()
     if os.path.isfile(outpathtrk) and not overwrite:
@@ -200,13 +200,13 @@ def QCSA_tractmake(data, affine, vox_size, gtab, mask, masktype, header, step_si
         sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
         save_trk_heavy_duty(outpathtrk, streamlines=sg,
                             affine=affine, header=myheader,
-                            shape=mask.shape, vox_size=vox_size)
+                            shape=mask.shape, vox_size=vox_size, sftp=sftp)
     else:
         sg = lambda: (s for i, s in enumerate(streamlines_generator) if i % ratio == 0)
         myheader = create_tractogram_header(outpathtrk, *header)
         save_trk_heavy_duty(outpathtrk, streamlines=sg,
                             affine=affine, header=myheader,
-                            shape=mask.shape, vox_size=vox_size)
+                            shape=mask.shape, vox_size=vox_size, sftp=sftp)
     if verbose:
         duration = time() - t2
         txt = "Tract files were saved at "+outpathtrk + ',it has been ' + str(round(duration)) + \

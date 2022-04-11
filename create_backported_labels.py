@@ -8,6 +8,8 @@ import glob
 import warnings
 import shutil
 import numpy as np
+import errno
+import os
 
 
 def get_info_SAMBA_headfile(SAMBA_headfile, verbose=False):
@@ -110,8 +112,15 @@ def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_l
     MDT_to_atlas_affine = os.path.join(final_template_run,"stats_by_region","labels","transforms",f"MDT_*_to_{label_name}_affine.mat")
     atlas_to_MDT = os.path.join(final_template_run,"stats_by_region","labels","transforms",f"{label_name}_to_MDT_warp.nii.gz")
 
+    listfiles = [trans, rigid, affine, MDT_to_subject, MDT_to_atlas_affine, atlas_to_MDT]
     [trans, rigid, affine, MDT_to_subject, MDT_to_atlas_affine, atlas_to_MDT], exists = check_files([trans,rigid,affine,MDT_to_subject,MDT_to_atlas_affine,atlas_to_MDT])
-
+    if not np.all(exists):
+        for i in np.arange(np.size(exists)):
+            if exists[i] is False:
+                print(f'could not find {listfiles[i]}')
+                filenotfound = listfiles[i]
+        raise FileNotFoundError(
+            errno.ENOENT, os.strerror(errno.ENOENT), filenotfound)
 
     preprocess_ref = os.path.join(work_dir,"preprocess",f"{subject}_fa_masked.nii.gz")
     preprocess_labels = os.path.join(dirty_dir,f"{subject}_preprocess_labels.nii.gz")
@@ -148,8 +157,8 @@ def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_l
 
 
     symbolic_ref = os.path.join(out_dir,f"{subject}_Reg_LPCA_nii4D.nii.gz")
-    final_labels = os.path.join(out_dir,f"{subject}_IITmean_preprocess_labels.nii.gz")
-    final_labels_backup = os.path.join(dirty_dir,f"{subject}_IITmean_preprocess_labels.nii.gz")
+    final_labels = os.path.join(out_dir,f"{subject}_{label_name}_labels.nii.gz")
+    final_labels_backup = os.path.join(dirty_dir,f"{subject}_{label_name}_labels.nii.gz")
     superpose=True
     if not os.path.exists(final_labels) or overwrite:
         if verbose:
@@ -161,6 +170,7 @@ def create_backport_labels(subject, mainpath, project_name, prep_folder, atlas_l
             if verbose:
                 print(f"Runnings the Ants apply transforms to {atlas_labels}")
                 print(cmd)
+            check_files([atlas_labels,preprocess_ref,trans,rigid,affine,MDT_to_subject,MDT_to_atlas_affine,atlas_to_MDT])
             os.system(cmd)
         if os.path.exists(preprocess_labels) and ((not os.path.exists(fixed_preprocess_labels)) or overwrite):
             header_superpose(final_ref, preprocess_labels, outpath=fixed_preprocess_labels)

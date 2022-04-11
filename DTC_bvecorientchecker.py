@@ -12,7 +12,7 @@ import socket
 from computer_nav import get_mainpaths, get_atlas
 import random
 
-remote=True
+remote=False
 project='AMD'
 if remote:
     username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
@@ -22,27 +22,17 @@ else:
 inpath, outpath, atlas_folder, sftp = get_mainpaths(remote,project = project, username=username,password=passwd)
 atlas_legends = get_atlas(atlas_folder, 'IIT')
 
+inpath = '/Volumes/Data/Badea/Lab/jacques/AMD_compare/'
 diff_preprocessed = os.path.join(inpath, "DWI_v2")
+txtpath = os.path.join(inpath, "Parameters")
+
 
 if not remote:
-    mkcdir([outpath, diff_preprocessed])
+    mkcdir([outpath, diff_preprocessed, txtpath])
 else:
-    mkcdir([outpath, diff_preprocessed], sftp)
+    mkcdir([outpath, diff_preprocessed, txtpath], sftp)
 
-subjects = ["H29056", "H26578", "H29060", "H26637", "H29264", "H26765", "H29225", "H26660", "H29304", "H26890",
-            "H29556", "H26862", "H29410", "H26966", "H29403", "H26841", "H21593", "H27126", "H29618", "H27111", "H29627",
-            "H27164", "H29502", "H27100", "H27381", "H21836", "H27391", "H21850", "H27495", "H21729", "H27488", "H21915",
-            "H27682", "H21956", "H27686", "H22331", "H28208", "H21990", "H28955", "H29878", "H27719", "H22102", "H27841",
-            "H22101", "H27842", "H22228", "H28029", "H22140", "H27852", "H22276", "H27999", "H22369", "H28115", "H22644",
-            "H28308", "H22574", "H28377", "H22368", "H28325", "H22320", "H28182", "H22898", "H28748", "H22683", "H28373",
-            "H22536", "H28433", "H22825", "H28662", "H22864", "H28698", "H23143", "H28861", "H23157", "H28820", "H23028",
-            "H29002", "H23210", "H29020", "H23309", "H29161", "H26841", "H26862", "H26949", "H26966", "H27100", "H27126",
-            "H27163", "H27246", "H27488", "H27682", "H27686", "H27719", "H27841", "H27842", "H27852", "H27869", "H27999",
-            "H28029", "H28068", "H28208", "H28262", "H28325", "H28820", "H28856", "H28869", "H28955", "H29002", "H29044",
-            "H29089", "H29127", "H29161", "H29242", "H29254", "H26578", "H26637", "H26660", "H26745", "H26765", "H26850",
-            "H26880", "H26890", "H26958", "H26974", "H27017", "H27111", "H27164", "H27381", "H27391", "H27495", "H27610",
-            "H27640", "H27680", "H27778", "H27982", "H28115", "H28308", "H28338", "H28373", "H28377", "H28433", "H28437",
-            "H28463", "H28532", "H28662", "H28698", "H28748", "H28809", "H28857", "H28861", "H29013", "H29020", "H29025"]
+subjects = ["H28029"]
 
 subjects = sorted(subjects)
 print(subjects)
@@ -52,18 +42,6 @@ subject_processes, function_processes = parse_arguments(sys.argv,subjects)
 
 #"S02230" "S02490" these subjects are strange, to investigate
 
-"""
-subjfolder = glob.glob(os.path.join(datapath, "*" + identifier + "*"))[0]
-subjbxh = glob.glob(os.path.join(subjfolder, "*.bxh"))
-for bxhfile in subjbxh:
-    bxhtype = checkbxh(bxhfile, False)
-    if bxhtype == "dwi":
-        dwipath = bxhfile.replace(".bxh", ".nii.gz")
-        break
-"""
-
-#outpath = "/Volumes/Data/Badea/ADdecode.01/Analysis/"
-#outpath = "/Users/alex/jacques/AMD_TRK_testing/"
 
 masktype = "FA"
 masktype = "T1"
@@ -103,7 +81,7 @@ doprune = True
 #classifier = ["FA", "binary"]
 classifier = "binary"
 labelslist = []
-bvec_orient = [1,2,-3]
+bvec_orient = [1,2,3]
 vol_b0 = [0,1,2]
 dwi_results = []
 donelist = []
@@ -217,35 +195,38 @@ if make_connectomes:
 dwi_results = []
 tract_results = []
 
-print(f'Overwrite is {overwrite}')
+import itertools
+bvec_orient1 = (np.array(list(itertools.permutations([1, 2, 3]))))
+bvec_orient2 = [elm*[-1, 1, 1] for elm in bvec_orient1]
+bvec_orient3 = [elm*[1, -1, 1] for elm in bvec_orient1]
+bvec_orient4 = [elm*[1, 1, -1] for elm in bvec_orient1]
 
-if subject_processes>1:
-    if function_processes>1:
-        pool = MyPool(subject_processes)
-    else:
-        pool = mp.Pool(subject_processes)
-    if make_tracts:
-        tract_results = pool.starmap_async(create_tracts, [(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
-                          ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
-                          verbose) for subject
-                                                       in subjects]).get()
-    if make_connectomes:
-        tract_results = pool.starmap_async(tract_connectome_analysis, [(diff_preprocessed, trkpath, str_identifier, figspath,
-                                                                       subject, atlas_legends, bvec_orient, brainmask, inclusive,
-                                                                       function_processes, overwrite, picklesave, labeltype, symmetric, reference_weighting, volume_weighting, verbose, sftp)
-                                                                     for subject in subjects]).get()
-    pool.close()
-else:
-    for subject in subjects:
-        if make_tracts:
-            tract_results.append(
-            create_tracts(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
-                          ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
-                          verbose,sftp))
-        #get_diffusionattributes(diff_preprocessed, diff_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
-        #                        masktype, overwrite, verbose)
-        if make_connectomes:
-            tract_results.append(tract_connectome_analysis(diff_preprocessed, trkpath, str_identifier, figspath, subject,
-                                                           atlas_legends, bvec_orient,  brainmask, inclusive,
-                                                           function_processes, overwrite, picklesave, labeltype, symmetric, reference_weighting, volume_weighting, verbose,sftp))
-    print(tract_results)
+bvec_orient_list = np.concatenate((bvec_orient1, bvec_orient2, bvec_orient3, bvec_orient4))
+
+get_params = True
+print(bvec_orient_list)
+
+print(f'Overwrite is {overwrite}')
+for subject in subjects:
+    txtfile = os.path.join(txtpath, subject + "_" + "params.txt")
+    with open(txtfile, 'a') as fi:
+        fi.write("Parameters for subject %s \n" % subject)
+    for bvec_orient in bvec_orient_list:
+        tract_results = []
+        print(bvec_orient)
+        strproperty = orient_to_str(bvec_orient)
+        print(f'this is the strproperty {strproperty}')
+        tract_results.append(
+            create_tracts(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, strproperty,
+                          ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params,
+                          denoise,
+                          verbose, sftp))
+        with open(txtfile, 'a') as f:
+            for item in tract_results:
+                f.write("Subject %s with %s %s %s \n" % (
+                item[0], str(bvec_orient[0]), str(bvec_orient[1]), str(bvec_orient[2])))
+                f.write("Num tracts: %s \n" % item[2][0])
+                f.write("Min tract length: %s \n" % item[2][1])
+                f.write("Max tract length: %s \n" % item[2][2])
+                f.write("Average tract length: %s \n" % item[2][3])
+                f.write("Standard deviancy tract length: %s \n" % item[2][4])

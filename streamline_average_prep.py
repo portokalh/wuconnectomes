@@ -15,7 +15,7 @@ from connectome_handler import connectivity_matrix_custom, connectivity_matrix_f
 import random
 from time import time
 import getpass
-
+from connectome_handler import _to_voxel_coordinates_warning, retweak_points
 from dipy.viz import window, actor
 from time import sleep
 from dipy.tracking.streamline import set_number_of_points
@@ -47,7 +47,7 @@ if project=='AMD' or project=='AD_Decode':
     atlas_legends = get_atlas(atlas_folder, 'IIT')
 
 # Setting identification parameters for ratio, labeling type, etc
-ratio = 1
+ratio = 100
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
 if ratio_str == '_all':
@@ -234,8 +234,9 @@ for subject in subjects:
         del (trkdata)
         if verbose:
             print(f"Time taken for creating this connectome was set at {str((- t2 + time()) / 60)} minutes")
-        if checkfile_exists_remote(grouping_xlsxpath,sftp) and verbose:
-            print(f'Saved grouping for subject {subject} at {grouping_xlsxpath}')
+        if checkfile_exists_remote(grouping_xlsxpath,sftp):
+            if verbose:
+                print(f'Saved grouping for subject {subject} at {grouping_xlsxpath}')
         # grouping = extract_grouping(grouping_xlsxpath, index_to_struct, np.shape(M), verbose=verbose)
         else:
             raise Exception(f'saving of the excel at {grouping_xlsxpath} did not work')

@@ -14,6 +14,9 @@ def get_mainpaths(remote=False, project='any',username=None,password=None):
         inpath = '/mnt/paros_MRI/jacques/'
         outpath = '/mnt/paros_MRI/jacques/'
         atlas_folder = '/mnt/paros_MRI/jacques/atlases/'
+        if project == 'Chavez':
+            outpath = '/mnt/paros_DB/Projects/'
+
         #ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
     elif 'santorini' in computer_name or 'hydra' in computer_name:
         # mainpath = '/Users/alex/jacques/'
@@ -202,7 +205,7 @@ def glob_remote(path, sftp):
             if not os.path.exists(dirpath):
                 return(match_files)
             else:
-                allfiles = glob.glob(dirpath)
+                allfiles = glob.glob(os.path.join(dirpath,'*'))
                 for filepath in allfiles:
                     if fnmatch.fnmatch(os.path.basename(filepath), os.path.basename(path)):
                         match_files.append(os.path.join(dirpath, filepath))

@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 from dipy.io.image import load_nifti, save_nifti
-
+from computer_nav import load_nifti_remote, make_temppath
 
 def atlas_converter(ROI_excel):
 
@@ -60,10 +60,10 @@ def IIT_converter(ROI_excel):
         index_to_struct_comb[index3[i]] = structures[i]
     return converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb
 
-def convert_labelmask(atlas, converter, atlas_outpath = None, affine_labels=None):
+def convert_labelmask(atlas, converter, atlas_outpath = None, affine_labels=None, sftp=None):
 
     if isinstance(atlas, str):
-        labels, affine_labels = load_nifti(atlas)
+        labels, affine_labels, _, _, _ = load_nifti_remote(atlas, sftp)
     else:
         if affine_labels is None:
             raise TypeError('Need to add the affine labels if directly including label array')
@@ -80,7 +80,12 @@ def convert_labelmask(atlas, converter, atlas_outpath = None, affine_labels=None
                 except:
                     print('hi')
 
-    save_nifti(atlas_outpath, labels_new, affine_labels)
+    if sftp is not None:
+        save_nifti(make_temppath(atlas_outpath), labels_new, affine_labels)
+        sftp.put(make_temppath(atlas_outpath), atlas_outpath)
+    else:
+        save_nifti(atlas_outpath, labels_new, affine_labels)
+
     return(labels_new)
 
 def run_onall():

@@ -95,7 +95,7 @@ from multiprocessing import Pool
 from convert_atlas_mask import convert_labelmask, atlas_converter
 #from connectivity_own import connectivity_matrix_special
 from excel_management import connectomes_to_excel, grouping_to_excel
-from computer_nav import load_trk_remote, checkfile_exists_remote, glob_remote
+from computer_nav import load_trk_remote, checkfile_exists_remote, glob_remote, load_nifti_remote
 
 def strfile(string):
     # Converts strings into more usable 'file strings (mostly takes out . and turns it into _
@@ -490,19 +490,19 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
     print(labeltype)
     if labeltype == 'combined':
         labeloutpath = labelpath.replace('.nii.gz','_comb.nii.gz')
-        if not os.path.isfile(labeloutpath):
+        if not checkfile_exists_remote(labeloutpath, sftp):
             labelmask = convert_labelmask(labelmask, converter_comb, atlas_outpath=labeloutpath,
-                                          affine_labels=labelaffine)
+                                          affine_labels=labelaffine, sftp=sftp)
         else:
             labelmask, labelaffine = load_nifti(labeloutpath)
         index_to_struct = index_to_struct_comb
     elif labeltype == 'lrordered':
         labeloutpath = labelpath.replace('.nii.gz','_lr_ordered.nii.gz')
-        if not os.path.isfile(labeloutpath):
+        if not checkfile_exists_remote(labeloutpath,sftp):
             labelmask = convert_labelmask(labelmask, converter_lr, atlas_outpath=labeloutpath,
-                                      affine_labels=labelaffine)
+                                      affine_labels=labelaffine, sftp=sftp)
         else:
-            labelmask, labelaffine = load_nifti(labeloutpath)
+            labelmask, labelaffine, _, _, _ = load_nifti_remote(labeloutpath,sftp)
         index_to_struct = index_to_struct_lr
     else:
         raise TypeError("Cannot recognize label type (this error raise is a THEORETICALLY a temp patch")
@@ -1050,7 +1050,7 @@ def check_dif_ratio(trkpath, subject, strproperty, ratio,sftp = None):
         strnew = strremoved.replace("_alt", word)
         filepath = (os.path.join(trkpath, subject + "*" + strnew + '*.trk'))
         if sftp is None:
-            trkpaths = glob.glob(filepath, sftp)
+            trkpaths = glob.glob(filepath)
         else:
             trkpaths = glob_remote(filepath, sftp)
         if trkpaths:
@@ -1079,10 +1079,10 @@ def check_dif_ratio(trkpath, subject, strproperty, ratio,sftp = None):
 
 def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processes, strproperty = "", ratio = 1, masktype="binary",
                       classifier="FA", labelslist=None, bvec_orient=[1,2,3], doprune=False, overwrite=False,
-                  get_params=False, denoise="", verbose=None):
+                  get_params=False, denoise="", verbose=None, sftp=None):
 
     check_dif_ratio(outpath, subject, strproperty, ratio)
-    outpathtrk, trkexists = gettrkpath(outpath, subject, strproperty, pruned=doprune, verbose=False)
+    outpathtrk, trkexists = gettrkpath(outpath, subject, strproperty, pruned=doprune, verbose=False,sftp=sftp)
 
     if trkexists and overwrite is False:
         print("The tract creation of subject " + subject + " is already done")
@@ -1097,9 +1097,9 @@ def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processe
     if verbose:
         print('Running the ' + subject + ' file')
 
-    mask, _ = getmask(diffpath, subject, masktype, verbose)
+    mask, _ = getmask(diffpath, subject, masktype, verbose,sftp=sftp)
 
-    diff_data, affine, gtab, vox_size, fdiffpath, header, ref_info = getdiffdata_all(diffpath, subject, bvec_orient, denoise=denoise, verbose=verbose)
+    diff_data, affine, gtab, vox_size, fdiffpath, header, ref_info = getdiffdata_all(diffpath, subject, bvec_orient, denoise=denoise, verbose=verbose,sftp=sftp)
     #fdiffpath = getdiffpath(diffpath, subject, denoise=denoise, verbose=verbose)
 
     if masktype == "dwi" and mask is None:
@@ -1130,7 +1130,7 @@ def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processe
         outpathtrk_noprune = os.path.join(outpath, subject + strproperty + '.trk')
         if os.path.exists(outpathtrk_noprune) and not os.path.exists(outpathtrk):
             cutoff = 2
-            trkdata = load_trk(outpathtrk_noprune, "same")
+            trkdata = load_trk_remote(outpathtrk_noprune, "same",sftp=sftp)
             affine = trkdata._affine
             trkdata.to_vox()
             trkstreamlines = trkdata.streamlines
@@ -1162,7 +1162,7 @@ def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processe
     outpathtrk, trkstreamlines, params = QCSA_tractmake(diff_data, affine, vox_size, gtab, mask, masktype, ref_info,
                                                         step_size, peak_processes, outpathtrk, subject, ratio,
                                                         overwrite, get_params, doprune, figspath=figspath,
-                                                        verbose=verbose)
+                                                        verbose=verbose,sftp=sftp)
 
     if labelslist:
         print('In process of implementing')

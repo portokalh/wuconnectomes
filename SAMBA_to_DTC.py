@@ -1,20 +1,21 @@
 from pathlib import Path
 import os
 import shutil
-from file_tools import buildlink
+from file_tools import buildlink, mkcdir, getfromfile
 import glob
 import numpy as np
 import warnings
 from create_backported_labels import create_backport_labels
 import os
 import getpass
+from computer_nav import get_mainpaths, checkfile_exists_remote
 
 #project = ["AD_Decode", "APOE"]
 #project = "APOE"
 #project = "AMD"
 project = 'APOE'
-#project = 'AMD'
-#project = 'Chavez'
+project = 'AMD'
+project = 'Chavez'
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
@@ -42,8 +43,10 @@ if project == 'Chavez':
 
     atlas_labels = os.path.join(mainpath,"atlases","chass_symmetric3","chass_symmetric3_labels.nii.gz")
 
-    DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_DB/Projects/21.chavez.01/Analysis/DWI_allsubj/"
-    DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_DB/Projects/21.chavez.01/Analysis/DWI_allsubj/"
+    #DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_DB/Projects/21.chavez.01/Analysis/DWI_allsubj_2/"
+    #DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_DB/Projects/21.chavez.01/Analysis/DWI_allsubj_2/"
+    DTC_DWI_folder = "DWI_allsubj_2/"
+    DTC_labels_folder = "DWI_allsubj_2/"
 
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-results", "connectomics")
     SAMBA_work_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-work")
@@ -53,6 +56,7 @@ if project == 'Chavez':
     overwrite = False
     preppath = None
     subjects = ['C_20220124_001', 'C_20220124_002', 'C_20220124_003', 'C_20220124_004', 'C_20220124_005', 'C_20220124_006', 'C_20220124_007']
+    subjects = ['C_20220124_005']
 
     #subjects_folders = glob.glob(os.path.join(SAMBA_work_folder, '*affine.mat/'))
 
@@ -64,7 +68,7 @@ if project == 'Chavez':
         subjects.append(subject_name[:6])
     """
 
-    removed_list = []
+    removed_list = ['C_20220124_004'] #004 had a terrible orientation and would have to be individually treated in order to be on par with the others
     for remove in removed_list:
         if remove in subjects:
             subjects.remove(remove)
@@ -85,8 +89,11 @@ elif project == "AD_Decode":
     DTC_labels_folder = os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
     DTC_transforms = os.path.join(mainpath, "..","ADdecode.01","Analysis","Transforms")
 
-    DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AD_Decode/Analysis/DWI"
-    DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AD_Decode/Analysis/DWI"
+    #DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AD_Decode/Analysis/DWI"
+    #DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AD_Decode/Analysis/DWI"
+
+    DTC_DWI_folder = "DWI"
+    DTC_labels_folder = "DWI"
 
     SAMBA_work_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-work")
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-results", "connectomics")
@@ -147,8 +154,10 @@ elif project == "APOE":
 
     DTC_DWI_folder = os.path.join(mainpath,"mouse","APOE_series","DWI")
     DTC_labels_folder = os.path.join(mainpath,"mouse","APOE_series","DWI")
-    DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/APOE/DWI_allsubj/"
-    DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/APOE/DWI_allsubj/"
+    #DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/APOE/DWI_allsubj/"
+    #DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/APOE/DWI_allsubj/"
+    DTC_DWI_folder = "DWI_allsubj/"
+    DTC_labels_folder = "DWI_allsubj/"
 
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-results", "connectomics")
     SAMBA_work_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-work")
@@ -181,11 +190,13 @@ elif project == "AMD":
     SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "rja20_BrainChAMD.01_with_2yr_SAMBA_startup.headfile")
     gunniespath = "~/gunnies/"
     recenter = 0
-    SAMBA_prep_folder = os.path.join(SAMBA_mainpath, "whiston_symlink_pool_allfiles")
+    SAMBA_prep_folder = os.path.join(SAMBA_mainpath, "whitson_symlink_pool_allfiles")
     atlas_labels = os.path.join(mainpath, "atlas","IITmean_RPI","IITmean_RPI_labels.nii.gz")
 
-    DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AMD/DWI/"
-    DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AMD/DWI/"
+    #DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AMD/DWI_v2/"
+    #DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_MRI/jacques/AMD/DWI_v2/"
+    DTC_DWI_folder = "DWI_v2"
+    DTC_labels_folder = "DWI_v2"
 
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-results", "connectomics")
     SAMBA_work_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-work")
@@ -212,11 +223,7 @@ elif project == "AMD":
 else:
     raise Exception("Unknown project name")
 
-#for subject in subjects:
-#    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, headfile = SAMBA_headfile, overwrite=overwrite)
-
-remote=False
-
+"""
 if "." and ":" in DTC_DWI_folder:
     import paramiko
     if "@" in DTC_DWI_folder:
@@ -239,9 +246,32 @@ if "." and ":" in DTC_DWI_folder:
     DTC_labels_folder = DTC_DWI_folder
     DTC_transforms = os.path.join(DTC_DWI_folder,'../Transforms')
     remote=True
-
 if remote:
     sftp = ssh.open_sftp()
+"""
+
+remote=True
+if remote:
+    username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
+else:
+    username = None
+    passwd = None
+
+"""
+_, outpath, _, sftp = get_mainpaths(remote,project = project, username=username,password=passwd)
+
+DTC_DWI_folder = os.path.join(outpath,DTC_DWI_folder)
+DTC_labels_folder = os.path.join(outpath,DTC_labels_folder)
+DTC_transforms = os.path.join(DTC_DWI_folder,'../Transforms')
+mkcdir([DTC_DWI_folder,DTC_labels_folder,DTC_transforms],sftp)
+"""
+for subject in subjects:
+    labelspath_remote = os.path.join(DTC_labels_folder, f'{subject}_labels.nii.gz')
+    #if not checkfile_exists_remote(labelspath_remote,sftp) or overwrite:
+    create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, headfile = SAMBA_headfile, overwrite=overwrite)
+
+
+mkcdir([DTC_DWI_folder,DTC_labels_folder],sftp)
 
 for filename in os.listdir(SAMBA_prep_folder):
     if any(x in filename for x in file_ids) and any(x in filename for x in subjects):
@@ -511,7 +541,6 @@ for subject in subjects:
 
 if remote:
     sftp.close()
-    ssh.close()
 # bash_label_maker = "/Volumes/Data/Badea/Lab/mouse/create_backported_labels_for_fiber_looper.bash"
 # mainpath = "/Volumes/Data/Badea/Lab/mouse/"
 # gunniespath = "/Users/alex/bass/gitfolder/wuconnectomes/gunnies/"

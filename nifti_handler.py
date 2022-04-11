@@ -12,7 +12,7 @@ from dipy.io.image import load_nifti
 import shutil
 from convert_atlas_mask import convert_labelmask, atlas_converter
 import errno
-from computer_nav import load_nifti_remote, glob_remote, checkfile_exists_remote
+from computer_nav import load_nifti_remote, glob_remote, checkfile_exists_remote, read_bvals_bvecs_remote
 
 def getfa(mypath, subject, bvec_orient, verbose=None):
 
@@ -245,10 +245,10 @@ def getdiffpath(mypath, subject, denoise="", verbose=None, sftp=None):
     if denoise is None:
         denoise=""
 
-    listoptions = [mypath,os.path.join(mypath,subject+"_subjspace_coreg.nii.gz"), os.path.join(mypath,subject+"_coreg_RAS.nii.gz")]
+    listoptions = [os.path.join(mypath,subject+"_subjspace_coreg.nii.gz"), os.path.join(mypath,subject+"_coreg_RAS.nii.gz")]
 
     if sftp is None:
-        for list_option in list_options:
+        for list_option in listoptions:
             if '*' in list_option:
                 option = glob.glob(list_option)
                 if np.size(option) > 0:
@@ -258,7 +258,7 @@ def getdiffpath(mypath, subject, denoise="", verbose=None, sftp=None):
                 if os.path.exists(list_option):
                     fdiffpath = list_option
     else:
-        for list_option in list_options:
+        for list_option in listoptions:
             option = glob_remote(list_option, sftp)
             if np.size(option) > 0:
                 if np.size(option)>1:
@@ -328,15 +328,15 @@ def get_bvals_bvecs(mypath, subject,sftp=None):
             print(mypath + '/' + subject + '*_bvals.txt')
             fbvals = glob_remote(mypath + '/' + subject + '*_bvals.txt', sftp)[0]
             fbvecs = glob_remote(mypath + '/' + subject + '*_bvec*.txt', sftp)[0]
-            fbvals, fbvecs = fix_bvals_bvecs(fbvals, fbvecs,sftp)
+            fbvals, fbvecs = fix_bvals_bvecs(fbvals, fbvecs,sftp=sftp)
         print(fbvecs)
-        bvals, bvecs = read_bvals_bvecs(fbvals, fbvecs,sftp)
+        bvals, bvecs = read_bvals_bvecs_remote(fbvals, fbvecs,sftp=sftp)
     return bvals, bvecs
 
 
-def getgtab(mypath, subject, bvec_orient=[1,2,3]):
+def getgtab(mypath, subject, bvec_orient=[1,2,3],sftp=None):
 
-    bvals, bvecs = get_bvals_bvecs(mypath, subject)
+    bvals, bvecs = get_bvals_bvecs(mypath, subject,sftp=sftp)
     bvecs = reorient_bvecs(bvecs, bvec_orient)
     #bvec_sign = bvec_orient/np.abs(bvec_orient)
     #bvecs = np.c_[bvec_sign[0]*bvecs[:, np.abs(bvec_orient[0])-1], bvec_sign[1]*bvecs[:, np.abs(bvec_orient[1])-1],
@@ -356,9 +356,9 @@ def getb0s(mypath, subject,sftp):
         i += 1
     return(b0s)
 
-def getdiffdata_all(mypath, subject, bvec_orient=[1,2,3], denoise="", verbose=None):
+def getdiffdata_all(mypath, subject, bvec_orient=[1,2,3], denoise="", verbose=None,sftp=None):
 
-    fdiff_data, affine, vox_size, fdiffpath, header, ref_info = getdiffdata(mypath, subject, denoise=denoise, verbose=verbose)
+    fdiff_data, affine, vox_size, fdiffpath, header, ref_info = getdiffdata(mypath, subject, denoise=denoise, verbose=verbose,sftp=sftp)
     mypath = str(pathlib.Path(fdiffpath).parent.absolute())
 
     if bvec_orient is None:
@@ -371,7 +371,7 @@ def getdiffdata_all(mypath, subject, bvec_orient=[1,2,3], denoise="", verbose=No
         gtab = None
         return fdiff_data, affine, gtab, vox_size, fdiffpath, hdr, header
 
-    gtab = getgtab(mypath, subject, bvec_orient)
+    gtab = getgtab(mypath, subject, bvec_orient,sftp=sftp)
 
     #bvecs = np.c_[bvecs[:, 0], -bvecs[:, 1], bvecs[:, 2]]  # FOR RAS according to Alex
     #bvecs = np.c_[bvecs[:, 0], bvecs[:, 1], -bvecs[:, 2]] #FOR RAS
@@ -509,7 +509,7 @@ def getmask_old(mypath, subject, masktype = "subjspace", verbose=None):
 
 
 def getmask(mypath, subject, masktype = "subjspace", verbose=None, sftp=None):
-    list_options = [mypath, os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz'), os.path.join(mypath,subject + '*_mask*.nii.gz')]
+    list_options = [os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz'), os.path.join(mypath,subject + '*_mask*.nii.gz')]
 
     if sftp is None:
         for list_option in list_options:

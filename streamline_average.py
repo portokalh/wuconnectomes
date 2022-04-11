@@ -18,7 +18,7 @@ from tract_save import save_trk_header
 from excel_management import M_grouping_excel_save, extract_grouping
 import sys
 from argument_tools import parse_arguments_function
-from connectome_handler import connectivity_matrix_func
+from connectome_handler import connectivity_matrix_func, _to_voxel_coordinates_warning, retweak_points
 from dipy.tracking.utils import length
 import getpass
 import random
@@ -187,20 +187,43 @@ elif project == 'AMD':
     #groups_all = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
     groups = ['Paired 2-YR AMD','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
     groups = ['Paired Initial Control', 'Paired Initial AMD']
-    groups = ['Paired 2-YR AMD','Paired 2-YR Control']
+
+    #groups = ['Paired 2-YR AMD','Paired 2-YR Control']
+    #groups = ['testing']
     str_identifier = '_MDT' + folder_ratio_str
     str_identifier = f'*'
 
     for group in groups:
         random.shuffle(groups_subjects[group])
 
-    target_tuples = [(9, 1), (24, 1), (76, 42), (76, 64), (77, 9), (43, 9)]
-    target_tuples = [(9, 1),(24, 1), (76, 42), (76, 64), (77, 9), (43, 9)]
+    #target_tuples = [(9, 1), (24, 1), (76, 42), (76, 64), (77, 9), (43, 9)]
+    #target_tuples = [(9, 1),(24, 1), (76, 42), (76, 64), (77, 9), (43, 9)]
     #target_tuples = [(24, 1)]
     #target_tuples = [(76, 42)]
     #target_tuples = [(76, 64), (77, 9), (43, 9)]
     #target_tuples = [(76, 42)]
     #target_tuples = [(76, 64), (77, 9), (43, 9)]
+
+    #Ctrl vs AMD: 1st visit
+    #target_tuples = [(62, 28), (56, 45), (77, 43), (58, 45), (79, 45), (56, 50)]
+    #Ctrl vs AMD: 2nd visit
+    #target_tuples = [(28, 9), (62, 1), (28, 1), (62, 9), (22, 9), (56, 1)]
+    #Ctrl vs AMD: visit change (2-1)
+    #target_tuples = [(77, 43), (76, 43), (61, 29), (63, 27), (73, 43), (53, 43)
+
+    #Ctrl vs AMD: 1st visit => VBA analysis
+    #target_tuples = [(27,29), (61,63)]
+    #Ctrl vs AMD: 2nd visit
+    #target_tuples =[(30, 16), (24, 16)]
+    #Ctrl vs AMD: visit change (2-1)
+    #target_tuples = [(28, 31), (28, 22),(22, 31)]
+
+    #TN-PCA
+    target_tuples = [(62, 28), (56, 45), (77, 43), (58, 45), (79, 45), (56, 50), (28, 9), (62, 1), (28, 1), (62, 9), (22, 9), (56, 1),(77, 43), (76, 43), (61, 29), (63, 27), (73, 43), (53, 43)]
+    #VBA
+    #target_tuples = [(27,29), (61,63),(30, 16), (24, 16),(28, 31), (28, 22),(22, 31)]
+
+
     removed_list = []
 
 elif project == 'APOE':
@@ -264,7 +287,8 @@ for target_tuple in target_tuples:
             stats_path_temp = stats_path
         else:
             stats_path_temp = make_temppath(stats_path)
-        if write_stats:
+
+        if write_stats and (not checkfile_exists_remote(stats_path,sftp) or overwrite):
             import xlsxwriter
             workbook = xlsxwriter.Workbook(stats_path_temp)
             worksheet = workbook.add_worksheet()
@@ -371,7 +395,9 @@ for target_tuple in target_tuples:
                         stream_point_ref = []
                         for sl, _ in enumerate(target_streamlines_set):
                             # Convert streamline to voxel coordinates
-                            entire = _to_voxel_coordinates(target_streamlines_set[sl], lin_T, offset)
+                            #entire = _to_voxel_coordinates(target_streamlines_set[sl], lin_T, offset)
+                            entire = _to_voxel_coordinates_warning(target_streamlines_set[sl], lin_T, offset)
+                            entire = retweak_points(entire, np.shape(ref_data))
                             i, j, k = entire.T
                             ref_values = ref_data[i, j, k]
                             stream_point_ref.append(ref_values)
@@ -496,4 +522,4 @@ for group in groups:
                               reverse=True)
         if verbose:
             print(f'Listed the biggest clusters for group {group} at {idx_path}')
-        pickle.dump(top_idx_list, open(idx_path, "wb"))
+            pickledump_remote(top_idx_list, idx_path)
