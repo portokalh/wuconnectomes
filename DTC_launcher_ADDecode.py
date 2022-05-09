@@ -6,35 +6,30 @@ from tract_manager import create_tracts, diff_preprocessing, tract_connectome_an
 from Daemonprocess import MyPool
 import multiprocessing as mp
 import os
-from file_tools import mkcdir
+from file_tools import mkcdir, getfromfile
 from time import time
 from argument_tools import parse_arguments
 import sys
 import socket
 import random
+from computer_nav import get_mainpaths, get_atlas
 
-computer_name = socket.gethostname()
-
-if 'samos' in computer_name:
-    mainpath = '/mnt/paros_MRI/jacques'
-    atlas_legends = mainpath + "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'santorini' in computer_name or 'hydra' in computer_name:
-    mainpath = '/Volumes/Data/Badea/Lab/human/'
-    atlas_legends = "/Volumes/Data/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
-elif 'blade' in computer_name:
-    mainpath = '/mnt/munin6/Badea/Lab/human/'
-    atlas_legends = "/mnt/munin6/Badea/Lab/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
+remote=True
+project='AD_Decode'
+if remote:
+    username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
 else:
-    raise Exception('No other computer name yet')
+    username = None
+    passwd = None
+inpath, outpath, atlas_folder, sftp = get_mainpaths(remote,project = project, username=username,password=passwd)
+atlas_legends = get_atlas(atlas_folder, 'IIT')
 
-project = "AD_Decode"
+diff_preprocessed = os.path.join(inpath, "DWI")
 
-if project == 'AD_Decode':
-    mainpath = os.path.join(mainpath, 'AD_Decode', 'Analysis')
-
-diff_preprocessed = os.path.join(mainpath, "DWI")
-
-mkcdir([mainpath, diff_preprocessed])
+if not remote:
+    mkcdir([outpath, diff_preprocessed])
+else:
+    mkcdir([outpath, diff_preprocessed], sftp)
 
 subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266', 'S02289', 'S02320', 'S02361', 'S02363',
         'S02373', 'S02386', 'S02390', 'S02402', 'S02410', 'S02421', 'S02424', 'S02446', 'S02451', 'S02469', 'S02473',
@@ -69,12 +64,13 @@ doprune = True
 bvec_orient = [1,2,3]
 vol_b0 = [0,1,2]
 classifier = "binary"
-symmetric = True
-inclusive = False
+symmetric = False
+inclusive = True
 denoise = "coreg"
 savefa = True
 
-reference_weighting = 'fa'
+#reference_weighting = 'fa'
+reference_weighting = None
 volume_weighting = True
 make_tracts = False
 make_connectomes = True
@@ -91,10 +87,9 @@ else:
     saved_streamlines = "_ratio_" + str(ratio)
     trk_folder_name = "_" + str(ratio)
 
-trkpath = os.path.join(mainpath, "TRK_MPCA_fixed")
-trkpath = os.path.join(mainpath, "TRK_MPCA_100")
-trkpath = os.path.join(mainpath, "TRK_MPCA_fixed"+trk_folder_name)
-mkcdir(trkpath)
+trkpath = os.path.join(inpath, "TRK_MPCA_fixed")
+trkpath = os.path.join(inpath, "TRK_MPCA_100")
+trkpath = os.path.join(inpath, "TRK_MPCA_fixed"+trk_folder_name)
 
 trkroi = ["wholebrain"]
 if len(trkroi)==1:
@@ -102,7 +97,7 @@ if len(trkroi)==1:
 elif len(trkroi)>1:
     roistring="_"
     for roi in trkroi:
-        roistring = roistring + roi[0:4]
+        roistring = roistring + roi[0:f4]
     roistring = roistring #+ "_"
 str_identifier = '_stepsize_' + str(stepsize).replace(".","_") + saved_streamlines + roistring
 
@@ -131,9 +126,12 @@ if symmetric:
 else:
     symmetric_str = '_non_symmetric'
 
-figspath = os.path.join(mainpath,"Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
+figspath = os.path.join(outpath,"Figures_MPCA"+inclusive_str+symmetric_str+saved_streamlines)
 
-mkcdir(figspath)
+if not remote:
+    mkcdir([figspath, trkpath])
+else:
+    mkcdir([figspath, trkpath], sftp)
 
 if make_connectomes:
     for subject in subjects:
@@ -172,13 +170,13 @@ else:
             tract_results.append(
             create_tracts(diff_preprocessed, trkpath, subject, figspath, stepsize, function_processes, str_identifier,
                           ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params, denoise,
-                          verbose))
+                          verbose, sftp))
         #get_diffusionattributes(diff_preprocessed, diff_preprocessed, subject, str_identifier, vol_b0, ratio, bvec_orient,
         #                        masktype, overwrite, verbose)
         if make_connectomes:
             tract_results.append(tract_connectome_analysis(diff_preprocessed, trkpath, str_identifier, figspath, subject,
                                                            atlas_legends, bvec_orient,  brainmask, inclusive,
-                                                           function_processes, overwrite, picklesave, labeltype, symmetric, reference_weighting, volume_weighting, verbose))
+                                                           function_processes, overwrite, picklesave, labeltype, symmetric, reference_weighting, volume_weighting, verbose, sftp))
     print(tract_results)
 
 

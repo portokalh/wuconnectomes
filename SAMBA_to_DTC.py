@@ -9,19 +9,20 @@ from create_backported_labels import create_backport_labels
 import os
 import getpass
 from computer_nav import get_mainpaths, checkfile_exists_remote
+from convert_atlas_mask import convert_labelmask, atlas_converter
 
 #project = ["AD_Decode", "APOE"]
 #project = "APOE"
 #project = "AMD"
 project = 'APOE'
-project = 'AMD'
-project = 'Chavez'
+#project = 'AMD'
+#project = 'Chavez'
 verbose = True
 mainpath = "/Volumes/Data/Badea/Lab/"
 #mainpath = "/mnt/munin6/Badea/Lab/"
 SAMBA_headfile_dir = os.path.join(mainpath, "samba_startup_cache")
 file_ids = ["coreg", "subjspace_fa", "subjspace_b0", "bval", "bvec", "subjspace_mask", "reference", "subjspace_dwi", "relative_orientation"]
-
+file_ids = ['coreg']
 #if project == 'AMD':
 #    file_ids = ["relative_orientation"]
 
@@ -32,7 +33,7 @@ if project == 'Chavez':
     #SAMBA_projectname = "VBM_20APOE01_chass_symmetric3_allAPOE"
     SAMBA_projectname = "VBM_21Chavez01_chass_symmetric3_all"
 
-    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "jas297_SAMBA_Chavez.headfile")
+    SAMBA_headfile = os.path.join(SAMBA_headfile_dir, "rja20_hm190_SAMBA_Chavez.headfile")
 
     gunniespath = "~/gunnies/"
     recenter = 0
@@ -42,11 +43,11 @@ if project == 'Chavez':
     SAMBA_prep_folder = os.path.join(mainpath, "mouse","Chavez_symlink_pool_allfiles")
 
     atlas_labels = os.path.join(mainpath,"atlases","chass_symmetric3","chass_symmetric3_labels.nii.gz")
-
+    atlas_legends = os.path.join(mainpath,'atlases/CHASSSYMM3AtlasLegends.xlsx')
     #DTC_DWI_folder = "samos.dhe.duke.edu:/mnt/paros_DB/Projects/21.chavez.01/Analysis/DWI_allsubj_2/"
     #DTC_labels_folder = "samos.dhe.duke.edu:/mnt/paros_DB/Projects/21.chavez.01/Analysis/DWI_allsubj_2/"
-    DTC_DWI_folder = "DWI_allsubj_2/"
-    DTC_labels_folder = "DWI_allsubj_2/"
+    DTC_DWI_folder = "DWI_allsubj/"
+    DTC_labels_folder = "DWI_allsubj/"
 
     SAMBA_label_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-results", "connectomics")
     SAMBA_work_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname + "-work")
@@ -56,7 +57,7 @@ if project == 'Chavez':
     overwrite = False
     preppath = None
     subjects = ['C_20220124_001', 'C_20220124_002', 'C_20220124_003', 'C_20220124_004', 'C_20220124_005', 'C_20220124_006', 'C_20220124_007']
-    subjects = ['C_20220124_005']
+    subjects = ['C_20220124_001', 'C_20220124_002', 'C_20220124_003', 'C_20220124_004', 'C_20220124_005', 'C_20220124_006', 'C_20220124_007']
 
     #subjects_folders = glob.glob(os.path.join(SAMBA_work_folder, '*affine.mat/'))
 
@@ -68,7 +69,8 @@ if project == 'Chavez':
         subjects.append(subject_name[:6])
     """
 
-    removed_list = ['C_20220124_004'] #004 had a terrible orientation and would have to be individually treated in order to be on par with the others
+    #removed_list = ['C_20220124_004'] #004 had a terrible orientation and would have to be individually treated in order to be on par with the others
+    removed_list = []
     for remove in removed_list:
         if remove in subjects:
             subjects.remove(remove)
@@ -84,7 +86,7 @@ elif project == "AD_Decode":
     #SAMBA_prep_folder = os.path.join(SAMBA_mainpath, SAMBA_projectname+"-inputs")
     SAMBA_prep_folder = os.path.join(mainpath, "human","ADDeccode_symlink_pool_allfiles")
     atlas_labels = os.path.join(mainpath, "atlas","IITmean_RPI","IITmean_RPI_labels.nii.gz")
-
+    atlas_legends = os.path.join(mainpath, "/atlases/IITmean_RPI/IITmean_RPI_index.xlsx")
     DTC_DWI_folder = os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
     DTC_labels_folder = os.path.join(mainpath, "..","ADdecode.01","Analysis","DWI")
     DTC_transforms = os.path.join(mainpath, "..","ADdecode.01","Analysis","Transforms")
@@ -151,6 +153,7 @@ elif project == "APOE":
     SAMBA_prep_folder = os.path.join(mainpath, "mouse","APOE_symlink_pool_allfiles")
 
     atlas_labels = os.path.join(mainpath,"atlases","chass_symmetric3","chass_symmetric3_labels.nii.gz")
+    atlas_legends = os.path.join(mainpath,'atlases/CHASSSYMM3AtlasLegends.xlsx')
 
     DTC_DWI_folder = os.path.join(mainpath,"mouse","APOE_series","DWI")
     DTC_labels_folder = os.path.join(mainpath,"mouse","APOE_series","DWI")
@@ -164,7 +167,7 @@ elif project == "APOE":
     orient_string = os.path.join(SAMBA_prep_folder, "relative_orientation.txt")
     superpose = False
     copytype = "truecopy"
-    overwrite = True
+    overwrite = False
     preppath = None
     subjects = ['N57437', 'N57442', 'N57446', 'N57447', 'N57449', 'N57451', 'N57496', 'N57498', 'N57500', 'N57502', 'N57504', 'N57513', 'N57515', 'N57518', 'N57520', 'N57522', 'N57546', 'N57548', 'N57550', 'N57552', 'N57554', 'N57559', 'N57580', 'N57582', 'N57584', 'N57587', 'N57590', 'N57692', 'N57694', 'N57700', 'N57702', 'N57709', 'N58302', ' N58303', ' N58305', ' N58309', ' N58310', ' N58344', 'N58346', 'N58350', 'N58355', 'N58359', 'N58361', 'N58394', 'N58396', 'N58398', 'N58400', 'N58402', 'N58404', 'N58406', 'N58408', 'N58477', 'N58500', 'N58510', 'N58512', 'N58514', 'N58516', 'N58604', 'N58606', 'N58608', 'N58610', 'N58611', 'N58613', 'N58706', 'N58708', 'N58712', ' N58214', 'N58215', 'N58216', 'N58217', 'N58218', 'N58219', 'N58221', 'N58222', 'N58223', 'N58224', 'N58225', 'N58226', 'N58228', 'N58229', 'N58230', 'N58231', 'N58232', 'N58633', 'N58634', 'N58635', 'N58636', 'N58649', 'N58650', 'N58651', 'N58653', 'N58654', ' N58398', ' N58714', ' N58740', ' N58477', ' N58734', ' N58792', ' N58302', ' N58784', ' N58706', ' N58361', ' N58355', ' N58712', ' N58790', ' N58606', ' N58350', ' N58608', ' N58779', ' N58500', ' N58604', ' N58749', ' N58510', ' N58394', ' N58346', ' N58788', ' N58514', ' N58794', ' N58733', ' N58655', ' N58735', ' N58400', ' N58708', ' N58780', ' N58512', ' N58747', ' N58404', ' N58751', ' N58611', ' N58745', ' N58406', ' N58359', ' N58742', ' N58396', ' N58613', ' N58732', ' N58516', ' N58402', ' N58935', ' N59003', ' N58819', ' N58909', ' N58919', ' N58889', ' N59010', ' N58859', ' N58917', ' N58815', ' N58997', ' N58999', ' N58881', ' N58853', ' N58995', ' N58877', ' N58883', ' N58885', ' N58906', ' N58821', ' N58855', ' N58861', ' N58857', ' N58851', ' N58887', ' N58879', ' N58829', ' N58913', ' N58831', ' N58941', ' N58813', ' N58952', ' N59022', ' N59026', ' N59033', ' N59035', ' N59039', ' N59041', ' N59065', ' N59066', ' N59072', ' N59076', ' N59078', ' N59080', ' N59097', ' N59099', ' N59109', ' N59116', ' N59118', ' N59120']
     #subjects_folders = glob.glob(os.path.join(SAMBA_work_folder, '*affine.mat/'))
@@ -257,19 +260,20 @@ else:
     username = None
     passwd = None
 
-"""
+
 _, outpath, _, sftp = get_mainpaths(remote,project = project, username=username,password=passwd)
 
 DTC_DWI_folder = os.path.join(outpath,DTC_DWI_folder)
 DTC_labels_folder = os.path.join(outpath,DTC_labels_folder)
 DTC_transforms = os.path.join(DTC_DWI_folder,'../Transforms')
 mkcdir([DTC_DWI_folder,DTC_labels_folder,DTC_transforms],sftp)
+
 """
 for subject in subjects:
     labelspath_remote = os.path.join(DTC_labels_folder, f'{subject}_labels.nii.gz')
     #if not checkfile_exists_remote(labelspath_remote,sftp) or overwrite:
     create_backport_labels(subject, SAMBA_mainpath, SAMBA_projectname, SAMBA_prep_folder, atlas_labels, headfile = SAMBA_headfile, overwrite=overwrite)
-
+"""
 
 mkcdir([DTC_DWI_folder,DTC_labels_folder],sftp)
 
@@ -337,13 +341,14 @@ if project != "AMD":
         else:
             subjectpath = SAMBA_label_folder
 
-        labelspath = glob.glob(os.path.join(subjectpath, f'{subject}*_preprocess_labels.nii*'))
+        labelspath = glob.glob(os.path.join(subjectpath, f'{subject}*labels.nii*'))
         if np.size(labelspath) == 1:
             labelspath = labelspath[0]
         else:
             warnings.warn(f"Could not find file at {os.path.join(subjectpath, f'{subject}*_labels.nii*')}")
             continue
         newlabelspath = os.path.join(DTC_labels_folder,f'{subject}_labels.nii.gz')
+
         if not os.path.exists(newlabelspath) or overwrite:
             if remote:
                 if not overwrite:
@@ -367,6 +372,39 @@ if project != "AMD":
         else:
             if verbose:
                 print(f"File already exists at {newlabelspath}")
+
+        newlabelspath_ordered = newlabelspath.replace('_labels','_labels_lr_ordered')
+
+        if not os.path.exists(newlabelspath_ordered) or overwrite:
+            if remote:
+                if not overwrite:
+                    try:
+                        sftp.stat(newlabelspath_ordered)
+                        if verbose:
+                            print(f'file at {newlabelspath_ordered} exists')
+                    except IOError:
+                        if verbose:
+                            print(f'creating file {newlabelspath_ordered} from {labelspath}')
+                        converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = atlas_converter(
+                            atlas_legends)
+                        convert_labelmask(labelspath, converter_lr, atlas_outpath=newlabelspath_ordered, sftp=sftp)
+                else:
+                    if verbose:
+                        print(f'creating file {newlabelspath_ordered} from {labelspath}')
+                    converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = atlas_converter(
+                        atlas_legends)
+                    convert_labelmask(labelspath, converter_lr, atlas_outpath=newlabelspath_ordered, sftp=sftp)
+
+            else:
+                converter_lr, converter_comb, index_to_struct_lr, index_to_struct_comb = atlas_converter(
+                    atlas_legends)
+                convert_labelmask(labelspath, converter_lr, atlas_outpath=newlabelspath_ordered)
+                if verbose:
+                    print(f'creating file {newlabelspath_ordered} from {labelspath}')
+        else:
+            if verbose:
+                print(f"File already exists at {newlabelspath_ordered}")
+
 
 elif project == "AMD":
     for subject in subjects:

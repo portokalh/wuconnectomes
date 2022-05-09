@@ -23,7 +23,9 @@ inpath, outpath, atlas_folder, sftp = get_mainpaths(remote,project = project, us
 atlas_legends = get_atlas(atlas_folder, 'IIT')
 
 inpath = '/Volumes/Data/Badea/Lab/jacques/AMD_compare/'
-diff_preprocessed = os.path.join(inpath, "DWI_v2")
+#diff_preprocessed = os.path.join(inpath, "DWI_v2")
+diff_preprocessed = os.path.join(inpath, 'DWI_orig')
+
 txtpath = os.path.join(inpath, "Parameters")
 
 
@@ -137,8 +139,9 @@ else:
 
 trkpath = os.path.join(inpath, "TRK_MPCA_fixed")
 trkpath = os.path.join(inpath, "TRK_MPCA_100")
-
 trkpath = os.path.join(inpath, f"TRK_MPCA_v2{fixed_str}"+trk_folder_name)
+
+trkpath = os.path.join(inpath, f"TRK_MPCA_coregdiffrun{fixed_str}"+trk_folder_name)
 
 trkroi = ["wholebrain"]
 if len(trkroi)==1:
@@ -201,16 +204,17 @@ bvec_orient2 = [elm*[-1, 1, 1] for elm in bvec_orient1]
 bvec_orient3 = [elm*[1, -1, 1] for elm in bvec_orient1]
 bvec_orient4 = [elm*[1, 1, -1] for elm in bvec_orient1]
 
-bvec_orient_list = np.concatenate((bvec_orient1, bvec_orient2, bvec_orient3, bvec_orient4))
+bvec_orient_list = np.concatenate((bvec_orient4, bvec_orient1, bvec_orient2, bvec_orient3))
 
-get_params = True
+get_params = False
 print(bvec_orient_list)
 
 print(f'Overwrite is {overwrite}')
 for subject in subjects:
     txtfile = os.path.join(txtpath, subject + "_" + "params.txt")
-    with open(txtfile, 'a') as fi:
-        fi.write("Parameters for subject %s \n" % subject)
+    if get_params:
+        with open(txtfile, 'a') as fi:
+            fi.write("Parameters for subject %s \n" % subject)
     for bvec_orient in bvec_orient_list:
         tract_results = []
         print(bvec_orient)
@@ -221,12 +225,13 @@ for subject in subjects:
                           ratio, brainmask, classifier, labelslist, bvec_orient, doprune, overwrite, get_params,
                           denoise,
                           verbose, sftp))
-        with open(txtfile, 'a') as f:
-            for item in tract_results:
-                f.write("Subject %s with %s %s %s \n" % (
-                item[0], str(bvec_orient[0]), str(bvec_orient[1]), str(bvec_orient[2])))
-                f.write("Num tracts: %s \n" % item[2][0])
-                f.write("Min tract length: %s \n" % item[2][1])
-                f.write("Max tract length: %s \n" % item[2][2])
-                f.write("Average tract length: %s \n" % item[2][3])
-                f.write("Standard deviancy tract length: %s \n" % item[2][4])
+        if get_params:
+            with open(txtfile, 'a') as f:
+                for item in tract_results:
+                    f.write("Subject %s with %s %s %s \n" % (
+                    item[0], str(bvec_orient[0]), str(bvec_orient[1]), str(bvec_orient[2])))
+                    f.write("Num tracts: %s \n" % item[2][0])
+                    f.write("Min tract length: %s \n" % item[2][1])
+                    f.write("Max tract length: %s \n" % item[2][2])
+                    f.write("Average tract length: %s \n" % item[2][3])
+                    f.write("Standard deviancy tract length: %s \n" % item[2][4])

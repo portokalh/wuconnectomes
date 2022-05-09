@@ -34,7 +34,7 @@ import os, shutil
 from tract_save import save_trk_header
 from streamline_nocheck import load_trk as load_trk_spe
 import nibabel as nib
-from computer_nav import glob_remote
+from computer_nav import glob_remote, load_trk_remote
 import fnmatch
 
 
@@ -312,11 +312,11 @@ def get_connectome_attributes(streamlines, affine, fa, md, verbose):
 
     return numtracts, minlength, maxlength, meanlength, stdlength, meanfa, maxfa, meanmd, maxmd
 
-def get_tract_params(mypath, subject, str_identifier, pruned = False, verbose = False):
+def get_tract_params(mypath, subject, str_identifier='', pruned = False, verbose = False, sftp=None):
 
-    trkpath, exists = gettrkpath(mypath, subject, str_identifier, pruned, verbose)
+    trkpath, exists = gettrkpath(mypath, subject, str_identifier, pruned, verbose,sftp=sftp)
     if trkpath is not None:
-        trkdata = load_trk(trkpath, "same")
+        trkdata = load_trk_remote(trkpath, "same",sftp=sftp)
         verbose = True
         if verbose:
             print("loaded ")

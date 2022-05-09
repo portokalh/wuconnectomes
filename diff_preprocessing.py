@@ -18,6 +18,7 @@ from figures_handler import denoise_fig
 import glob
 from mask_handler import applymask_array
 import nibabel as nib
+from computer_nav import checkfile_exists_remote, load_nifti_remote, save_nifti_remote
 
 #from os.path import join as pjoin
 #from dipy.data import get_fnames
@@ -40,7 +41,65 @@ def string_inclusion(string_option,allowed_strings,option_name):
     if string_option == "none":
         print(option_name + " stated as None value, option will not be implemented")
 
-def dwi_to_mask(data, subject, affine, outpath, masking='median', makefig=False, vol_idx=None, median_radius = 5, numpass=6, dilate = 2, forcestart = False, header = None, verbose = False):
+
+def dwi_to_mask(data, subject, affine, outpath, masking='median', makefig=False, vol_idx=None, median_radius = 5,
+                numpass=6, dilate = 2, forcestart = False, header = None, verbose = False, sftp=None):
+
+    data = np.squeeze(data)
+    binarymask_path = os.path.join(outpath, subject + '_dwi_binary_mask.nii.gz')
+    maskeddwi_path = os.path.join(outpath, subject + '_dwi_mask.nii.gz')
+    if not checkfile_exists_remote(binarymask_path,sftp) and not checkfile_exists_remote(maskeddwi_path, sftp) \
+            and not forcestart:
+        if masking == 'median':
+            b0_mask, mask = median_otsu(data, vol_idx=vol_idx, median_radius=median_radius, numpass=numpass,
+                                        dilate=dilate)
+        if masking == 'extract':
+            if np.size(np.shape(data)) == 3:
+                mask=data>0
+            if np.size(np.shape(data)) == 4:
+                mask=data[:,:,:,0]>0
+            mask = mask.astype(np.float32)
+            b0_mask = applymask_array(data,mask)
+
+        if verbose:
+            txt = f"Creating binarymask at {binarymask_path} and masked data at {maskeddwi_path}"
+            print(txt)
+        if header is None:
+            save_nifti(binarymask_path, mask, affine)
+            save_nifti(maskeddwi_path, b0_mask.astype(np.float32), affine)
+        else:
+            binarymask_nii = nib.Nifti1Image(mask, affine, header)
+            save_nifti_remote(binarymask_nii, binarymask_path, sftp=sftp)
+            #maskeddwi_nii = nib.Nifti1Image(b0_mask, affine, header)
+            #save_nifti_remote(maskeddwi_nii, maskeddwi_path, sftp=sftp)
+    else:
+        mask = load_nifti_remote(binarymask_path,sftp=sftp)
+        mask = mask[0]
+        b0_mask = load_nifti_remote(maskeddwi_path,sftp=sftp)
+        b0_mask = b0_mask[0]
+
+    if makefig:
+        sli = data.shape[2] // 2
+        if len(b0_mask.shape) ==4:
+            b0_mask_2 = b0_mask[:,:,:,0]
+        else:
+            b0_mask_2 = b0_mask
+        if len(data.shape) ==4:
+            data = data[:,:,:,0]
+        plt.figure('Brain segmentation')
+        plt.subplot(1, 2, 1).set_axis_off()
+        plt.imshow(histeq(data[:, :, sli].astype('float')).T,
+                   cmap='gray', origin='lower')
+
+        plt.subplot(1, 2, 2).set_axis_off()
+        plt.imshow(histeq(b0_mask_2[:, :, sli].astype('float')).T,
+                   cmap='gray', origin='lower')
+        plt.savefig(outpath + 'median_otsu.png')
+
+    return(mask.astype(np.float32), b0_mask.astype(np.float32))
+
+def dwi_to_mask_old(data, subject, affine, outpath, masking='median', makefig=False, vol_idx=None, median_radius = 5,
+                numpass=6, dilate = 2, forcestart = False, header = None, verbose = False, sftp=None):
 
     data = np.squeeze(data)
     binarymask_path = os.path.join(outpath, subject + '_dwi_binary_mask.nii.gz')
@@ -93,7 +152,6 @@ def dwi_to_mask(data, subject, affine, outpath, masking='median', makefig=False,
         plt.savefig(outpath + 'median_otsu.png')
 
     return(mask.astype(np.float32), b0_mask.astype(np.float32))
-
 
 
 def check_for_fa(outpath, subject, getdata=False):

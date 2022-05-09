@@ -41,13 +41,16 @@ project = 'AMD'
 
 
 computer_name = socket.gethostname()
-
 remote=True
 username = None
 passwd = None
-
 if remote:
     username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
+    if 'santorini' in computer_name:
+        username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
+    elif 'hydra' in computer_name:
+        username, passwd = getfromfile('/Users/alex/jacques/samos_connect.rtf')
+
 
 inpath, outpath, atlas_folder, sftp = get_mainpaths(remote,project = project, username=username,password=passwd)
 
@@ -186,7 +189,8 @@ elif project == 'AMD':
     #groups to go through
     #groups_all = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
     groups = ['Paired 2-YR AMD','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
-    groups = ['Paired Initial Control', 'Paired Initial AMD']
+    #groups = ['Paired 2-YR AMD']
+    #groups = ['Paired 2-YR AMD']
 
     #groups = ['Paired 2-YR AMD','Paired 2-YR Control']
     #groups = ['testing']
@@ -219,10 +223,12 @@ elif project == 'AMD':
     #target_tuples = [(28, 31), (28, 22),(22, 31)]
 
     #TN-PCA
-    target_tuples = [(62, 28), (56, 45), (77, 43), (58, 45), (79, 45), (56, 50), (28, 9), (62, 1), (28, 1), (62, 9), (22, 9), (56, 1),(77, 43), (76, 43), (61, 29), (63, 27), (73, 43), (53, 43)]
+    #target_tuples = [(62, 28), (56, 45), (77, 43), (58, 45), (79, 45), (56, 50), (28, 9), (62, 1), (28, 1), (62, 9), (22, 9), (56, 1),(77, 43), (76, 43), (61, 29), (63, 27), (73, 43), (53, 43)]
     #VBA
     #target_tuples = [(27,29), (61,63),(30, 16), (24, 16),(28, 31), (28, 22),(22, 31)]
-
+    #TN-PCA / VBA combination
+    target_tuples = [(62, 28), (58, 45), (28, 9), (62, 1), (77, 43), (61, 29)]
+    #target_tuples = [(62, 1), (77, 43), (61, 29)]
 
     removed_list = []
 
@@ -280,9 +286,10 @@ for target_tuple in target_tuples:
         print(f'Going through group {group}')
 
         group_str = group.replace(' ', '_')
-        centroid_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_centroid.py')
-        streamline_file_path = os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_streamlines.trk')
-        stats_path = os.path.join(stats_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_stats.xlsx')
+        group_connection_str = group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]]
+        centroid_file_path = os.path.join(centroid_folder, group_connection_str + '_centroid.py')
+        streamline_file_path = os.path.join(centroid_folder, group_connection_str + '_streamlines.trk')
+        stats_path = os.path.join(stats_folder, group_connection_str + '_stats.xlsx')
         if sftp is None:
             stats_path_temp = stats_path
         else:
@@ -306,8 +313,8 @@ for target_tuple in target_tuples:
         exists=True
 
         for ref in references:
-            grouping_files[ref,'lines']=(os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_lines.py'))
-            grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' + index_to_struct[target_tuple[1]] + '_' + ref + '_points.py'))
+            grouping_files[ref,'lines']=(os.path.join(centroid_folder, group_connection_str + '_' + ref + '_lines.py'))
+            grouping_files[ref, 'points'] = (os.path.join(centroid_folder, group_connection_str + '_' + ref + '_points.py'))
             list_files, exists = check_files(grouping_files, sftp)
 
         if not checkfile_exists_remote(centroid_file_path, sftp) or not np.all(exists) or \
@@ -362,7 +369,7 @@ for target_tuple in target_tuples:
                                               verbose=False)
                     else:
                         print(f'skipping subject {subject} for now as grouping file is not calculated. Best rerun it afterwards ^^')
-                        continue
+                        raise Exception('Actually just stop it altogether and note the problem here')
 
                 trkdata = load_trk_remote(trkpath, 'same', sftp=sftp)
                 header = trkdata.space_attributes
@@ -377,7 +384,7 @@ for target_tuple in target_tuples:
                 #del(target_streamlines, trkdata)
                 target_qb = QuickBundles(threshold=distance1, metric=metric1)
 
-                if write_stats:
+                if write_stats and (not checkfile_exists_remote(stats_path, sftp) or overwrite):
                     l = 1
                     worksheet.write(subj, 0, subject)
                 for ref in references:
@@ -417,7 +424,7 @@ for target_tuple in target_tuples:
                                        objectvals=[None], colorbar=True, record=None, scene=None, interactive=True)
                     """
 
-                    if write_stats:
+                    if write_stats and (not checkfile_exists_remote(stats_path, sftp) or overwrite):
                         worksheet.write(subj, l, np.mean(stream_ref))
                         worksheet.write(subj, l+1, np.min(stream_ref))
                         worksheet.write(subj, l+2, np.max(stream_ref))
@@ -431,8 +438,7 @@ for target_tuple in target_tuples:
                 subj += 1
                 groupstreamlines[group].extend(target_streamlines_set)
 
-
-            if write_stats:
+            if write_stats and (not checkfile_exists_remote(stats_path, sftp) or overwrite):
                 worksheet.write(subj, 0, group)
                 l=1
                 for ref in references:
@@ -513,8 +519,7 @@ for group in groups:
     cluster = group_clusters[group]
     group_str = group.replace(' ', '_')
     idx_path = os.path.join(centroid_folder,
-                            group_str + '_MDT' + ratio_str + '_' + index_to_struct[target_tuple[0]] + '_to_' +
-                            index_to_struct[target_tuple[1]] + '_idx.py')
+                            group_connection_str + '_idx.py')
     if os.path.exists(idx_path):
         continue
     else:
@@ -522,4 +527,4 @@ for group in groups:
                               reverse=True)
         if verbose:
             print(f'Listed the biggest clusters for group {group} at {idx_path}')
-            pickledump_remote(top_idx_list, idx_path)
+            pickledump_remote(top_idx_list, idx_path,sftp=sftp)

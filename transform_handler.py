@@ -25,11 +25,15 @@ def header_superpose(target_path, origin_path, outpath=None, verbose=False):
             new_nii = nib.Nifti1Image(origin_nii._data, target_affine, target_header)
             if outpath is None:
                 outpath = origin_path
+                txt= (f'Overwriting original file {origin_path}')
+                warnings.warn(txt)
             if verbose:
                 print(f'Saving nifti file to {outpath}')
             nib.save(new_nii, outpath)
             if verbose:
                 print(f'Saved')
+        else:
+            print('Same header for target_path and origin_path, skipping')
 
 
 def get_affine_transform_nii(target_path, origin_path, verbose=False):

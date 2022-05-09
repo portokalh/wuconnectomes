@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from os import remove as file_remove
 from BIAC_tools import send_mail, isempty
-from computer_nav import make_temppath, glob_remote
+from computer_nav import make_temppath, glob_remote, checkfile_exists_remote, remove_remote
 """
 Created by Jacques Stout
 
@@ -16,12 +16,25 @@ set up the excel files for connectomes and grouping
 """
 
 
-def connectomes_to_excel(connectome, index_to_struct, output_path, verbose=False):
+def connectomes_to_excel(connectome, index_to_struct, output_path, overwrite=False, verbose=False, sftp=None):
 
     #df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
     #structure = df['Structure']
 
-    workbook = xlsxwriter.Workbook(output_path)
+    if checkfile_exists_remote(output_path, sftp=sftp):
+        if overwrite:
+            remove_remote(output_path, sftp=sftp)
+        else:
+            if verbose:
+                print(f'Connectome already saved at {output_path}')
+            return
+
+    if sftp is None:
+        output_tpath = output_path
+    else:
+        output_tpath = make_temppath(output_path)
+
+    workbook = xlsxwriter.Workbook(output_tpath)
     worksheet = workbook.add_worksheet()
 
     for num in np.arange(1, np.shape(connectome)[0]+1):
@@ -33,18 +46,33 @@ def connectomes_to_excel(connectome, index_to_struct, output_path, verbose=False
         worksheet.write_column(row+1, col+1, data)
 
     workbook.close()
+
+    if sftp is not None:
+        sftp.put(output_tpath, output_path)
+        file_remove(output_tpath)
+
     if verbose:
         print(f'Saved connectome at {output_path}')
 
     return
 
 
-def grouping_to_excel(grouping, index_to_struct, output_path, verbose=False):
+def grouping_to_excel(grouping, index_to_struct, output_path, overwrite=False, verbose=False, sftp=None):
 
-    # df = pd.read_excel(ROI_excel, sheet_name='Sheet1')
-    # structure = df['Structure']
+    if checkfile_exists_remote(output_path):
+        if overwrite:
+            remove_remote(output_path, sftp)
+        else:
+            if verbose:
+                print(f'Grouping already saved at {output_path}')
+            return
 
-    workbook = xlsxwriter.Workbook(output_path)
+    if sftp is None:
+        output_tpath = output_path
+    else:
+        output_tpath = make_temppath(output_path)
+
+    workbook = xlsxwriter.Workbook(output_tpath)
     worksheet = workbook.add_worksheet()
 
     for num in np.arange(1, np.shape(grouping)[0]):
@@ -58,8 +86,12 @@ def grouping_to_excel(grouping, index_to_struct, output_path, verbose=False):
 
     workbook.close()
 
+    if sftp is not None:
+        sftp.put(output_tpath, output_path)
+        file_remove(output_tpath)
+
     if verbose:
-        print(f'Saved connectome at {output_path}')
+        print(f'Saved grouping at {output_path}')
 
     return
 

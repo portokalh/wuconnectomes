@@ -4,25 +4,24 @@ from dipy.io.image import load_nifti
 import fnmatch
 import numpy as np
 import pickle
-
+import nibabel as nib
 
 def get_mainpaths(remote=False, project='any',username=None,password=None):
     computer_name = socket.gethostname()
-
+    project_rename = {'Chavez':'21.chavez.01','AD_Decode':'AD_Decode','APOE':'APOE','AMD':'AMD'}
     samos = False
     if 'samos' in computer_name:
         inpath = '/mnt/paros_MRI/jacques/'
         outpath = '/mnt/paros_MRI/jacques/'
         atlas_folder = '/mnt/paros_MRI/jacques/atlases/'
-        if project == 'Chavez':
-            outpath = '/mnt/paros_DB/Projects/'
+
 
         #ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
     elif 'santorini' in computer_name or 'hydra' in computer_name:
         # mainpath = '/Users/alex/jacques/'
         inpath = '/Volumes/Data/Badea/Lab/human/'
         outpath = '/Volumes/Data/Badea/Lab/human/'
-        atlas_folder = '/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/'
+        atlas_folder = '/Volumes/Data/Badea/Lab/atlases/'
         #ROI_legends = "/Volumes/Data/Badea/ADdecode.01/Analysis/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
     elif 'blade' in computer_name:
         inpath = '/mnt/munin6/Badea/Lab/human/'
@@ -36,6 +35,8 @@ def get_mainpaths(remote=False, project='any',username=None,password=None):
     if remote:
         if not 'samos' in computer_name:
             inpath = 'samos.dhe.duke.edu:/mnt/paros_MRI/jacques/'
+            if project == 'Chavez':
+                inpath = 'samos.dhe.duke.edu:/mnt/paros_DB/Projects/'
             if "@" in inpath:
                 inpath = inpath.split("@")
                 username = inpath[0]
@@ -56,12 +57,12 @@ def get_mainpaths(remote=False, project='any',username=None,password=None):
         else:
             inpath = inpath.split(":")[1]
         outpath=inpath
-    if project == 'AD_Decode':
-        outpath = os.path.join(outpath, project, 'Analysis')
-        inpath = os.path.join(inpath, project, 'Analysis')
+    if project == 'AD_Decode' or project == 'Chavez':
+        outpath = os.path.join(outpath, project_rename[project], 'Analysis')
+        inpath = os.path.join(inpath, project_rename[project], 'Analysis')
     else:
-        outpath = os.path.join(outpath, project)
-        inpath = os.path.join(inpath, project)
+        outpath = os.path.join(outpath, project_rename[project])
+        inpath = os.path.join(inpath, project_rename[project])
 
     return inpath, outpath, atlas_folder, sftp
 
@@ -85,6 +86,8 @@ def get_sftp(remote, username=None, password=None):
 def get_atlas(atlas_folder, atlas_type):
     if atlas_type == 'IIT':
         index_path = os.path.join(atlas_folder,'IITmean_RPI','IITmean_RPI_index.xlsx')
+    elif atlas_type == 'CHASSSYMM3':
+        index_path = os.path.join(atlas_folder,'CHASSSYMM3AtlasLegends.xlsx')
     else:
         raise Exception('unknown atlas')
     return index_path
@@ -96,7 +99,6 @@ def load_nifti_remote(niipath, sftp):
     temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(niipath))}'
     sftp.get(niipath, temp_path)
     try:
-        import nibabel as nib
         from nifti_handler import get_reference_info
         img = nib.load(temp_path)
         data = img.get_data()
@@ -109,6 +111,16 @@ def load_nifti_remote(niipath, sftp):
         os.remove(temp_path)
         raise Exception(e)
     return data, affine, vox_size, header, ref_info
+
+def save_nifti_remote(niiobject,niipath, sftp):
+
+    if sftp is None:
+        nib.save(niiobject, niipath)
+    else:
+        nib.save(niiobject, make_temppath(niipath))
+        sftp.put(make_temppath(niipath),niipath)
+        os.remove(make_temppath(niipath))
+    return
 
 def remove_remote(path, sftp=None):
     if sftp is None:
@@ -220,7 +232,7 @@ def pickledump_remote(var,path,sftp=None):
         sftp.put(temp_path, path)
         os.remove(temp_path)
 
-def checkfile_exists_remote(path, sftp):
+def checkfile_exists_remote(path, sftp=None):
     match_files = glob_remote(path,sftp)
     if np.size(match_files)>0:
         return True

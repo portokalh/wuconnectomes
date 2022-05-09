@@ -95,7 +95,8 @@ from multiprocessing import Pool
 from convert_atlas_mask import convert_labelmask, atlas_converter
 #from connectivity_own import connectivity_matrix_special
 from excel_management import connectomes_to_excel, grouping_to_excel
-from computer_nav import load_trk_remote, checkfile_exists_remote, glob_remote, load_nifti_remote
+from computer_nav import load_trk_remote, checkfile_exists_remote, glob_remote, load_nifti_remote, pickledump_remote, \
+    remove_remote
 
 def strfile(string):
     # Converts strings into more usable 'file strings (mostly takes out . and turns it into _
@@ -646,14 +647,14 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
         print("Time taken for the accelerated calculation with " + str(n) + " processes " + str(- t + time()))
 
     if picklesave:
-        pickle.dump(matrix, open(picklepath_connect, "wb"))
-        pickle.dump(grouping, open(picklepath_grouping, "wb"))
+        pickledump_remote(matrix, picklepath_connect, sftp=sftp)
+        pickledump_remote(grouping, picklepath_grouping, sftp=sftp)
         if volume_weighting:
-            pickle.dump(matrix_vol, open(picklepath_connect_vol, "wb"))
+            pickledump_remote(matrix_vol, picklepath_connect_vol, sftp=sftp)
         if reference_weighting_type is not None:
-            pickle.dump(matrix_refweighted, open(picklepath_connect_ref, "wb"))
+            pickledump_remote(matrix_refweighted, picklepath_connect_ref, sftp=sftp)
         if volume_weighting and reference_weighting_type is not None:
-            pickle.dump(matrix_vol_refweighted, open(picklepath_connect_volref, "wb"))
+            pickledump_remote(matrix_vol_refweighted, picklepath_connect_volref, sftp=sftp)
 
         if verbose:
             txt = ("The connectomes were saved at "+picklepath_connect)
@@ -679,23 +680,15 @@ def tract_connectome_analysis(diffpath, trkpath, str_identifier, outpath, subjec
     matrix_sl = np.delete(matrix_sl, 0, 0)
     matrix_sl = np.delete(matrix_sl, 0, 1)
 
-    if overwrite:
-        if os.path.exists(picklepath_connect):
-            os.remove(picklepath_connect)
-        if os.path.exists(connectome_xlsxpath):
-            os.remove(connectome_xlsxpath)
-        if os.path.exists(grouping_xlsxpath):
-            os.remove(grouping_xlsxpath)
-
-    connectomes_to_excel(matrix, index_to_struct, connectome_xlsxpath)
+    connectomes_to_excel(matrix, index_to_struct, connectome_xlsxpath, overwrite=overwrite, verbose=verbose, sftp=sftp)
     if volume_weighting:
-        connectomes_to_excel(matrix_vol, index_to_struct, connectome_xlsxpath_vol, verbose=verbose)
+        connectomes_to_excel(matrix_vol, index_to_struct, connectome_xlsxpath_vol, overwrite=overwrite, verbose=verbose, sftp=sftp)
     if reference_weighting_type is not None:
-        connectomes_to_excel(matrix_refweighted, index_to_struct, connectome_xlsxpath_ref, verbose=verbose)
+        connectomes_to_excel(matrix_refweighted, index_to_struct, connectome_xlsxpath_ref, overwrite=overwrite, verbose=verbose, sftp=sftp)
     if volume_weighting and reference_weighting_type is not None:
-        connectomes_to_excel(matrix_vol_refweighted, index_to_struct, connectome_xlsxpath_volref, verbose=verbose)
+        connectomes_to_excel(matrix_vol_refweighted, index_to_struct, connectome_xlsxpath_volref, overwrite=overwrite, verbose=verbose, sftp=sftp)
 
-    grouping_to_excel(matrix_sl, index_to_struct, grouping_xlsxpath, verbose = verbose)
+    grouping_to_excel(matrix_sl, index_to_struct, grouping_xlsxpath, overwrite=overwrite, verbose=verbose, sftp=sftp)
     if verbose:
         txt = ("The excelfile was saved at "+grouping_xlsxpath)
         send_mail(txt, subject="Excel save")
@@ -1104,7 +1097,7 @@ def create_tracts(diffpath, outpath, subject, figspath, step_size, peak_processe
 
     if masktype == "dwi" and mask is None:
         warnings.warn(f'Did not find mask, assuming that the diffusion path {fdiffpath} is already masked')
-        mask,_ = dwi_to_mask(diff_data, subject, affine, diffpath, masking='extract', makefig=False, header=header, verbose=True)
+        mask,_ = dwi_to_mask(diff_data, subject, affine, diffpath, masking='extract', makefig=False, header=header, verbose=True, sftp=sftp)
 
     if np.size(np.shape(mask)) == 1:
         mask = mask[0]

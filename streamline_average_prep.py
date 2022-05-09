@@ -47,7 +47,7 @@ if project=='AMD' or project=='AD_Decode':
     atlas_legends = get_atlas(atlas_folder, 'IIT')
 
 # Setting identification parameters for ratio, labeling type, etc
-ratio = 100
+ratio = 1
 ratio_str = ratio_to_str(ratio)
 print(ratio_str)
 if ratio_str == '_all':
@@ -76,7 +76,7 @@ else:
     fixed_str = ''
 
 labeltype = 'lrordered'
-verbose = False
+verbose = True
 picklesave = True
 
 function_processes = parse_arguments_function(sys.argv)
@@ -156,8 +156,8 @@ elif project == 'AMD':
     # groups to go through
     groups_all = ['Paired 2-YR AMD','Initial AMD','Initial Control','Paired 2-YR Control','Paired Initial Control','Paired Initial AMD']
     groups = ['Paired Initial Control', 'Paired Initial AMD']
-    #groups = ['Paired 2-YR Control', 'Paired 2-YR AMD']
-
+    groups = ['Paired 2-YR Control', 'Paired 2-YR AMD']
+    groups = ['Initial AMD','Initial Control']
     removed_list=[]
     # groups = ['Paired 2-YR AMD']
     # groups = ['Paired 2-YR Control']

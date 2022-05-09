@@ -245,7 +245,7 @@ def getdiffpath(mypath, subject, denoise="", verbose=None, sftp=None):
     if denoise is None:
         denoise=""
 
-    listoptions = [os.path.join(mypath,subject+"_subjspace_coreg.nii.gz"), os.path.join(mypath,subject+"_coreg_RAS.nii.gz")]
+    listoptions = [os.path.join(mypath,subject+"_subjspace_coreg.nii.gz"), os.path.join(mypath,subject+"_subjspace_coreg_RAS.nii.gz"), os.path.join(mypath,subject+"_coreg_RAS.nii.gz"), os.path.join(mypath,subject+"_coreg_diff.nii.gz")]
 
     if sftp is None:
         for list_option in listoptions:
@@ -323,7 +323,7 @@ def get_bvals_bvecs(mypath, subject,sftp=None):
     else:
         try:
             fbvals = glob_remote(mypath + '/' + subject + '*_bvals_fix.txt', sftp)[0]
-            fbvecs = glob_remote(mypath + '/' + subject + '*_bvec_fix.txt', sftp)[0]
+            fbvecs = glob_remote(mypath + '/' + subject + '*_bvecs_fix.txt', sftp)[0]
         except IndexError:
             print(mypath + '/' + subject + '*_bvals.txt')
             fbvals = glob_remote(mypath + '/' + subject + '*_bvals.txt', sftp)[0]
@@ -526,7 +526,8 @@ def getmask(mypath, subject, masktype = "subjspace", verbose=None, sftp=None):
             maskoption = glob_remote(list_option, sftp)
             if np.size(maskoption) > 0 and '.nii' in maskoption[0]:
                 if np.size(maskoption)>1:
-                    raise Warning("too many masks fitting parameters!!")
+                    txt = f'Too many masks fitting the parameters for subject{subject}'
+                    raise Exception(txt)
                 maskpath = maskoption[0]
                 break
 
@@ -540,8 +541,9 @@ def getmask(mypath, subject, masktype = "subjspace", verbose=None, sftp=None):
         return mask, affine_mask
     else:
         print(f"mask not found {os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz')}")
-        raise Exception(
-            f"here is what is going on {os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz')}")
+        return None, None
+        #raise Exception(
+        #    f"here is what is going on {os.path.join(mypath, subject + '*' + masktype + '*_mask*.nii.gz')}")
 
 
 
