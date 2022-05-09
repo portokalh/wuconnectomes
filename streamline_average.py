@@ -45,7 +45,6 @@ remote=True
 username = None
 passwd = None
 if remote:
-    username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
     if 'santorini' in computer_name:
         username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
     elif 'hydra' in computer_name:

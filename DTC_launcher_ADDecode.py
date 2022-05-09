@@ -16,8 +16,16 @@ from computer_nav import get_mainpaths, get_atlas
 
 remote=True
 project='AD_Decode'
+
+computer_name = socket.gethostname()
+
 if remote:
-    username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
+    if 'santorini' in computer_name:
+        username, passwd = getfromfile('/Users/jas/samos_connect.rtf')
+    elif 'hydra' in computer_name:
+        username, passwd = getfromfile('/Users/alex/jacques/samos_connect.rtf')
+    else:
+        username, passwd = None, None
 else:
     username = None
     passwd = None
@@ -39,7 +47,7 @@ subjects = ['S01912', 'S02110', 'S02224', 'S02227', 'S02230', 'S02231', 'S02266'
         'S02939', 'S02954', 'S02967', 'S02987', 'S03010', 'S03017', 'S03028', 'S03033', 'S03034', 'S03045', 'S03048',
         'S03069', 'S03225', 'S03265', 'S03293', 'S03308', 'S03321', 'S03343', 'S03350', 'S03378', 'S03391', 'S03394']
 removed_list = ["S02745","S02230","S02490","S02523"]
-
+subjects = subjects[int(np.size(subjects)/2):]
 for remove in removed_list:
     if remove in subjects:
         subjects.remove(remove)
@@ -50,7 +58,8 @@ random.shuffle(subjects)
 
 print(subjects)
 subject_processes, function_processes = parse_arguments(sys.argv,subjects)
-
+#subject_processes=1
+#function_processes=10
 #mask types => ['FA', 'T1', 'subjspace']
 masktype = "subjspace"
 stepsize = 2
@@ -97,7 +106,7 @@ if len(trkroi)==1:
 elif len(trkroi)>1:
     roistring="_"
     for roi in trkroi:
-        roistring = roistring + roi[0:f4]
+        roistring = roistring + roi[0:4]
     roistring = roistring #+ "_"
 str_identifier = '_stepsize_' + str(stepsize).replace(".","_") + saved_streamlines + roistring
 

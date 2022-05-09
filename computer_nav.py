@@ -14,7 +14,7 @@ def get_mainpaths(remote=False, project='any',username=None,password=None):
         inpath = '/mnt/paros_MRI/jacques/'
         outpath = '/mnt/paros_MRI/jacques/'
         atlas_folder = '/mnt/paros_MRI/jacques/atlases/'
-
+        remote=False
 
         #ROI_legends = "/mnt/paros_MRI/jacques/atlases/IITmean_RPI/IITmean_RPI_index.xlsx"
     elif 'santorini' in computer_name or 'hydra' in computer_name:
@@ -54,7 +54,7 @@ def get_mainpaths(remote=False, project='any',username=None,password=None):
             ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
             ssh.connect(server, username=username, password=password)
             sftp = ssh.open_sftp()
-        else:
+        elif ':' in inpath:
             inpath = inpath.split(":")[1]
         outpath=inpath
     if project == 'AD_Decode' or project == 'Chavez':
