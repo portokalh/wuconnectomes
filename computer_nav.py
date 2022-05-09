@@ -5,6 +5,8 @@ import fnmatch
 import numpy as np
 import pickle
 import nibabel as nib
+from nifti_handler import get_reference_info
+
 
 def get_mainpaths(remote=False, project='any',username=None,password=None):
     computer_name = socket.gethostname()
@@ -92,25 +94,35 @@ def get_atlas(atlas_folder, atlas_type):
         raise Exception('unknown atlas')
     return index_path
 
+
 def make_temppath(path):
     return f'{os.path.join(os.path.expanduser("~"), os.path.basename(path))}'
 
-def load_nifti_remote(niipath, sftp):
-    temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(niipath))}'
-    sftp.get(niipath, temp_path)
-    try:
-        from nifti_handler import get_reference_info
-        img = nib.load(temp_path)
+
+def load_nifti_remote(niipath, sftp=None):
+    if sftp is None:
+        img = nib.load(niipath)
         data = img.get_data()
         vox_size = img.header.get_zooms()[:3]
         affine = img.affine
         header = img.header
-        ref_info = get_reference_info(temp_path)
-        os.remove(temp_path)
-    except Exception as e:
-        os.remove(temp_path)
-        raise Exception(e)
+        ref_info = get_reference_info(niipath)
+    else:
+        temp_path = f'{os.path.join(os.path.expanduser("~"), os.path.basename(niipath))}'
+        sftp.get(niipath, temp_path)
+        try:
+            img = nib.load(temp_path)
+            data = img.get_data()
+            vox_size = img.header.get_zooms()[:3]
+            affine = img.affine
+            header = img.header
+            ref_info = get_reference_info(temp_path)
+            os.remove(temp_path)
+        except Exception as e:
+            os.remove(temp_path)
+            raise Exception(e)
     return data, affine, vox_size, header, ref_info
+
 
 def save_nifti_remote(niiobject,niipath, sftp):
 
@@ -122,11 +134,13 @@ def save_nifti_remote(niiobject,niipath, sftp):
         os.remove(make_temppath(niipath))
     return
 
+
 def remove_remote(path, sftp=None):
     if sftp is None:
         os.remove(path)
     else:
         sftp.remove(path)
+
 
 def read_bvals_bvecs_remote(fbvals, fbvecs, sftp):
     from dipy.io.gradients import read_bvals_bvecs
@@ -143,6 +157,7 @@ def read_bvals_bvecs_remote(fbvals, fbvecs, sftp):
         os.remove(temp_path_bvec)
         raise Exception(e)
     return bvals, bvecs
+
 
 def remote_pickle(picklepath, sftp=None):
     if sftp is not None:
